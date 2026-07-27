@@ -16,7 +16,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        // The border is an accessibility requirement, not decoration: the brand green sits at
+        // 2.33:1 against the indigo background, below the 3:1 floor for UI boundaries. The lighter
+        // green edge carries the button's shape. Do not remove it.
+        default: 'border border-primary-edge bg-primary text-primary-foreground hover:bg-primary/90',
         destructive:
           'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40',
         outline:

@@ -70,6 +70,16 @@ class HttpClient {
         const errorData = await response.json();
         if (errorData.error) message = errorData.error;
         else if (errorData.message) message = errorData.message;
+
+        // A bare "VALIDATION_ERROR" tells the user nothing. When the API returns Zod's flattened
+        // issues, name the offending fields so the message is actionable.
+        const fieldErrors = errorData?.details?.fieldErrors;
+        if (fieldErrors && typeof fieldErrors === 'object') {
+          const described = Object.entries(fieldErrors as Record<string, string[]>)
+            .map(([field, issues]) => `${field}: ${issues.join(', ')}`)
+            .join(' · ');
+          if (described) message = described;
+        }
       } catch {
         // ignore parse errors
       }

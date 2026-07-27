@@ -1,13 +1,16 @@
 'use client';
-import { LayoutDashboard, type LucideIcon } from 'lucide-react';
+import { Building2, LayoutDashboard, Users, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import { SIDEBAR_NAV_ITEMS, type SidebarNavItem } from '@/shared/const/navigation.const';
 import { cn } from '@/shared/lib/utils';
 
 const SIDEBAR_ICON_MAP: Record<SidebarNavItem['icon'], LucideIcon> = {
   dashboard: LayoutDashboard,
+  patients: Users,
+  clinic: Building2,
 };
 
 type SidebarProps = {
@@ -17,6 +20,7 @@ type SidebarProps = {
 
 export const Sidebar = ({ className, onNavigate }: SidebarProps) => {
   const pathname = usePathname();
+  const t = useTranslations('nav');
 
   return (
     <aside
@@ -26,10 +30,10 @@ export const Sidebar = ({ className, onNavigate }: SidebarProps) => {
       )}
     >
       <p className="px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Workspace
+        {t('workspace')}
       </p>
       <nav className="flex flex-col gap-1">
-        {SIDEBAR_NAV_ITEMS.map(({ href, label, icon }) => {
+        {SIDEBAR_NAV_ITEMS.map(({ href, labelKey, icon }) => {
           const Icon = SIDEBAR_ICON_MAP[icon];
           const isActive = pathname === href;
 
@@ -47,7 +51,7 @@ export const Sidebar = ({ className, onNavigate }: SidebarProps) => {
               )}
             >
               <Icon className="size-4 shrink-0" />
-              {label}
+              {t(labelKey)}
             </Link>
           );
         })}

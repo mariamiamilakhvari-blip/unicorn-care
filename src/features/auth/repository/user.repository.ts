@@ -12,6 +12,12 @@ export const userRepository = {
     return UserModel.findOne({ email }).lean<UserDocument>().exec();
   },
 
+  /** Staff accounts belonging to one clinic — used to match logins onto the derived doctor list. */
+  async findAllByClinic(clinicId: string): Promise<UserDocument[]> {
+    await mongo.connect();
+    return UserModel.find({ clinicId }).lean<UserDocument[]>().exec();
+  },
+
   async findAll(page = 1, limit = 20): Promise<{ items: UserDocument[] }> {
     await mongo.connect();
     const skip = (page - 1) * limit;

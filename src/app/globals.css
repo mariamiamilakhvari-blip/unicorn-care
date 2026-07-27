@@ -39,6 +39,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-moss: var(--moss);
+  --color-moss-foreground: var(--moss-foreground);
+  --color-primary-edge: var(--primary-edge);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,73 +51,96 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+  The product is dark by default: Midnight Indigo is the surface, Moss Green is the action colour.
+  Surfaces step up in lightness (background < card < muted) so panels separate without borders
+  doing all the work.
+*/
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.555 0.243 271);
+  /* Midnight Indigo #092B4D */
+  --background: oklch(0.286 0.073 252.1);
+  --foreground: oklch(0.97 0.008 252);
+  --card: oklch(0.344 0.084 252.1);
+  --card-foreground: oklch(0.97 0.008 252);
+  --popover: oklch(0.344 0.084 252.1);
+  --popover-foreground: oklch(0.97 0.008 252);
+  /* Moss Green #5F661F — buttons, icons, focus. White label on it is 6.16:1. */
+  --primary: oklch(0.489 0.094 114.7);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.555 0.243 271);
-  --chart-1: oklch(0.555 0.243 271);
-  --chart-2: oklch(0.62 0.16 271);
-  --chart-3: oklch(0.7 0.1 271);
-  --chart-4: oklch(0.78 0.06 271);
-  --chart-5: oklch(0.85 0.03 271);
+  /*
+    #5F661F against #092B4D is only 2.33:1 — under the 3:1 WCAG floor for UI component
+    boundaries. A lighter green edge makes the button's shape discernible without altering the
+    brand fill. Never drop this border from primary actions.
+  */
+  --primary-edge: oklch(0.640 0.109 115.2);
+  --secondary: oklch(0.396 0.094 251.8);
+  --secondary-foreground: oklch(0.97 0.008 252);
+  --muted: oklch(0.372 0.088 252);
+  --muted-foreground: oklch(0.80 0.032 252);
+  --accent: oklch(0.42 0.075 200);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.62 0.21 25);
+  --border: oklch(1 0 0 / 18%);
+  --input: oklch(1 0 0 / 22%);
+  --ring: oklch(0.640 0.109 115.2);
+  --moss: oklch(0.489 0.094 114.7);
+  --moss-foreground: oklch(0.985 0 0);
+  /* Ramp alternates the two brand hues, lifted for legibility on the indigo surface. */
+  --chart-1: oklch(0.640 0.109 115.2);
+  --chart-2: oklch(0.72 0.075 251);
+  --chart-3: oklch(0.545 0.10 115);
+  --chart-4: oklch(0.60 0.09 251.5);
+  --chart-5: oklch(0.80 0.055 115);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.555 0.243 271);
+  --sidebar: oklch(0.322 0.080 252.1);
+  --sidebar-foreground: oklch(0.97 0.008 252);
+  --sidebar-primary: oklch(0.489 0.094 114.7);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.555 0.243 271);
+  --sidebar-accent: oklch(0.40 0.07 200);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 18%);
+  --sidebar-ring: oklch(0.640 0.109 115.2);
 }
 
+/*
+  Same identity, deeper. The default theme is already dark, so this is a night variant of the
+  indigo — not a separate palette. The green lifts a step to hold contrast on the darker field.
+*/
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.62 0.21 271);
+  --background: oklch(0.205 0.055 252.1);
+  --foreground: oklch(0.975 0.008 252);
+  --card: oklch(0.262 0.068 252.1);
+  --card-foreground: oklch(0.975 0.008 252);
+  --popover: oklch(0.262 0.068 252.1);
+  --popover-foreground: oklch(0.975 0.008 252);
+  --primary: oklch(0.545 0.100 115);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --primary-edge: oklch(0.685 0.115 115.5);
+  --secondary: oklch(0.318 0.078 252);
+  --secondary-foreground: oklch(0.975 0.008 252);
+  --muted: oklch(0.295 0.072 252);
+  --muted-foreground: oklch(0.78 0.030 252);
+  --accent: oklch(0.345 0.070 200);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.21 271);
-  --chart-1: oklch(0.62 0.21 271);
-  --chart-2: oklch(0.55 0.16 271);
-  --chart-3: oklch(0.48 0.12 271);
-  --chart-4: oklch(0.4 0.08 271);
-  --chart-5: oklch(0.33 0.05 271);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.62 0.21 271);
+  --destructive: oklch(0.65 0.20 25);
+  --border: oklch(1 0 0 / 16%);
+  --input: oklch(1 0 0 / 20%);
+  --ring: oklch(0.685 0.115 115.5);
+  --moss: oklch(0.545 0.100 115);
+  --moss-foreground: oklch(0.985 0 0);
+  --chart-1: oklch(0.685 0.115 115.5);
+  --chart-2: oklch(0.70 0.075 251);
+  --chart-3: oklch(0.565 0.10 115);
+  --chart-4: oklch(0.575 0.09 251.5);
+  --chart-5: oklch(0.82 0.055 115);
+  --sidebar: oklch(0.240 0.062 252.1);
+  --sidebar-foreground: oklch(0.975 0.008 252);
+  --sidebar-primary: oklch(0.545 0.100 115);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent: oklch(0.345 0.070 200);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.21 271);
+  --sidebar-border: oklch(1 0 0 / 16%);
+  --sidebar-ring: oklch(0.685 0.115 115.5);
 }
 
 @layer base {

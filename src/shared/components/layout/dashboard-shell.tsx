@@ -1,5 +1,6 @@
 'use client';
 import { Menu, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState, type ReactNode } from 'react';
 
 import { Sidebar } from '@/shared/components/layout/sidebar';
@@ -12,6 +13,7 @@ type DashboardShellProps = {
 
 export const DashboardShell = ({ children }: DashboardShellProps) => {
   const [open, setOpen] = useState(false);
+  const t = useTranslations('nav');
 
   return (
     <div className="flex flex-1 flex-col lg:flex-row">
@@ -21,12 +23,12 @@ export const DashboardShell = ({ children }: DashboardShellProps) => {
           variant="outline"
           size="icon"
           onClick={() => setOpen(true)}
-          aria-label="Open navigation"
+          aria-label={t('openNavigation')}
           aria-expanded={open}
         >
           <Menu className="size-5" />
         </Button>
-        <span className="text-sm font-medium text-muted-foreground">Menu</span>
+        <span className="text-sm font-medium text-muted-foreground">{t('menu')}</span>
       </div>
 
       {/* Desktop static sidebar */}
@@ -43,7 +45,7 @@ export const DashboardShell = ({ children }: DashboardShellProps) => {
         <button
           type="button"
           tabIndex={open ? 0 : -1}
-          aria-label="Close navigation"
+          aria-label={t('closeNavigation')}
           onClick={() => setOpen(false)}
           className={cn(
             'absolute inset-0 bg-foreground/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none',
@@ -57,12 +59,12 @@ export const DashboardShell = ({ children }: DashboardShellProps) => {
           )}
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <span className="text-sm font-semibold">Navigation</span>
+            <span className="text-sm font-semibold">{t('navigation')}</span>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setOpen(false)}
-              aria-label="Close navigation"
+              aria-label={t('closeNavigation')}
             >
               <X className="size-5" />
             </Button>

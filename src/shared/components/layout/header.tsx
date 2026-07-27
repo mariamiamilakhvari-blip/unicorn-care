@@ -1,23 +1,34 @@
 'use client';
-import { Triangle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 
 import { useLogout } from '@/features/auth/hooks/use-logout';
+import { BrandMark } from '@/shared/components/layout/brand-mark';
+import { LanguageSwitcher } from '@/shared/components/layout/language-switcher';
 import { ThemeToggle } from '@/shared/components/layout/theme-toggle';
 import { Button } from '@/shared/components/ui/button';
 import { APP_NAME } from '@/shared/const/app.const';
+import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
+import { CLINIC_ROLES, type UserRole } from '@/shared/types/roles';
 
 type SessionUser = {
   name?: string | null;
   avatar?: string | null;
-  role?: 'admin' | 'user';
+  role?: UserRole;
+  clinicId?: string | null;
 };
+
+/** Same set the protected layout admits — the link must not point somewhere that redirects away. */
+const DASHBOARD_ROLES: UserRole[] = [...CLINIC_ROLES, 'admin'];
 
 export const Header = () => {
   const { data: session } = useSession();
   const { logout } = useLogout();
+  const tNav = useTranslations('nav');
+  const tAuth = useTranslations('auth');
+  const tClinic = useTranslations('clinic');
   const sessionUser = session?.user as SessionUser | undefined;
   const userName = sessionUser?.name ?? '';
   const initials = userName
@@ -30,25 +41,26 @@ export const Header = () => {
   return (
     <header className="flex items-center justify-between px-6 py-5 sm:px-10 border-b border-border">
       <Link href="/" className="flex items-center gap-2.5">
-        <span
-          aria-hidden="true"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-background"
-        >
-          <Triangle className="size-3 fill-current" />
-        </span>
+        <BrandMark size={32} />
         <span className="text-sm font-semibold tracking-tight text-foreground">
           {APP_NAME}
         </span>
       </Link>
 
       <div className="flex items-center gap-2">
+        <LanguageSwitcher />
         <ThemeToggle />
 
         {sessionUser ? (
           <>
-            {sessionUser.role === 'admin' && (
+            {/* A signed-in account with no clinic gets a way back into setup instead of a dead end. */}
+            {sessionUser.role && DASHBOARD_ROLES.includes(sessionUser.role) ? (
               <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/dashboard">{tNav('dashboard')}</Link>
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
+                <Link href={CLINIC_SIGN_UP_ROUTE}>{tClinic('finishSetup')}</Link>
               </Button>
             )}
             <div className="flex items-center gap-3">
@@ -73,16 +85,16 @@ export const Header = () => {
               onClick={logout}
               className="text-muted-foreground hover:text-foreground hover:bg-accent"
             >
-              Sign out
+              {tAuth('signOut')}
             </Button>
           </>
         ) : (
           <>
             <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
-              <Link href="/sign-in">Sign in</Link>
+              <Link href="/sign-in">{tAuth('signIn')}</Link>
             </Button>
             <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
-              <Link href="/sign-up">Sign up</Link>
+              <Link href={CLINIC_SIGN_UP_ROUTE}>{tAuth('signUp')}</Link>
             </Button>
           </>
         )}

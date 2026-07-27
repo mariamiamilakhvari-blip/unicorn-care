@@ -1,158 +1,103 @@
-# Next.js Starter
+# Unicorn Care
 
-Production-ready Next.js 16 starter with App Router, TypeScript, Tailwind CSS,
-shadcn/ui, NextAuth v5, MongoDB via Mongoose, Zustand, Zod, and Vitest.
+A post-op recovery platform for plastic surgery clinics.
+
+Clinic staff log a patient's procedure and attach a **care plan** — medications with dosing times,
+rehab tasks with intensity, checkup dates, and a rehab end date. The system materialises that plan
+into dated reminders and pushes them to the patient's phone.
+
+The patient never creates an account. They open a **magic link** from the clinic, install the PWA,
+and grant push permission.
+
+**No email. No SMS. Web Push only.**
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 App Router |
-| Language | TypeScript strict mode |
-| Auth | NextAuth v5 with Credentials and Google OAuth |
-| Database | MongoDB with Mongoose |
-| Styling | Tailwind CSS and shadcn/ui |
-| Validation | Zod, react-hook-form, zodResolver |
-| State | Zustand vanilla store with React context |
-| Testing | Vitest and Testing Library |
-| Linting | ESLint, Next core web vitals, import/order |
-| Git hooks | Husky pre-commit: lint, build, test:run |
+Next.js 16 (App Router) · TypeScript strict · MongoDB via Mongoose · NextAuth v5 · Tailwind CSS +
+shadcn/ui · Zod + react-hook-form · Zustand · next-intl (`ka` + `en`) · Vitest · `web-push` (VAPID)
 
-## Getting Started
-
-Install dependencies:
+## Getting started
 
 ```bash
 npm install
-```
-
-Create local environment:
-
-```bash
-cp .env.example .env.local
-```
-
-Required values:
-
-```env
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-here
-MONGO_URI=mongodb://localhost:27017/nextjs-starter
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-```
-
-Start development server:
-
-```bash
+cp .env.example .env      # then fill in the values below
+docker compose up mongo   # or point MONGO_URI at your own instance
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+### Environment
 
-## Scripts
+| Variable | What it is |
+|---|---|
+| `NEXTAUTH_URL`, `NEXTAUTH_SECRET` | NextAuth |
+| `MONGO_URI` | MongoDB connection string |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth (optional) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push server identity |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Same public key, exposed to the browser |
+| `CRON_SECRET` | Bearer token the reminder-dispatch cron must present |
 
-```bash
-npm run dev          # Start local dev server
-npm run build        # Production build
-npm run start        # Start production server
-npm run lint         # ESLint check
-npm run lint:fix     # ESLint auto-fix
-npm run typecheck    # TypeScript check
-npm run test         # Vitest watch mode
-npm run test:run     # Vitest one-shot run
-npm run test:cov     # Vitest coverage report
-```
+Generate a VAPID pair with `npx web-push generate-vapid-keys --json`. The `.env` in this repo ships
+a **development** pair — regenerate before deploying.
 
-Run one test file:
+## Commands
 
 ```bash
-npx vitest run src/features/auth/service/auth.service.spec.ts
+npm run dev        # dev server on :3000
+npm run build      # production build
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm run test       # Vitest watch
+npm run test:run   # Vitest once
 ```
 
-## Project Structure
+The Husky pre-commit hook runs `lint → build → test` and blocks on failure.
 
-```text
-src/
-  app/
-    (public)/                  Public routes: home, sign-in, sign-up
-    (protected)/               Auth-protected routes: dashboard
-    api/                       Thin route handlers
-    globals.css                Tailwind theme and CSS variables
-    layout.tsx                 Root metadata, fonts, theme provider
-  features/
-    auth/
-      components/              Forms and auth page shell
-      hooks/                   Store hook and async auth actions
-      repository/              Mongoose query layer
-      schema/                  User schema and inferred document type
-      service/                 Business logic returning ServiceResult
-      store/                   Zustand vanilla store factory
-      types/                   Auth feature types
-      validations/             Zod schemas
-    dashboard/
-      components/              Protected dashboard UI
-    marketing/
-      components/              Public home page UI
-  shared/
-    components/                Layout and shadcn/ui primitives
-    const/                     Static app, route, nav, and page constants
-    hooks/                     Cross-feature React hooks
-    lib/                       OOP singleton libraries with tests
-    middleware/                Request validation helpers
-    providers/                 App providers
-    types/                     Shared service/result types
-    utils/                     Small shared utilities with tests
-  proxy.ts                     Cookie-based route protection
+## How it fits together
+
+```
+Clinic staff → patient record → procedure → care plan (draft)
+             → activate  ──► occurrence generator materialises dated reminders
+Cron (*/5)   → dispatch sweep ──► Web Push ──► patient's phone
+Patient      → magic link → PWA install → today's plan → mark done
 ```
 
-## Architecture Rules
+- **Tenancy**: every clinical query is scoped by `clinicId`, taken from the session and never from
+  a request body. There is no unscoped find for a patient, procedure, care plan, or occurrence.
+- **Magic links**: only the SHA-256 of a token is stored, so a database read yields no working
+  links. Tokens expire in 90 days and are independently revocable; revoking also deactivates that
+  patient's push subscriptions.
+- **Timezones**: `HH:mm` entries are clinic-local wall clock, converted per calendar day, so a plan
+  stays correct across a DST shift. Storage is always UTC.
+- **Notification bodies** never carry a diagnosis or procedure name — a lock-screen preview is
+  readable by anyone holding the phone.
 
-- Page files stay thin. Layout and structural UI live in components.
-- API routes validate input with `validateBody`, call one service, and return JSON.
-- Services own business decisions and always return `{ data, status }`.
-- Repositories only perform raw database queries and call `mongo.connect()` first.
-- Static arrays and reusable constants live in `src/shared/const`.
-- Cross-directory imports use the `@/` alias.
-- Forms use `react-hook-form` with `zodResolver`.
-- Shared `lib` files use class syntax, export a singleton, and have co-located tests.
+## Cron
 
-## Docker
-
-Start app and local MongoDB:
+`GET /api/cron/dispatch-reminders` runs every 5 minutes (see `vercel.json`). It requires
+`Authorization: Bearer $CRON_SECRET`. Locally:
 
 ```bash
-docker compose up
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/dispatch-reminders
 ```
 
-Run in background:
+## iOS note
 
-```bash
-docker compose up -d
-```
+Web Push on iOS/iPadOS only works from a **home-screen-installed** PWA (Safari 16.4+). The portal
+detects this and shows Add-to-Home-Screen instructions instead of an enable button. This is a
+platform constraint, not something the app can work around.
 
-Rebuild:
+## Documentation
 
-```bash
-docker compose up --build
-```
+Product and technical specs live in [`docs/prd/`](docs/prd/):
 
-Stop:
+| Doc | Covers |
+|---|---|
+| `00-overview.md` | Problem, users, v1 scope, success criteria |
+| `01-data-model.md` | Every schema, relation, and index |
+| `02-auth-and-magic-link.md` | Roles, clinic scoping, patient token access |
+| `03-care-plan.md` | Procedure, care plan, occurrence generation, adherence |
+| `04-push-notifications.md` | VAPID, service worker, subscriptions, dispatch sweep |
+| `05-i18n-and-pwa.md` | next-intl routing, message files, manifest, install |
+| `06-backlog-v2.md` | Ratings, complication-vs-norm guide, recovery timeline |
 
-```bash
-docker compose down
-```
-
-Wipe local MongoDB data:
-
-```bash
-docker compose down -v
-```
-
-## Production Notes
-
-- `next.config.ts` pins Turbopack root to this repository to avoid parent-lockfile
-  workspace inference.
-- Remote image optimization is limited to Google OAuth avatars by default.
-- `npm audit fix` has been applied without force. A package override keeps
-  transitive `postcss` on the patched version used by the toolchain.
+Architecture rules for contributors (and agents) are in [`CLAUDE.md`](CLAUDE.md).

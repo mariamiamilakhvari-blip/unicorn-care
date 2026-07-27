@@ -88,6 +88,13 @@ Features own all their domain code under `src/features/<feature>/`:
 
 Shared code lives in `src/shared/`. Global type augmentations live in `src/types/`.
 
+**The one exception to the feature-folder rule**: `src/i18n/routing.ts` and `src/i18n/request.ts` are
+library-mandated paths that `next-intl` resolves by convention, and `messages/ka.json` /
+`messages/en.json` sit at the repo root because they are data, not source. Nothing else may live
+outside the structure above. Both message files must always carry identical key sets —
+`src/shared/lib/i18n-messages.spec.ts` enforces it, because a missing Georgian key otherwise
+renders a raw key path to a patient.
+
 Static constants and arrays live in `src/shared/const/<name>.const.ts`. Never co-locate data files with pages. Never create `_data/`, `_components/`, or any underscore-prefixed folders anywhere in the project.
 
 ## 3. Type Rule
@@ -304,12 +311,20 @@ Ask these exact axes; each meaningfully changes the design:
 
 ```
 STATUS: locked
-Product:    SaaS dashboard / B2B
-Palette:    Monochrome + electric indigo accent
-            base #FAFAFA (light) / #0A0A0A (dark); accent #5B5BFF
-            tokens: --primary oklch(0.555 0.243 271) light / oklch(0.62 0.21 271) dark
+Product:    SaaS dashboard / B2B — clinical, calm, trustworthy
+Palette:    Two brand colours, no third.
+            Midnight Indigo #092B4D — primary: actions, focus rings, brand chrome
+              tokens: --primary oklch(0.286 0.073 252.1) light / oklch(0.62 0.105 251.5) dark
+            Moss Green    #5F661F — second brand colour: mark, accents, chart series 2/4
+              tokens: --moss oklch(0.489 0.094 114.7) light / oklch(0.685 0.115 115.5) dark
+            Neutrals carry a trace of the indigo hue so the palette reads as one system.
+            #092B4D is unreadable on dark surfaces — the dark theme lifts the hue, never reuses
+            the raw hex. Moss is a brand colour, NEVER a success/status signal.
 Type:       Geometric sans — Space Grotesk (display, 500/600/700) + Inter (body) + Geist Mono (data)
 Feel:       Balanced — CSS load-rise stagger + hover micro-interactions; reduced-motion respected
+Logo:       Sitting unicorn, hand-drawn line style — `public/unicorn.svg`, rendered via
+            `<BrandMark />` in `src/shared/components/layout/brand-mark.tsx`. Moss horn/mane/tail/
+            hooves, indigo ear and dapples, near-black contour. PWA icons derive from this file.
 Signature:  Left-aligned typographic hero with one accent word + honest stat strip;
-            dashboard app-shell with mobile drawer sidebar and segmented indigo channel meters
+            dashboard app-shell with mobile drawer sidebar and segmented brand-coloured meters
 ```

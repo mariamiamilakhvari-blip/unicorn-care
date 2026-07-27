@@ -4,6 +4,7 @@ import Google from 'next-auth/providers/google';
 
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { upsertOAuthUserService } from '@/features/auth/service/auth.service';
+import { UserRole } from '@/shared/types/roles';
 import { hashPassword } from '@/shared/utils/password';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -31,8 +32,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user._id.toString(),
           name: user.name,
           email: user.email,
-          role: user.role as 'user' | 'admin',
+          role: user.role as UserRole,
           avatar: user.avatar,
+          clinicId: user.clinicId?.toString() ?? null,
         };
       },
     }),
@@ -54,13 +56,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, user }) {
-      const authUser = user as ({ role?: 'admin' | 'user'; avatar?: string | null } & typeof user) | undefined;
+      const authUser = user as
+        | ({ role?: UserRole; avatar?: string | null; clinicId?: string | null } & typeof user)
+        | undefined;
 
       if (user) {
         token.id = authUser?.id ?? token.sub ?? '';
         token.email = user.email;
         token.name = user.name;
         token.avatar = authUser?.avatar ?? (token.avatar as string | null | undefined);
+        token.clinicId = authUser?.clinicId ?? (token.clinicId as string | null | undefined) ?? null;
       }
 
       if (token.email) {
@@ -69,9 +74,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.id = dbUser._id.toString();
           token.name = dbUser.name;
           token.avatar = dbUser.avatar ?? (token.avatar as string | null | undefined);
-          token.role = (dbUser.role as 'admin' | 'user') ?? 'user';
+          token.role = (dbUser.role as UserRole) ?? 'user';
+          // Tenancy key, refreshed on every token refresh alongside role (PRD 02 §A).
+          token.clinicId = dbUser.clinicId?.toString() ?? null;
         } else {
           token.role = 'user';
+          token.clinicId = null;
         }
       }
 
@@ -82,14 +90,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         const user = session.user as typeof session.user & {
           id: string;
-          role: 'admin' | 'user';
+          role: UserRole;
           avatar?: string | null;
+          clinicId?: string | null;
         };
         user.id = token.id as string;
         user.email = token.email as string;
         user.name = token.name as string;
         user.avatar = (token.avatar as string | null | undefined) ?? null;
-        user.role = (token.role as 'admin' | 'user' | undefined) ?? 'user';
+        user.role = (token.role as UserRole | undefined) ?? 'user';
+        user.clinicId = (token.clinicId as string | null | undefined) ?? null;
       }
       return session;
     },

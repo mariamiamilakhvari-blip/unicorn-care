@@ -1,19 +1,23 @@
-import { ArrowRight, Boxes, Layers, Shield, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowRight, Bell, Pill, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
-import { HOME_FEATURES, HOME_STATS, type FeatureCard } from '@/shared/const/home.const';
+import { HOME_FEATURES, HOME_STAT_KEYS, type HomeFeatureIcon } from '@/shared/const/home.const';
+import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
 
-const FEATURE_ICON_MAP: Record<FeatureCard['icon'], LucideIcon> = {
-  layers: Layers,
-  shield: Shield,
-  boxes: Boxes,
+const FEATURE_ICON_MAP: Record<HomeFeatureIcon, LucideIcon> = {
+  pill: Pill,
+  bell: Bell,
+  activity: Activity,
 };
 
 export const HomePage = () => {
+  const t = useTranslations('marketing');
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Header />
@@ -23,48 +27,45 @@ export const HomePage = () => {
           <div className="animate-rise inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
             <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              Production-ready starter
+              {t('eyebrow')}
             </span>
           </div>
 
           <h1 className="animate-rise animate-rise-1 mt-6 max-w-3xl text-4xl font-bold leading-tight sm:text-6xl">
-            Launch your SaaS on a foundation that&apos;s{' '}
-            <span className="text-primary">already built.</span>
+            {t('headline')} <span className="text-primary">{t('headlineAccent')}</span>
           </h1>
 
           <p className="animate-rise animate-rise-2 mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Auth, database, state, and UI wired together and tested — so day one
-            starts at feature one, not setup.
+            {t('subheadline')}
           </p>
 
           <div className="animate-rise animate-rise-3 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button size="lg" asChild className="font-semibold">
-              <Link href="/sign-up">
-                Get started
+              <Link href={CLINIC_SIGN_UP_ROUTE}>
+                {t('ctaPrimary')}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/sign-in">Sign in</Link>
+              <Link href="/sign-in">{t('ctaSecondary')}</Link>
             </Button>
           </div>
 
           <dl className="animate-rise animate-rise-4 mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
-            {HOME_STATS.map(({ value, label }) => (
-              <div key={label} className="bg-background px-5 py-4">
-                <dt className="font-heading text-xl font-bold tracking-tight">{value}</dt>
-                <dd className="mt-0.5 text-sm text-muted-foreground">{label}</dd>
+            {HOME_STAT_KEYS.map((key) => (
+              <div key={key} className="bg-background px-5 py-4">
+                <dt className="font-heading text-xl font-bold tracking-tight">
+                  {t(`stats.${key}.value`)}
+                </dt>
+                <dd className="mt-0.5 text-sm text-muted-foreground">{t(`stats.${key}.label`)}</dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <section
-          aria-label="What's included"
-          className="mx-auto w-full max-w-5xl px-6 pb-24 sm:px-10"
-        >
+        <section aria-label={t('featuresEyebrow')} className="mx-auto w-full max-w-5xl px-6 pb-24 sm:px-10">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            What&apos;s included
+            {t('featuresEyebrow')}
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -73,7 +74,7 @@ export const HomePage = () => {
 
               return (
                 <Card
-                  key={feature.title}
+                  key={feature.key}
                   className="gap-0 transition-colors duration-300 hover:border-primary/40"
                 >
                   <CardHeader className="pb-3">
@@ -81,13 +82,13 @@ export const HomePage = () => {
                       <Icon className="size-5" />
                     </span>
                     <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                      {feature.label}
+                      {t(`features.${feature.key}.label`)}
                     </p>
                   </CardHeader>
                   <CardContent>
-                    <h3 className="text-lg font-bold">{feature.title}</h3>
+                    <h3 className="text-lg font-bold">{t(`features.${feature.key}.title`)}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      {feature.description}
+                      {t(`features.${feature.key}.description`)}
                     </p>
                   </CardContent>
                 </Card>

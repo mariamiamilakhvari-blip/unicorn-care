@@ -1,41 +1,17 @@
-export type FeatureCard = {
-  label: string;
-  title: string;
-  description: string;
-  icon: 'layers' | 'shield' | 'boxes';
+export type HomeFeatureIcon = 'pill' | 'activity' | 'bell';
+
+export type HomeFeature = {
+  key: 'carePlan' | 'reminders' | 'adherence';
+  icon: HomeFeatureIcon;
 };
 
-export const HOME_FEATURES: FeatureCard[] = [
-  {
-    label: 'Framework',
-    title: 'Next.js 16',
-    description:
-      'App Router, React Server Components, and streaming built in. Ship fast on architecture that scales.',
-    icon: 'layers',
-  },
-  {
-    label: 'Auth & data',
-    title: 'NextAuth + MongoDB',
-    description:
-      'Credentials and OAuth with JWT sessions, wired to MongoDB via Mongoose. Secure by default, extensible by design.',
-    icon: 'shield',
-  },
-  {
-    label: 'State & UI',
-    title: 'Zustand + shadcn/ui',
-    description:
-      'Vanilla Zustand stores via context for predictable state. shadcn/ui for a polished, accessible interface.',
-    icon: 'boxes',
-  },
+/** Structure only — all copy lives in `messages/*.json` under the `marketing` namespace. */
+export const HOME_FEATURES: HomeFeature[] = [
+  { key: 'carePlan', icon: 'pill' },
+  { key: 'reminders', icon: 'bell' },
+  { key: 'adherence', icon: 'activity' },
 ];
 
-export type HomeStat = {
-  value: string;
-  label: string;
-};
+export type HomeStatKey = 'languages' | 'push' | 'setup';
 
-export const HOME_STATS: HomeStat[] = [
-  { value: 'Day 1', label: 'Auth, DB & UI ready' },
-  { value: '100%', label: 'TypeScript strict' },
-  { value: 'Vitest', label: 'Tests wired in' },
-];
+export const HOME_STAT_KEYS: HomeStatKey[] = ['languages', 'push', 'setup'];
