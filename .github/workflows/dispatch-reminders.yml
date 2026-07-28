@@ -1,0 +1,50 @@
+name: Dispatch reminders
+
+# Vercel's Hobby plan caps cron at once per day, but the dispatch sweep only looks 6 hours back
+# (GRACE_HOURS) — a daily run would leave 18 hours of doses unsent and then mark them missed.
+# This workflow is the real scheduler; the daily Vercel cron in vercel.json is a safety net.
+#
+# Setup: add two repository secrets under Settings → Secrets and variables → Actions
+#   APP_URL      https://your-deployment.vercel.app   (no trailing slash)
+#   CRON_SECRET  the same value as the CRON_SECRET environment variable on Vercel
+#
+# Note: GitHub's scheduler is best-effort and can lag under load, and it disables scheduled
+# workflows after 60 days without repository activity. For clinical reminders where lateness
+# matters, a dedicated scheduler (cron-job.org, Upstash QStash) or the Vercel Pro plan is sturdier.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder sweep
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "APP_URL or CRON_SECRET is not set — add both as repository secrets."
+            exit 1
+          fi
+
+          # Body and status are captured separately so a failure prints the reason.
+          response=$(curl -sS --max-time 60 -w '\n%{http_code}' \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/cron/dispatch-reminders")
+
+          status=$(printf '%s' "$response" | tail -n1)
+          body=$(printf '%s' "$response" | sed '$d')
+
+          echo "status: ${status}"
+          echo "body:   ${body}"
+
+          if [ "$status" != "200" ]; then
+            echo "Reminder sweep failed."
+            exit 1
+          fi

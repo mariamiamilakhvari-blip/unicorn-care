@@ -71,14 +71,32 @@ Patient      → magic link → PWA install → today's plan → mark done
 - **Notification bodies** never carry a diagnosis or procedure name — a lock-screen preview is
   readable by anyone holding the phone.
 
-## Cron
+## Cron — read this before deploying
 
-`GET /api/cron/dispatch-reminders` runs every 5 minutes (see `vercel.json`). It requires
+`GET /api/cron/dispatch-reminders` is what actually sends reminders. It requires
 `Authorization: Bearer $CRON_SECRET`. Locally:
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/dispatch-reminders
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3001/api/cron/dispatch-reminders
 ```
+
+**It has to run every few minutes, not daily.** The sweep only picks up reminders due within the
+last `GRACE_HOURS` (6). Anything older is marked `missed`. A once-a-day run therefore leaves ~18
+hours of doses unsent *and* marks them missed — the product silently stops working.
+
+Vercel's **Hobby plan caps cron at once per day**, so `vercel.json` schedules a daily run as a
+safety net only. The real scheduler is `.github/workflows/dispatch-reminders.yml`, which hits the
+same endpoint every 5 minutes. Add two repository secrets for it:
+
+| Secret | Value |
+|---|---|
+| `APP_URL` | `https://your-deployment.vercel.app` (no trailing slash) |
+| `CRON_SECRET` | same value as the `CRON_SECRET` env var on Vercel |
+
+GitHub's scheduler is best-effort: it can lag under load and disables scheduled workflows after 60
+days without repository activity. For production use either Vercel **Pro** (then set
+`vercel.json` back to `*/5 * * * *` and delete the workflow) or a dedicated scheduler such as
+cron-job.org or Upstash QStash.
 
 ## iOS note
 
