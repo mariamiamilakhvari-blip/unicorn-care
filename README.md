@@ -6,10 +6,13 @@ Clinic staff log a patient's procedure and attach a **care plan** — medication
 rehab tasks with intensity, checkup dates, and a rehab end date. The system materialises that plan
 into dated reminders and pushes them to the patient's phone.
 
-The patient never creates an account. They open a **magic link** from the clinic, install the PWA,
-and grant push permission.
+The patient never creates an account. They open a **magic link** from the clinic and, if they want
+instant alerts, install the PWA and grant push permission.
 
-**No email. No SMS. Web Push only.**
+**Reminders reach the patient two ways: Web Push and email.** Push is instant and free but needs an
+installed PWA — on iOS that is a hard requirement, so most patients would never receive one. Email
+reaches everybody with an address on file. A patient with neither still sees the full plan in the
+portal.
 
 ## Stack
 

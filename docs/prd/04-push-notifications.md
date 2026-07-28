@@ -1,6 +1,14 @@
 # PRD 04 — Web Push Notifications (self-hosted VAPID)
 
-**Push is the only delivery channel. No email. No SMS.**
+**Two delivery channels: Web Push and email. No SMS.**
+
+Push is instant and costs nothing per message, but requires the patient to install the PWA — on
+iOS/iPadOS that is non-negotiable (see the iOS section below), so relying on push alone means most
+patients receive nothing. Email is sent through Resend to the address on the patient record, and is
+skipped when there is none.
+
+Both channels carry the same rule: **never a diagnosis or procedure name.** A lock-screen preview
+and a shared inbox are equally readable by someone other than the patient.
 
 ## Dependency
 

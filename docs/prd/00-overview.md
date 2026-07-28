@@ -16,7 +16,9 @@ A clinic-operated post-op recovery platform.
   checkup dates, and a rehab end date.
 - The patient never creates an account. They open a **magic link** sent by the clinic, install the
   PWA, and grant push permission. Reminders arrive as native push notifications on the phone.
-- **No email. No SMS.** Web Push only.
+- **Reminders go out by Web Push and email.** Push needs an installed PWA, which iOS enforces
+  strictly, so email is what reaches most patients. Neither channel ever carries a diagnosis or
+  procedure name — an inbox and a lock screen are both readable by other people. No SMS.
 
 ## Users
 

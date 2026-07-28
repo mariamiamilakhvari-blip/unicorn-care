@@ -220,8 +220,8 @@
         "label": "Patient-facing in both languages from day one"
       },
       "push": {
-        "value": "No SMS",
-        "label": "Web push only, with no per-message cost"
+        "value": "Push + email",
+        "label": "Reminders reach the patient either way"
       },
       "setup": {
         "value": "3 min",
@@ -237,7 +237,7 @@
       "reminders": {
         "label": "Reminders",
         "title": "A notification, not a leaflet",
-        "description": "Every item on the plan becomes a dated reminder that lands on the patient's phone as a native notification. No email, no SMS."
+        "description": "Every item on the plan becomes a dated reminder — a push notification on the phone and an email to the patient's address."
       },
       "adherence": {
         "label": "Adherence",
