@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 
+import { checkPatientSeat } from '@/features/clinic/service/subscription.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PatientDocument } from '@/features/patient/schema/patient.schema';
 import { PatientListResult, PatientSummary } from '@/features/patient/types/patient.types';
@@ -32,6 +33,15 @@ export async function createPatientService(
   clinicId: string,
   input: CreatePatientType
 ): Promise<ServiceResult<PatientSummary>> {
+  /*
+    Plan limits are enforced here rather than in the route so every caller is covered, and the
+    reason is passed through: "your trial ended" and "you are out of seats" call for different
+    responses from the clinic. 402 is the honest status — the request is valid, payment is what
+    is missing.
+  */
+  const seat = await checkPatientSeat(clinicId);
+  if (!seat.ok) return { data: { error: seat.reason }, status: 402 };
+
   const patientId = await patientRepository.create({
     ...input,
     clinicId: new Types.ObjectId(clinicId),

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 
 import { ClinicProfileForm } from '@/features/clinic/components/clinic-profile-form';
+import { SubscriptionCard } from '@/features/clinic/components/subscription-card';
 import { useClinic } from '@/features/clinic/hooks/use-clinic';
 import {
   CreateStaffSchema,
@@ -67,6 +68,8 @@ export function ClinicPage() {
           </CardContent>
         </Card>
       )}
+
+      <SubscriptionCard />
 
       {/* Derived from procedures — appears without anyone maintaining it. */}
       <DoctorList />

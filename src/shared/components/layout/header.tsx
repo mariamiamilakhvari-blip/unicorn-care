@@ -29,6 +29,7 @@ export const Header = () => {
   const tNav = useTranslations('nav');
   const tAuth = useTranslations('auth');
   const tClinic = useTranslations('clinic');
+  const tPricing = useTranslations('pricing');
   const sessionUser = session?.user as SessionUser | undefined;
   const userName = sessionUser?.name ?? '';
   const initials = userName
@@ -90,6 +91,9 @@ export const Header = () => {
           </>
         ) : (
           <>
+            <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
+              <Link href="/pricing">{tPricing('title')}</Link>
+            </Button>
             <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
               <Link href="/sign-in">{tAuth('signIn')}</Link>
             </Button>

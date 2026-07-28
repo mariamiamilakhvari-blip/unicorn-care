@@ -304,5 +304,61 @@
     "saveGuide": "Save guide",
     "sharedAcrossPatients": "Written per procedure type — every patient with this procedure sees it.",
     "usingDefault": "Showing the default guide. Saving creates your clinic’s own version."
+  },
+  "pricing": {
+    "title": "Pricing",
+    "subtitle": "Start free for 7 days. No credit card required.",
+    "footnote": "Prices in USD, billed annually. Items marked “coming soon” are on the roadmap and are not part of what you pay for today.",
+    "free": "Free",
+    "perMonth": "/month",
+    "billedAnnually": "billed annually ({annual}/year — save {saving})",
+    "patientLimit": "Up to {count} active patients",
+    "unlimitedPatients": "Unlimited patients",
+    "mostPopular": "Most popular",
+    "currentPlan": "Current plan",
+    "choosePlan": "Choose plan",
+    "startTrial": "Start free trial",
+    "comingSoon": "coming soon",
+    "subscription": "Subscription",
+    "trialDaysLeft": "{count, plural, one {# day left} other {# days left}}",
+    "activeOfLimit": "{active} of {limit} active patients",
+    "activeUnlimited": "{active} active patients",
+    "limitReachedHelp": "You have reached the patient limit for this plan. Upgrade to add more, or archive a patient to free a place.",
+    "inactiveHelp": "Your subscription is not active, so new patients cannot be added. Your existing records are untouched.",
+    "status": {
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Past due",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "plan": {
+      "trial": {
+        "name": "Free trial",
+        "bestFor": "Try the full clinical loop with up to 5 patients."
+      },
+      "standard": {
+        "name": "Standard",
+        "bestFor": "Solo surgeons, small clinics, 1–2 doctors, up to 50 patients/month."
+      },
+      "premium": {
+        "name": "Premium",
+        "bestFor": "Medium to large clinics, multi-doctor practices, clinic chains, 50+ patients/month."
+      }
+    },
+    "feature": {
+      "patientPortal": "Patient portal (magic link access)",
+      "procedureRecords": "Procedure + medication records",
+      "complicationsGuide": "Complications guide per patient",
+      "pushNotifications": "Push notifications to patients",
+      "checkupReminders": "Checkup date reminders",
+      "careAssistant": "Post-op care assistant",
+      "dailyCheckIn": "Daily check-in + triage (Normal / Monitor / Urgent)",
+      "emailReminders": "Email reminders",
+      "patientRatings": "Patient review + rating system",
+      "unlimitedPatients": "Unlimited patients",
+      "customGuidePerProcedure": "Custom complications guide per procedure type",
+      "noCreditCard": "No credit card required"
+    }
   }
 }

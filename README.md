@@ -119,3 +119,38 @@ Product and technical specs live in [`docs/prd/`](docs/prd/):
 | `06-backlog-v2.md` | Ratings, complication-vs-norm guide, recovery timeline |
 
 Architecture rules for contributors (and agents) are in [`CLAUDE.md`](CLAUDE.md).
+
+## Billing
+
+Three plans, defined in `src/shared/const/plan.const.ts`:
+
+| Plan | Price | Active patients |
+|---|---|---|
+| Free trial | $0 for 7 days, no card | 5 |
+| Standard | $99/month billed annually ($948/year) | 50 |
+| Premium | $199/month billed annually ($1,908/year) | Unlimited |
+
+Limits are enforced in `checkPatientSeat`, called from `createPatientService` — the service layer,
+so every caller is covered. Over the limit or outside an active subscription returns **402** with
+`PATIENT_LIMIT_REACHED` or `SUBSCRIPTION_INACTIVE`; the UI distinguishes the two because they need
+different responses from the clinic. Archived patients do not occupy a seat.
+
+Trial expiry is **derived on read** from `trialEndsAt`, not written by a scheduled job, so a trial
+cannot outlive its date because a cron failed to run.
+
+### No payment provider is wired up
+
+`PATCH /api/subscription` changes the plan without taking money. It exists as the seam a provider's
+webhook would call after a successful charge. Before charging real customers you need a provider
+(Stripe or similar), its webhook pointed at that service, and a customer/subscription id stored on
+the clinic.
+
+### Features sold but not built
+
+The pricing page marks these **coming soon** rather than ticking them, because they do not exist:
+
+- Daily check-in + triage (Normal / Monitor / Urgent)
+- Email reminders — note this contradicts the current design, which is Web Push only, no email
+- Patient review + rating system
+
+Do not remove the "coming soon" marking until the feature ships.

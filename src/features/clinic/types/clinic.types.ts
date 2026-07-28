@@ -1,3 +1,5 @@
+import { PlanKey } from '@/shared/const/plan.const';
+import { SubscriptionStatus } from '@/shared/const/subscription.const';
 import { AppLocale } from '@/shared/types/roles';
 
 /** Wire shape of a clinic — what every clinic API route returns. No Mongoose types leak out. */
@@ -28,4 +30,18 @@ export type CreateStaffResult = {
   userId: string;
   email: string;
   temporaryPassword: string;
+};
+
+/** Subscription state as the dashboard reads it. */
+export type SubscriptionView = {
+  plan: PlanKey;
+  status: SubscriptionStatus;
+  /** `null` means unlimited. */
+  patientLimit: number | null;
+  activePatients: number;
+  isAtPatientLimit: boolean;
+  canWrite: boolean;
+  trialEndsAt: string | null;
+  trialDaysLeft: number | null;
+  renewsAt: string | null;
 };

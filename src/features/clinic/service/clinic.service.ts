@@ -16,6 +16,8 @@ import {
   RegisterClinicType,
   UpdateClinicType,
 } from '@/features/clinic/validations/clinic.validation';
+import { TRIAL_DAYS } from '@/shared/const/plan.const';
+import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 import { hashPassword } from '@/shared/utils/password';
 
@@ -48,6 +50,20 @@ function toClinicProfile(clinic: ClinicDocument): ClinicProfile {
   };
 }
 
+
+/**
+ * Every clinic begins on the free trial. Set at creation rather than lazily on first read, so the
+ * end date is anchored to sign-up and cannot drift by being recomputed later.
+ */
+function startTrial() {
+  return {
+    plan: 'trial' as const,
+    subscriptionStatus: 'trialing' as const,
+    trialEndsAt: clock.addDays(clock.now(), TRIAL_DAYS),
+    planRenewsAt: null,
+  };
+}
+
 /**
  * PRD 02 §A. Three writes with no transaction available (Mongo standalone): create the owner,
  * create the clinic, link the clinic back onto the owner. If either later step fails the owner
@@ -75,6 +91,7 @@ export async function registerClinicService(
       logoUrl: '',
       ownerId: new Types.ObjectId(userId),
       isActive: true,
+      ...startTrial(),
     });
 
     const linked = await userRepository.updateById(userId, {
@@ -114,6 +131,7 @@ export async function createClinicForUserService(
     logoUrl: '',
     ownerId: new Types.ObjectId(userId),
     isActive: true,
+    ...startTrial(),
   });
 
   const linked = await userRepository.updateById(userId, {
