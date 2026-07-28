@@ -109,7 +109,15 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                 <FormItem>
                   <FormLabel>{t('startsOn')}</FormLabel>
                   <FormControl>
-                    <Input type="date" {...input} />
+                    <Input
+                      type="date"
+                      {...input}
+                      onChange={event => {
+                        input.onChange(event);
+                        // Same stale-error problem as medications: the message lives on endsOn.
+                        void form.trigger(`rehabTasks.${index}.endsOn`);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -122,7 +130,14 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                 <FormItem>
                   <FormLabel>{t('endsOn')}</FormLabel>
                   <FormControl>
-                    <Input type="date" {...input} />
+                    <Input
+                      type="date"
+                      {...input}
+                      onChange={event => {
+                        input.onChange(event);
+                        void form.trigger(`rehabTasks.${index}.endsOn`);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

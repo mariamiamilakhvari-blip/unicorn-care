@@ -103,7 +103,16 @@ export function MedicationFields({ control }: { control: Control<CarePlanFormTyp
                 <FormItem>
                   <FormLabel>{t('startsOn')}</FormLabel>
                   <FormControl>
-                    <Input type="date" {...input} />
+                    <Input
+                      type="date"
+                      {...input}
+                      onChange={event => {
+                        input.onChange(event);
+                        // The "ends before starts" error is attached to endsOn, so fixing
+                        // startsOn would otherwise leave a stale error blocking save.
+                        void form.trigger(`medications.${index}.endsOn`);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -116,7 +125,14 @@ export function MedicationFields({ control }: { control: Control<CarePlanFormTyp
                 <FormItem>
                   <FormLabel>{t('endsOn')}</FormLabel>
                   <FormControl>
-                    <Input type="date" {...input} />
+                    <Input
+                      type="date"
+                      {...input}
+                      onChange={event => {
+                        input.onChange(event);
+                        void form.trigger(`medications.${index}.endsOn`);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

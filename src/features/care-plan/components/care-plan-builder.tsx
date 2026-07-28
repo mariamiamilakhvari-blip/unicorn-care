@@ -86,7 +86,16 @@ export function CarePlanBuilder({
               <FormItem>
                 <FormLabel>{t('startsOn')}</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <Input
+                    type="date"
+                    {...field}
+                    onChange={event => {
+                      field.onChange(event);
+                      // Window errors are reported on rehabEndsAt and on each item, so widening
+                      // the plan has to clear them rather than leave save blocked.
+                      void form.trigger(['rehabEndsAt', 'medications', 'rehabTasks', 'checkups']);
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -99,7 +108,14 @@ export function CarePlanBuilder({
               <FormItem>
                 <FormLabel>{t('rehabEndsAt')}</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <Input
+                    type="date"
+                    {...field}
+                    onChange={event => {
+                      field.onChange(event);
+                      void form.trigger(['rehabEndsAt', 'medications', 'rehabTasks', 'checkups']);
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
