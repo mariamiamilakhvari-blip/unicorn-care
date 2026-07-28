@@ -2,6 +2,7 @@ import { ArrowRight, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
+import { TrialBanner } from '@/features/clinic/components/trial-banner';
 import { ClinicOverview } from '@/features/dashboard/types/dashboard.types';
 import { SymptomReportQueue } from '@/features/recovery-guide/components/symptom-report-queue';
 import { Button } from '@/shared/components/ui/button';
@@ -33,6 +34,8 @@ export const DashboardOverview = ({ userName, overview }: DashboardOverviewProps
           </Link>
         </Button>
       </header>
+
+      <TrialBanner />
 
       <SymptomReportQueue />
 

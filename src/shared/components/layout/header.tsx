@@ -52,6 +52,11 @@ export const Header = () => {
         <LanguageSwitcher />
         <ThemeToggle />
 
+        {/* Outside the signed-in/out branches: a clinic on the trial needs to reach pricing too. */}
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
+          <Link href="/pricing">{tPricing('title')}</Link>
+        </Button>
+
         {sessionUser ? (
           <>
             {/* A signed-in account with no clinic gets a way back into setup instead of a dead end. */}
@@ -91,9 +96,6 @@ export const Header = () => {
           </>
         ) : (
           <>
-            <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
-              <Link href="/pricing">{tPricing('title')}</Link>
-            </Button>
             <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
               <Link href="/sign-in">{tAuth('signIn')}</Link>
             </Button>

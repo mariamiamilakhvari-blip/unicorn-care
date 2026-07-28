@@ -363,6 +363,9 @@
     "period": {
       "monthly": "Monthly",
       "yearly": "Annual"
-    }
+    },
+    "trialBanner": "{count, plural, one {# day left on your free trial} other {# days left on your free trial}}",
+    "viewPlans": "View plans",
+    "trialIncluded": "Included at sign-up"
   }
 }

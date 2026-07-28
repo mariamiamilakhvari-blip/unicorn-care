@@ -128,6 +128,12 @@ export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableP
                     >
                       {isCurrent ? t('currentPlan') : t('choosePlan')}
                     </Button>
+                  ) : onSelect ? (
+                    // Signed in: the trial is already granted, so sending them to sign-up would
+                    // bounce off a form they have completed.
+                    <Button type="button" variant="outline" disabled>
+                      {isCurrent ? t('currentPlan') : t('trialIncluded')}
+                    </Button>
                   ) : (
                     <Button asChild variant={isHighlighted ? 'default' : 'outline'}>
                       <Link href={CLINIC_SIGN_UP_ROUTE}>
