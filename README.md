@@ -14,6 +14,11 @@ installed PWA — on iOS that is a hard requirement, so most patients would neve
 reaches everybody with an address on file. A patient with neither still sees the full plan in the
 portal.
 
+> **Email is designed but not yet sending.** It needs a Resend integration, and Resend will only
+> deliver from a domain you own and have verified by DNS. Buy a domain, then provision with
+> `vercel integration add resend -m domain=<yours> -m region=eu-west-1 --plan free` and wire
+> `RESEND_API_KEY`. Until then Web Push is the only live channel.
+
 ## Stack
 
 Next.js 16 (App Router) · TypeScript strict · MongoDB via Mongoose · NextAuth v5 · Tailwind CSS +
