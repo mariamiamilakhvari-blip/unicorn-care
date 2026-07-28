@@ -9,7 +9,7 @@ import {
   ClinicOnlyType,
   ClinicSignUpType,
 } from '@/features/clinic/validations/clinic-signup.validation';
-import { DASHBOARD_ROUTE } from '@/shared/const/routes.const';
+import { PRICING_ROUTE } from '@/shared/const/routes.const';
 import { http } from '@/shared/lib/http';
 
 type RegisterClinicState = {
@@ -51,7 +51,7 @@ export function useRegisterClinic(): RegisterClinicState {
         });
         if (result?.error) throw new Error(result.error);
 
-        router.push(DASHBOARD_ROUTE);
+        router.push(PRICING_ROUTE);
         router.refresh();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'ERROR');
@@ -76,7 +76,7 @@ export function useRegisterClinic(): RegisterClinicState {
         // Re-issues the JWT. The `jwt` callback refetches the user, so the new role and clinicId
         // land on the token — without this the dashboard would still bounce them.
         await update();
-        router.push(DASHBOARD_ROUTE);
+        router.push(PRICING_ROUTE);
         router.refresh();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'ERROR');

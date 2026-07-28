@@ -15,4 +15,7 @@ export const SIGN_IN_ROUTE = '/sign-in';
 
 export const DASHBOARD_ROUTE = '/dashboard';
 
+/** Where a freshly registered clinic lands: it has a trial but has not chosen a plan yet. */
+export const PRICING_ROUTE = '/pricing';
+
 export const SESSION_COOKIE_NAMES = ['authjs.session-token', '__Secure-authjs.session-token'];
