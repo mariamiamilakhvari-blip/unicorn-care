@@ -35,6 +35,10 @@ const ClinicSchema = new Schema(
       required: true,
     },
     planRenewsAt: { type: Date, required: false, default: null },
+
+    /* Set from verified Dodo webhooks only — never from anything the browser sends. */
+    dodoCustomerId: { type: String, required: false, default: null },
+    dodoSubscriptionId: { type: String, required: false, default: null },
   },
   { timestamps: true }
 );

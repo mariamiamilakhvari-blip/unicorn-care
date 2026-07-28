@@ -359,6 +359,10 @@
       "unlimitedPatients": "შეუზღუდავი პაციენტები",
       "customGuidePerProcedure": "ინდივიდუალური გზამკვლევი პროცედურის ტიპზე",
       "noCreditCard": "საბანკო ბარათი არ არის საჭირო"
+    },
+    "period": {
+      "monthly": "თვიური",
+      "yearly": "წლიური"
     }
   }
 }

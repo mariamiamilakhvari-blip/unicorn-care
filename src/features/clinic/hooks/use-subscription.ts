@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { SubscriptionView } from '@/features/clinic/types/clinic.types';
+import { BillingPeriod } from '@/shared/const/billing.const';
 import { PlanKey } from '@/shared/const/plan.const';
 import { http } from '@/shared/lib/http';
 
@@ -12,6 +13,7 @@ type SubscriptionState = {
   isPending: boolean;
   error: string | null;
   changePlan: (plan: PlanKey) => Promise<void>;
+  startCheckout: (plan: 'standard' | 'premium', period: BillingPeriod) => Promise<void>;
 };
 
 export function useSubscription(): SubscriptionState {
@@ -47,5 +49,24 @@ export function useSubscription(): SubscriptionState {
     }
   }, []);
 
-  return { subscription, isLoading, isPending, error, changePlan };
+  /** Sends the owner to Dodo's hosted checkout; the plan only changes when the webhook lands. */
+  const startCheckout = useCallback(
+    async (plan: 'standard' | 'premium', period: BillingPeriod) => {
+      setIsPending(true);
+      setError(null);
+      try {
+        const { checkoutUrl } = await http.post<{ checkoutUrl: string }>(
+          '/subscription/checkout',
+          { plan, period }
+        );
+        window.location.href = checkoutUrl;
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'ERROR');
+        setIsPending(false);
+      }
+    },
+    []
+  );
+
+  return { subscription, isLoading, isPending, error, changePlan, startCheckout };
 }

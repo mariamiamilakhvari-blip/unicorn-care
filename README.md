@@ -138,12 +138,54 @@ different responses from the clinic. Archived patients do not occupy a seat.
 Trial expiry is **derived on read** from `trialEndsAt`, not written by a scheduled job, so a trial
 cannot outlive its date because a cron failed to run.
 
-### No payment provider is wired up
+### Payments — Dodo Payments
 
-`PATCH /api/subscription` changes the plan without taking money. It exists as the seam a provider's
-webhook would call after a successful charge. Before charging real customers you need a provider
-(Stripe or similar), its webhook pointed at that service, and a customer/subscription id stored on
-the clinic.
+Checkout is hosted by Dodo. `POST /api/subscription/checkout` (owner only) creates a session and
+returns a `checkoutUrl` for the browser to follow; the clinic id travels in the session `metadata`
+and is the only thing linking the eventual webhook back to a row here.
+
+**Buying nothing grants nothing.** A plan changes only when a signed webhook arrives at
+`POST /api/webhooks/dodo`. That handler reads the raw body with `req.text()` and verifies it
+*before* parsing — signatures cover exact bytes, and acting on an unverified payload would let
+anyone grant themselves Premium.
+
+Verification follows Standard Webhooks: HMAC-SHA256 over `id.timestamp.body`, compared in constant
+time, with a 5-minute timestamp window so a captured request cannot be replayed. Handled events:
+
+| Event | Effect |
+|---|---|
+| `subscription.active`, `.renewed`, `.plan_changed` | status `active` |
+| `subscription.on_hold`, `.failed` | status `past_due` |
+| `subscription.cancelled` | status `cancelled` |
+| `subscription.expired` | status `expired` |
+
+A lapsed clinic keeps the plan it bought and only its status changes, so restoring access is a
+status change rather than a re-purchase. Unhandled event types are acknowledged with 200 rather
+than rejected — an error would make Dodo retry an event we will never act on.
+
+`PATCH /api/subscription` still exists for local development and is **hard-blocked whenever
+`DODO_PAYMENTS_ENVIRONMENT=live_mode`**, so it cannot be used to self-grant a paid plan in
+production.
+
+#### Product ids
+
+Ids differ between test and live catalogues, so they live in the environment:
+
+```
+DODO_PRODUCT_STANDARD_MONTHLY  DODO_PRODUCT_STANDARD_YEARLY
+DODO_PRODUCT_PREMIUM_MONTHLY   DODO_PRODUCT_PREMIUM_YEARLY
+```
+
+A missing id makes checkout fail with `PRODUCT_NOT_CONFIGURED` rather than falling back to another
+product — charging the wrong price is worse than an error. `findProductConflicts()` in
+`src/shared/const/billing.const.ts` reports any id mapped to more than one plan.
+
+#### Before going live
+
+1. Create the live-mode products and set the four live ids.
+2. Point a Dodo webhook endpoint at `https://your-app/api/webhooks/dodo` and put its signing
+   secret in `DODO_WEBHOOK_SECRET`.
+3. Set `DODO_PAYMENTS_ENVIRONMENT=live_mode` and swap in a live API key.
 
 ### Features sold but not built
 

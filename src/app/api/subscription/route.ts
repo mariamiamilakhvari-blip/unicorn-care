@@ -7,6 +7,7 @@ import {
 } from '@/features/clinic/service/subscription.service';
 import { PLAN_KEYS, PlanKey } from '@/shared/const/plan.const';
 import { clinicGuard } from '@/shared/lib/clinic-guard';
+import { dodoClient } from '@/shared/lib/dodo-client';
 import { validateBody } from '@/shared/middleware/validate-body';
 
 export async function GET() {
@@ -26,12 +27,17 @@ const ChangePlanSchema = z.object({ plan: z.enum(PLAN_KEYS) });
 /**
  * Owner-only plan change.
  *
- * No money moves here — no payment provider is wired up (see the billing note in the README).
- * This is the seam a provider's webhook would call after a successful charge, so adding one later
- * changes this handler and nothing downstream.
+ * DEVELOPMENT ONLY. Paid plans are granted exclusively by a verified Dodo webhook; if this
+ * endpoint were reachable in live mode any clinic owner could give themselves Premium for free by
+ * calling our own API. It is hard-blocked whenever Dodo is in live mode, so the block cannot be
+ * lost by forgetting an environment variable.
  */
 export async function PATCH(req: NextRequest) {
   try {
+    if (dodoClient.isLiveMode()) {
+      return NextResponse.json({ error: 'USE_CHECKOUT' }, { status: 403 });
+    }
+
     const session = await clinicGuard.requireOwner();
     if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 

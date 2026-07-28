@@ -15,7 +15,7 @@ const METER_CELLS = 24;
 export function SubscriptionCard() {
   const t = useTranslations('pricing');
   const tCommon = useTranslations('common');
-  const { subscription, isLoading, isPending, error, changePlan } = useSubscription();
+  const { subscription, isLoading, isPending, error, startCheckout } = useSubscription();
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>;
   if (!subscription) return null;
@@ -88,7 +88,7 @@ export function SubscriptionCard() {
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
-        <PricingTable onSelect={changePlan} currentPlan={plan} isPending={isPending} />
+        <PricingTable onSelect={startCheckout} currentPlan={plan} isPending={isPending} />
       </CardContent>
     </Card>
   );

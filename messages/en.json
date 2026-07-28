@@ -359,6 +359,10 @@
       "unlimitedPatients": "Unlimited patients",
       "customGuidePerProcedure": "Custom complications guide per procedure type",
       "noCreditCard": "No credit card required"
+    },
+    "period": {
+      "monthly": "Monthly",
+      "yearly": "Annual"
     }
   }
 }
