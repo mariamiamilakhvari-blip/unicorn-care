@@ -264,63 +264,82 @@ describe('buildOccurrences — translator', () => {
   });
 });
 
-describe('advance notice before a course starts', () => {
-  it('adds one heads-up ahead of the first dose, not one per dose', () => {
+describe('lead time before each dose', () => {
+  it('fires every dose reminder the configured minutes early, one row per dose', () => {
     const plan = makePlan({
       medications: [
         medication({
           startsOn: new Date('2025-06-02T00:00:00.000Z'),
-          endsOn: new Date('2025-06-05T00:00:00.000Z'),
+          endsOn: new Date('2025-06-04T00:00:00.000Z'),
           timesOfDay: ['08:00'],
-          remindHoursBefore: 30,
+          remindMinutesBefore: 30,
         }),
       ],
     });
 
     const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
-    const advance = drafts.filter(draft => (draft.body ?? '').startsWith('Starts'));
 
-    // 4 dose rows + exactly 1 advance notice, regardless of how many doses there are.
-    expect(drafts).toHaveLength(5);
-    expect(advance).toHaveLength(1);
+    // Three days, one dose each — a lead time shifts rows, it never adds a second notification.
+    expect(drafts).toHaveLength(3);
+    // 08:00 Berlin in June is 06:00Z; 30 minutes earlier is 05:30Z.
+    expect(drafts.map(draft => draft.dueAt.toISOString())).toEqual([
+      '2025-06-02T05:30:00.000Z',
+      '2025-06-03T05:30:00.000Z',
+      '2025-06-04T05:30:00.000Z',
+    ]);
   });
 
-  it('places the notice the configured hours before the first dose', () => {
+  it('keeps the dose time in the body so an early reminder still says when to take it', () => {
     const plan = makePlan({
       medications: [
         medication({
           startsOn: new Date('2025-06-02T00:00:00.000Z'),
           endsOn: new Date('2025-06-02T00:00:00.000Z'),
           timesOfDay: ['08:00'],
-          remindHoursBefore: 30,
+          remindMinutesBefore: 30,
         }),
       ],
     });
 
-    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
-    const [advance, firstDose] = drafts;
+    const [draft] = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
 
-    expect(advance.dueAt.getTime()).toBe(firstDose.dueAt.getTime() - 30 * 60 * 60 * 1000);
-    // 08:00 Berlin in June is 06:00Z; 30 hours earlier is 00:00Z the previous day.
-    expect(advance.dueAt.toISOString()).toBe('2025-06-01T00:00:00.000Z');
+    expect(draft.dueAt.toISOString()).toBe('2025-06-02T05:30:00.000Z');
+    expect(draft.body).toContain('08:00');
   });
 
-  it('writes no advance notice when the field is 0, so old plans are unchanged', () => {
+  it('fires at the dose time when the lead is 0, so old plans are unchanged', () => {
     const plan = makePlan({
       medications: [
         medication({
           startsOn: new Date('2025-06-02T00:00:00.000Z'),
-          endsOn: new Date('2025-06-03T00:00:00.000Z'),
+          endsOn: new Date('2025-06-02T00:00:00.000Z'),
           timesOfDay: ['08:00'],
-          remindHoursBefore: 0,
+          remindMinutesBefore: 0,
         }),
       ],
     });
 
-    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
+    const [draft] = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
 
-    expect(drafts).toHaveLength(2);
-    expect(drafts.every(draft => !(draft.body ?? '').startsWith('Starts'))).toBe(true);
+    expect(draft.dueAt.toISOString()).toBe('2025-06-02T06:00:00.000Z');
+  });
+
+  it('carries a lead that crosses midnight back into the previous day', () => {
+    const plan = makePlan({
+      medications: [
+        medication({
+          startsOn: new Date('2025-06-02T00:00:00.000Z'),
+          endsOn: new Date('2025-06-02T00:00:00.000Z'),
+          timesOfDay: ['00:15'],
+          remindMinutesBefore: 30,
+        }),
+      ],
+    });
+
+    const [draft] = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
+
+    // 00:15 Berlin on 2 June is 22:15Z on 1 June; 30 minutes earlier is 21:45Z on 1 June.
+    expect(draft.dueAt.toISOString()).toBe('2025-06-01T21:45:00.000Z');
   });
 });
 

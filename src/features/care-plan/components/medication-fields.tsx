@@ -161,20 +161,20 @@ export function MedicationFields({ control }: { control: Control<CarePlanFormTyp
 
           <FormField
             control={control}
-            name={`medications.${index}.remindHoursBefore`}
+            name={`medications.${index}.remindMinutesBefore`}
             render={({ field: input }) => (
               <FormItem className="sm:max-w-xs">
-                <FormLabel>{t('remindHoursBefore')}</FormLabel>
+                <FormLabel>{t('remindMinutesBefore')}</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     min={0}
-                    max={336}
+                    max={1440}
                     value={input.value ?? 0}
                     onChange={event => input.onChange(Number(event.target.value))}
                   />
                 </FormControl>
-                <FormDescription>{t('remindHoursBeforeHint')}</FormDescription>
+                <FormDescription>{t('remindMinutesBeforeHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

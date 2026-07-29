@@ -161,7 +161,6 @@
     "checkupTitle": "Checkup",
     "scheduledAt": "Scheduled at",
     "location": "Location",
-    "remindHoursBefore": "Remind hours before",
     "addTime": "Add time",
     "removeTime": "Remove time",
     "removeItem": "Remove",
@@ -177,7 +176,9 @@
       "INVALID_CLINIC_TIMEZONE": "Your clinic timezone is not valid. Fix it under Clinic, then activate the plan again.",
       "INCOMPLETE_PLAN": "Add at least one medication, rehab task or checkup before activating."
     },
-    "remindHoursBeforeHint": "Advance notice before the first dose or session. 0 = none."
+    "remindMinutesBefore": "Remind minutes before",
+    "remindMinutesBeforeHint": "Send the reminder this many minutes before each dose or session. 0 = at the time itself.",
+    "remindHoursBefore": "Remind hours before"
   },
   "portal": {
     "today": "Today",

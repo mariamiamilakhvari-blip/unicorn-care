@@ -38,7 +38,7 @@ const MedicationSchema = z
     endsOn: DateSchema,
     withFood: z.boolean().default(false),
     instructions: z.string().max(500).default(''),
-    remindHoursBefore: z.number().int().min(0).max(336).default(0),
+    remindMinutesBefore: z.number().int().min(0).max(1440).default(0),
   })
   .refine(item => item.endsOn.getTime() >= item.startsOn.getTime(), {
     message: 'ENDS_BEFORE_STARTS',
@@ -60,7 +60,7 @@ const RehabTaskSchema = z
       .default([0, 1, 2, 3, 4, 5, 6]),
     startsOn: DateSchema,
     endsOn: DateSchema,
-    remindHoursBefore: z.number().int().min(0).max(336).default(0),
+    remindMinutesBefore: z.number().int().min(0).max(1440).default(0),
   })
   .refine(item => item.endsOn.getTime() >= item.startsOn.getTime(), {
     message: 'ENDS_BEFORE_STARTS',

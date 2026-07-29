@@ -81,7 +81,7 @@ function createInput(): CreateCarePlanType {
         endsOn: new Date('2025-06-05T00:00:00.000Z'),
         withFood: true,
         instructions: '',
-        remindHoursBefore: 0,
+        remindMinutesBefore: 0,
       },
     ],
     rehabTasks: [],

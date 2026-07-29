@@ -17,6 +17,8 @@ export const DEFAULT_HORIZON_DAYS = 90;
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
+const MS_PER_MINUTE = 60 * 1000;
+
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 
 type GeneratorContext = {
@@ -41,6 +43,8 @@ type DailySpec = {
   endsOn: Date;
   daysOfWeek: number[];
   timesOfDay: string[];
+  /** Fires each reminder this many minutes before its scheduled time. 0 = at the time itself. */
+  remindMinutesBefore?: number | null;
   build: (dueAt: Date, timeOfDay: string) => DraftFields;
 };
 
@@ -86,22 +90,22 @@ function medicationDrafts(context: GeneratorContext, item: MedicationItem): Occu
   const title = `${item.name} — ${item.dosage}`;
   const foodNote = context.t(item.withFood ? 'withFood' : 'withoutFood');
 
-  const doses = dailyDrafts(context, {
+  return dailyDrafts(context, {
     startsOn: item.startsOn,
     endsOn: item.endsOn,
     daysOfWeek: EVERY_DAY,
     timesOfDay: item.timesOfDay,
+    remindMinutesBefore: item.remindMinutesBefore,
     build: (dueAt, timeOfDay) => ({
       kind: 'medication',
       sourceItemId: item._id,
       dueAt,
       title,
+      // The dose time stays in the body, so a reminder that arrives early still says when to take it.
       body: `${foodNote} ${timeOfDay}`,
       intensity: null,
     }),
   });
-
-  return [...advanceDrafts(context, doses, 'medication', item._id, title, item.remindHoursBefore), ...doses];
 }
 
 /** Same cadence as a medication, but only on the weekdays the clinic prescribed. */
@@ -110,26 +114,25 @@ function rehabDrafts(context: GeneratorContext, item: RehabTaskItem): Occurrence
   const duration = minutes > 0 ? ` · ${minutes} ${context.t('minutesShort')}` : '';
   const body = `${context.t(item.intensity)}${duration}`;
   const configured = item.daysOfWeek ?? EVERY_DAY;
+  // The session time is only worth spelling out when the reminder lands before it; without a lead
+  // the notification arrives at the time itself and saying so adds nothing.
+  const showsTime = (item.remindMinutesBefore ?? 0) > 0;
 
-  const sessions = dailyDrafts(context, {
+  return dailyDrafts(context, {
     startsOn: item.startsOn,
     endsOn: item.endsOn,
     daysOfWeek: configured.length > 0 ? configured : EVERY_DAY,
     timesOfDay: item.timesOfDay,
-    build: dueAt => ({
+    remindMinutesBefore: item.remindMinutesBefore,
+    build: (dueAt, timeOfDay) => ({
       kind: 'rehab',
       sourceItemId: item._id,
       dueAt,
       title: item.title,
-      body,
+      body: showsTime ? `${body} · ${timeOfDay}` : body,
       intensity: item.intensity,
     }),
   });
-
-  return [
-    ...advanceDrafts(context, sessions, 'rehab', item._id, item.title, item.remindHoursBefore),
-    ...sessions,
-  ];
 }
 
 /** A single row, `remindHoursBefore` ahead of the appointment. */
@@ -154,45 +157,6 @@ function checkupDrafts(context: GeneratorContext, item: CheckupItem): Occurrence
   ];
 }
 
-/**
- * One heads-up ahead of the *first* dose or session, mirroring a checkup's `remindHoursBefore`.
- *
- * Deliberately not one per dose. A lead time longer than a day — the 30 hours a clinic is likely
- * to set — would land the notice during the previous day's dose, so the patient would be told to
- * prepare for something they are already mid-course on. Announcing the course once is the useful
- * signal; the per-dose rows still fire at their own times and are what actually gets taken.
- *
- * `0` means no advance notice, so plans written before this field existed are unchanged.
- */
-function advanceDrafts(
-  context: GeneratorContext,
-  scheduled: OccurrenceDraft[],
-  kind: OccurrenceDraft['kind'],
-  sourceItemId: OccurrenceDraft['sourceItemId'],
-  title: string,
-  remindHoursBefore: number | null | undefined
-): OccurrenceDraft[] {
-  const hours = remindHoursBefore ?? 0;
-  if (hours <= 0 || scheduled.length === 0) return [];
-
-  const first = scheduled[0];
-  const dueAt = new Date(first.dueAt.getTime() - hours * MS_PER_HOUR);
-  if (dueAt.getTime() > context.horizonEnd.getTime()) return [];
-
-  const when = `${dayLabel(context, dueAt, first.dueAt)} ${localTime(first.dueAt, context.timezone)}`;
-
-  return [
-    draft(context, {
-      kind,
-      sourceItemId,
-      dueAt,
-      title,
-      body: `${context.t('startingSoon')} ${when}`,
-      intensity: null,
-    }),
-  ];
-}
-
 /** Walks the zone-local calendar so a DST shift keeps the wall-clock time the clinic prescribed. */
 function dailyDrafts(context: GeneratorContext, spec: DailySpec): OccurrenceDraft[] {
   const lastDay = new Date(Math.min(spec.endsOn.getTime(), context.horizonEnd.getTime()));
@@ -202,9 +166,14 @@ function dailyDrafts(context: GeneratorContext, spec: DailySpec): OccurrenceDraf
     .eachDayInZone(spec.startsOn, lastDay, context.timezone)
     .filter(day => spec.daysOfWeek.includes(clock.weekdayInZone(day, context.timezone)));
 
+  const leadMs = (spec.remindMinutesBefore ?? 0) * MS_PER_MINUTE;
+
   return days.flatMap(day =>
     spec.timesOfDay.map(timeOfDay => {
-      const dueAt = clock.zonedTimeToUtc(day, timeOfDay, context.timezone);
+      // The zone-local time is resolved first and the lead subtracted from the resulting instant,
+      // so a lead that crosses midnight or a DST boundary still lands the prescribed wall clock.
+      const scheduledAt = clock.zonedTimeToUtc(day, timeOfDay, context.timezone);
+      const dueAt = leadMs > 0 ? new Date(scheduledAt.getTime() - leadMs) : scheduledAt;
       return draft(context, spec.build(dueAt, timeOfDay));
     })
   );
