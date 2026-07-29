@@ -270,6 +270,28 @@ describe('getAdherenceService', () => {
     });
   });
 
+  it('counts a row a dispatch run is holding as pending, not as its own bucket', async () => {
+    patients.findById.mockResolvedValue({ _id: new Types.ObjectId(PATIENT_ID) } as never);
+    plans.findActiveByPatient.mockResolvedValue([planDoc()]);
+    occurrences.countByStatusForPlan.mockResolvedValue([
+      { _id: 'sending', count: 2 },
+      { _id: 'pending', count: 1 },
+    ]);
+    occurrences.findByPatientAndRange.mockResolvedValue([
+      { status: 'sending', dueAt: new Date('2025-06-10T06:00:00.000Z') },
+    ] as never);
+
+    const result = await getAdherenceService(CLINIC_ID, PATIENT_ID);
+    const summary = result.data;
+    if ('error' in summary) throw new Error('expected an adherence summary');
+
+    // `sending` is an internal claim state; the clinic sees the reminder as still pending.
+    expect(summary.totals).toEqual({ pending: 3, sent: 0, done: 0, skipped: 0, missed: 0 });
+    expect(summary.totals).not.toHaveProperty('sending');
+    expect(summary.lastSevenDays[6].pending).toBe(1);
+    expect(summary.lastSevenDays[6].total).toBe(1);
+  });
+
   it('sums status counts across the active plans and buckets the trailing week', async () => {
     patients.findById.mockResolvedValue({ _id: new Types.ObjectId(PATIENT_ID) } as never);
     plans.findActiveByPatient.mockResolvedValue([planDoc(), planDoc()]);

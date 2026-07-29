@@ -80,6 +80,47 @@ export const reminderOccurrenceRepository = {
       .exec();
   },
 
+  /**
+   * Takes exclusive ownership of the given rows for one dispatch run.
+   *
+   * `status: 'pending'` stays in the filter so this is a compare-and-set: MongoDB applies each
+   * document update atomically, so when two runs race on the same row exactly one moves it out of
+   * `pending` and the loser matches nothing. `modifiedCount` is therefore what this run actually
+   * won, not what it asked for.
+   */
+  async claimForDispatch(ids: string[], claimId: string, claimedAt: Date): Promise<number> {
+    await mongo.connect();
+    const result = await ReminderOccurrenceModel.updateMany(
+      { _id: { $in: ids }, status: 'pending' },
+      { $set: { status: 'sending', claimId, claimedAt } }
+    );
+    return result.modifiedCount;
+  },
+
+  async findByClaimId(claimId: string): Promise<ReminderOccurrenceDocument[]> {
+    await mongo.connect();
+    return ReminderOccurrenceModel.find({ claimId, status: 'sending' }, null, {
+      sort: { dueAt: 1 },
+    })
+      .lean<ReminderOccurrenceDocument[]>()
+      .exec();
+  },
+
+  /**
+   * Returns rows abandoned mid-send to `pending` so a later run retries them.
+   *
+   * Without this a run that dies between claiming and sending would strand its rows in `sending`
+   * for good, and the patient would silently never be reminded.
+   */
+  async releaseStaleClaims(cutoff: Date): Promise<number> {
+    await mongo.connect();
+    const result = await ReminderOccurrenceModel.updateMany(
+      { status: 'sending', claimedAt: { $lt: cutoff } },
+      { $set: { status: 'pending', claimId: null, claimedAt: null } }
+    );
+    return result.modifiedCount;
+  },
+
   async findByPatientAndRange(
     patientId: string,
     from: Date,

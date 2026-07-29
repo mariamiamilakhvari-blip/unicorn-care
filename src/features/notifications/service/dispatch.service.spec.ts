@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/features/care-plan/repository/reminder-occurrence.repository', () => ({
   reminderOccurrenceRepository: {
     findDueForDispatch: vi.fn(),
+    claimForDispatch: vi.fn(),
+    findByClaimId: vi.fn(),
+    releaseStaleClaims: vi.fn(),
     updateStatus: vi.fn(),
     markMissedBefore: vi.fn(),
   },
@@ -65,6 +68,16 @@ const buildOccurrence = (id = OCCURRENCE_ID): ReminderOccurrenceDocument => ({
   updatedAt: NOW,
 });
 
+/**
+ * Stages rows for one run. Selection and sending are now separate steps, so a test has to supply
+ * both what the sweep finds and what it successfully claims — by default it wins every row.
+ */
+const givenDue = (occurrences: ReminderOccurrenceDocument[], claimed = occurrences) => {
+  occurrenceRepo.findDueForDispatch.mockResolvedValue(occurrences);
+  occurrenceRepo.claimForDispatch.mockResolvedValue(claimed.length);
+  occurrenceRepo.findByClaimId.mockResolvedValue(claimed);
+};
+
 const buildSubscription = (endpoint: string): PushSubscriptionDocument => ({
   _id: new mongoose.Types.ObjectId(),
   patientId: new mongoose.Types.ObjectId(PATIENT_ID),
@@ -85,7 +98,8 @@ describe('dispatchDueRemindersService', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
-    occurrenceRepo.findDueForDispatch.mockResolvedValue([]);
+    givenDue([]);
+    occurrenceRepo.releaseStaleClaims.mockResolvedValue(0);
     occurrenceRepo.updateStatus.mockResolvedValue(true);
     occurrenceRepo.markMissedBefore.mockResolvedValue(0);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
@@ -96,7 +110,7 @@ describe('dispatchDueRemindersService', () => {
   });
 
   it('queries the 6h window with the 500 cap and marks a delivered occurrence sent', async () => {
-    occurrenceRepo.findDueForDispatch.mockResolvedValue([buildOccurrence()]);
+    givenDue([buildOccurrence()]);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
     pushClient.send.mockResolvedValue({ ok: true });
 
@@ -111,7 +125,7 @@ describe('dispatchDueRemindersService', () => {
   });
 
   it('tags the payload with the occurrence id so a resend replaces rather than stacks', async () => {
-    occurrenceRepo.findDueForDispatch.mockResolvedValue([buildOccurrence()]);
+    givenDue([buildOccurrence()]);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
     pushClient.send.mockResolvedValue({ ok: true });
 
@@ -124,7 +138,7 @@ describe('dispatchDueRemindersService', () => {
   });
 
   it('deactivates the endpoint on a 410 and still retires the occurrence', async () => {
-    occurrenceRepo.findDueForDispatch.mockResolvedValue([buildOccurrence()]);
+    givenDue([buildOccurrence()]);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/dead')]);
     pushClient.send.mockResolvedValue({ ok: false, statusCode: 410, gone: true });
 
@@ -139,7 +153,7 @@ describe('dispatchDueRemindersService', () => {
   });
 
   it('counts the occurrence as sent when one endpoint is gone but another accepts', async () => {
-    occurrenceRepo.findDueForDispatch.mockResolvedValue([buildOccurrence()]);
+    givenDue([buildOccurrence()]);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([
       buildSubscription('https://fcm/dead'),
       buildSubscription('https://fcm/live'),
@@ -155,7 +169,7 @@ describe('dispatchDueRemindersService', () => {
   });
 
   it('retires an occurrence with no active subscription so the sweep cannot loop forever', async () => {
-    occurrenceRepo.findDueForDispatch.mockResolvedValue([buildOccurrence()]);
+    givenDue([buildOccurrence()]);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
 
     const result = await dispatchDueRemindersService();
@@ -166,6 +180,76 @@ describe('dispatchDueRemindersService', () => {
       sentAt: NOW,
     });
     expect(result.data).toMatchObject({ processed: 1, sent: 0, undelivered: 1 });
+  });
+
+  it('claims a row before sending it, so a competing run cannot pick up the same one', async () => {
+    givenDue([buildOccurrence()]);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
+    pushClient.send.mockResolvedValue({ ok: true });
+
+    await dispatchDueRemindersService();
+
+    // The compare-and-set that makes the claim exclusive lives in the repository filter; what the
+    // service must guarantee is that nothing is pushed before the claim lands.
+    const claimOrder = occurrenceRepo.claimForDispatch.mock.invocationCallOrder[0];
+    const sendOrder = pushClient.send.mock.invocationCallOrder[0];
+    expect(claimOrder).toBeLessThan(sendOrder);
+    expect(occurrenceRepo.claimForDispatch).toHaveBeenCalledWith(
+      [OCCURRENCE_ID],
+      expect.any(String),
+      NOW
+    );
+  });
+
+  it('sends only rows it won, so the loser of a race pushes nothing', async () => {
+    // Both runs select the row; the other run claims it first, so this run's claim matches nothing.
+    givenDue([buildOccurrence()], []);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(pushClient.send).not.toHaveBeenCalled();
+    expect(occurrenceRepo.updateStatus).not.toHaveBeenCalled();
+    expect(result.data).toMatchObject({ processed: 0, sent: 0, undelivered: 0 });
+  });
+
+  it('sends each claimed row exactly once', async () => {
+    givenDue([buildOccurrence()]);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
+    pushClient.send.mockResolvedValue({ ok: true });
+
+    await dispatchDueRemindersService();
+
+    expect(pushClient.send).toHaveBeenCalledTimes(1);
+    expect(occurrenceRepo.updateStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives every run a distinct claim id so two runs never share a claim', async () => {
+    givenDue([buildOccurrence()]);
+
+    await dispatchDueRemindersService();
+    await dispatchDueRemindersService();
+
+    const [first, second] = occurrenceRepo.claimForDispatch.mock.calls.map(call => call[1]);
+    expect(first).not.toEqual(second);
+  });
+
+  it('releases claims abandoned by a crashed run before selecting, so they are not stranded', async () => {
+    await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.releaseStaleClaims).toHaveBeenCalledWith(
+      new Date(NOW.getTime() - 15 * 60 * 1000)
+    );
+    const releaseOrder = occurrenceRepo.releaseStaleClaims.mock.invocationCallOrder[0];
+    const findOrder = occurrenceRepo.findDueForDispatch.mock.invocationCallOrder[0];
+    expect(releaseOrder).toBeLessThan(findOrder);
+  });
+
+  it('skips the claim round trip when nothing is due', async () => {
+    givenDue([]);
+
+    await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.findByClaimId).not.toHaveBeenCalled();
   });
 
   it('flips anything still pending past the 6h grace window to missed', async () => {

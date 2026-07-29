@@ -3,12 +3,16 @@ import { Types } from 'mongoose';
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { CarePlanDocument, CarePlanInput } from '@/features/care-plan/schema/care-plan.schema';
-import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
+import {
+  ReminderOccurrenceDocument,
+  ReminderStatus,
+} from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { buildOccurrences } from '@/features/care-plan/service/occurrence-generator.service';
 import {
   AdherenceDayBucket,
   AdherenceSummary,
   AdherenceTotals,
+  ReminderDisplayStatus,
 } from '@/features/care-plan/types/care-plan.types';
 import {
   ActivateCarePlanSchema,
@@ -32,6 +36,14 @@ type CarePlanContentPatch = Pick<
 const ADHERENCE_DAYS = 7;
 
 const EMPTY_TOTALS: AdherenceTotals = { pending: 0, sent: 0, done: 0, skipped: 0, missed: 0 };
+
+/**
+ * Folds the transient claim state into `pending`. A row sits in `sending` only while a dispatch
+ * run holds it, and from the patient's side nothing has happened yet.
+ */
+function toDisplayStatus(status: ReminderStatus): ReminderDisplayStatus {
+  return status === 'sending' ? 'pending' : status;
+}
 
 /**
  * `clinicId` always arrives from `clinicGuard`, never from the request body, and is passed to every
@@ -179,7 +191,7 @@ async function sumTotals(plans: CarePlanDocument[], clinicId: string): Promise<A
       clinicId
     );
     counts.forEach(entry => {
-      totals[entry._id] += entry.count;
+      totals[toDisplayStatus(entry._id)] += entry.count;
     });
   }
 
@@ -210,7 +222,7 @@ async function buildDayBuckets(patientId: string, timezone: string): Promise<Adh
   occurrences.forEach(occurrence => {
     const index = bucketIndexFor(starts, occurrence.dueAt);
     if (index < 0) return;
-    buckets[index][occurrence.status] += 1;
+    buckets[index][toDisplayStatus(occurrence.status)] += 1;
     buckets[index].total += 1;
   });
 

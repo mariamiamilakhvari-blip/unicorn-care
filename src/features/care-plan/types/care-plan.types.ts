@@ -25,8 +25,16 @@ export type OccurrenceCopyKey =
 
 export type OccurrenceTranslator = (key: OccurrenceCopyKey) => string;
 
+/**
+ * The statuses a clinic sees. `sending` is excluded deliberately: it is the internal claim state
+ * a row occupies for the seconds between a dispatch run taking it and the push going out, and
+ * surfacing it would put a bucket in the adherence view that means nothing clinically. It is
+ * counted as `pending`, which is what it still is from the patient's side.
+ */
+export type ReminderDisplayStatus = Exclude<ReminderStatus, 'sending'>;
+
 /** Totals per reminder status across the patient's active plans (PRD 03 §5). */
-export type AdherenceTotals = Record<ReminderStatus, number>;
+export type AdherenceTotals = Record<ReminderDisplayStatus, number>;
 
 /**
  * One bucket of the trailing-week strip. `date` is the UTC instant of clinic-local midnight for
