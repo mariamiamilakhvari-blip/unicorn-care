@@ -108,8 +108,13 @@ class HttpClient {
     return this.request<T>('PATCH', path, body, options);
   }
 
-  delete<T>(path: string, options?: RequestOptions): Promise<T> {
-    return this.request<T>('DELETE', path, undefined, options);
+  /**
+   * `body` is optional because most deletes identify the resource by path alone. Account deletion
+   * is the exception: it carries a typed confirmation, which belongs in the body rather than a
+   * query string where it would end up in server logs.
+   */
+  delete<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
+    return this.request<T>('DELETE', path, body, options);
   }
 }
 

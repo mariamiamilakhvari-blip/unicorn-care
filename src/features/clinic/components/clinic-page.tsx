@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 
 import { ClinicProfileForm } from '@/features/clinic/components/clinic-profile-form';
+import { DeleteClinicCard } from '@/features/clinic/components/delete-clinic-card';
 import { SubscriptionCard } from '@/features/clinic/components/subscription-card';
 import { useClinic } from '@/features/clinic/hooks/use-clinic';
 import {
@@ -141,6 +142,9 @@ export function ClinicPage() {
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
         </CardContent>
       </Card>
+
+      {/* Last on the page: destructive actions belong below everything a clinic uses day to day. */}
+      {clinic && <DeleteClinicCard clinicName={clinic.name} />}
     </div>
   );
 }

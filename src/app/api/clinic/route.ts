@@ -5,8 +5,10 @@ import {
   getClinicService,
   updateClinicService,
 } from '@/features/clinic/service/clinic.service';
+import { deleteClinicService } from '@/features/clinic/service/delete-clinic.service';
 import {
   ClinicProfileSchema,
+  DeleteClinicSchema,
   UpdateClinicSchema,
 } from '@/features/clinic/validations/clinic.validation';
 import { auth } from '@/shared/lib/auth';
@@ -59,6 +61,27 @@ export async function PATCH(req: NextRequest) {
     const { data, status } = await updateClinicService(session.clinicId, validated.data);
     return NextResponse.json(data, { status });
   } catch {
+    return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
+  }
+}
+
+/**
+ * Deletes the clinic account: cancels its subscription, then purges its clinical records and staff
+ * logins. Owner-only — a clinic member must not be able to destroy the practice's records — and
+ * the body has to repeat the clinic's exact name.
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await clinicGuard.requireOwner();
+    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+
+    const validated = await validateBody(req, DeleteClinicSchema);
+    if (validated instanceof NextResponse) return validated;
+
+    const result = await deleteClinicService(session.clinicId, validated.data.confirmationName);
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (caught) {
+    console.error('[clinic] delete failed', caught);
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }

@@ -45,3 +45,17 @@ export type SubscriptionView = {
   trialDaysLeft: number | null;
   renewsAt: string | null;
 };
+
+/** What an account deletion removed, so the UI can report it before signing the owner out. */
+export type DeleteClinicResult = {
+  deleted: true;
+  subscriptionCancelled: boolean;
+  counts: {
+    patients: number;
+    procedures: number;
+    carePlans: number;
+    reminders: number;
+    recoveryGuides: number;
+    staff: number;
+  };
+};

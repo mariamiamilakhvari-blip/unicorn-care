@@ -178,3 +178,51 @@ describe('verifyWebhook', () => {
     expect(dodoClient.verifyWebhook(payload, { id, timestamp, signature })).toBe(false);
   });
 });
+
+describe('cancelSubscription', () => {
+  beforeEach(() => {
+    vi.stubEnv('DODO_PAYMENTS_API_KEY', 'test-key');
+    vi.stubEnv('DODO_PAYMENTS_ENVIRONMENT', 'test_mode');
+  });
+
+  it('PATCHes the subscription to cancelled', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+
+    const result = await dodoClient.cancelSubscription('sub_1');
+
+    expect(result).toEqual({ ok: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe('https://test.dodopayments.com/subscriptions/sub_1');
+    expect(init?.method).toBe('PATCH');
+    expect(JSON.parse(String(init?.body))).toEqual({ status: 'cancelled' });
+  });
+
+  /** The caller wants "no longer billed"; an already-absent subscription satisfies that. */
+  it('treats a 404 as success', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 404 }));
+
+    expect(await dodoClient.cancelSubscription('sub_gone')).toEqual({ ok: true });
+  });
+
+  it('reports a failure rather than throwing, so deletion can abort cleanly', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ message: 'nope' }), { status: 500 })
+    );
+
+    const result = await dodoClient.cancelSubscription('sub_1');
+
+    expect(result).toEqual({ ok: false, statusCode: 500, message: 'nope' });
+  });
+
+  it('reports a network failure instead of propagating it', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('down'));
+
+    expect(await dodoClient.cancelSubscription('sub_1')).toEqual({
+      ok: false,
+      statusCode: 0,
+      message: 'CANCEL_UNREACHABLE',
+    });
+  });
+});

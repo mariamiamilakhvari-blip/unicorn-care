@@ -75,4 +75,11 @@ export const procedureRepository = {
     const result = await ProcedureModel.updateOne({ _id: id, clinicId }, { $set: data });
     return result.matchedCount > 0;
   },
+  /** Purges every row this clinic owns. Only the account-deletion service calls this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await ProcedureModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
 };

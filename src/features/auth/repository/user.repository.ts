@@ -48,4 +48,11 @@ export const userRepository = {
     const result = await UserModel.findByIdAndDelete(id);
     return result !== null;
   },
+  /** Removes every staff login belonging to a clinic. Account deletion only. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await UserModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
 };

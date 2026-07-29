@@ -87,4 +87,11 @@ export const carePlanRepository = {
       .lean<CarePlanDocument[]>()
       .exec();
   },
+  /** Purges every row this clinic owns. Only the account-deletion service calls this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await CarePlanModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
 };

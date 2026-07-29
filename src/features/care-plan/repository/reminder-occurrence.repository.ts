@@ -179,4 +179,11 @@ export const reminderOccurrenceRepository = {
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]).exec();
   },
+  /** Purges every row this clinic owns. Only the account-deletion service calls this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await ReminderOccurrenceModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
 };

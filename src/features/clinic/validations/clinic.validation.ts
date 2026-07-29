@@ -63,3 +63,10 @@ export const CreateStaffSchema = z.object({
 });
 
 export type CreateStaffType = z.infer<typeof CreateStaffSchema>;
+
+/** The typed confirmation guarding account deletion — checked against the clinic's own name. */
+export const DeleteClinicSchema = z.object({
+  confirmationName: z.string().min(1).max(200),
+});
+
+export type DeleteClinicType = z.infer<typeof DeleteClinicSchema>;

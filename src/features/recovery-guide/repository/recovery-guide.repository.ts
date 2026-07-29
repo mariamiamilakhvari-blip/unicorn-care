@@ -83,4 +83,11 @@ export const recoveryGuideRepository = {
     const result = await RecoveryGuideModel.findOneAndDelete({ _id: id, clinicId });
     return result !== null;
   },
+  /** Purges every row this clinic owns. Only the account-deletion service calls this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await RecoveryGuideModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
 };

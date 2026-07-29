@@ -79,7 +79,25 @@
     "hasLogin": "Has login",
     "procedureCount": "{count, plural, one {# procedure} other {# procedures}}",
     "lastOperated": "last operated {date}",
-    "addDoctorHelp": "Creates a login so this doctor can sign in. Doctors already appear in the list above from the procedures you record."
+    "addDoctorHelp": "Creates a login so this doctor can sign in. Doctors already appear in the list above from the procedures you record.",
+    "dangerZone": "Danger zone",
+    "deleteAccountBlurb": "Permanently delete this clinic account and everything in it.",
+    "deleteConsequence": {
+      "subscription": "Your subscription is cancelled and billing stops.",
+      "patients": "Every patient record, care plan and reminder is erased.",
+      "staff": "Every doctor and staff login for this clinic is removed.",
+      "irreversible": "This cannot be undone."
+    },
+    "deleteAccount": "Delete clinic account",
+    "deleteAccountConfirm": "Permanently delete",
+    "deleteConfirmLabel": "Type {name} to confirm",
+    "cancelDelete": "Cancel",
+    "deleting": "Deleting…",
+    "deleteError": {
+      "CONFIRMATION_MISMATCH": "The name does not match. Nothing was deleted.",
+      "SUBSCRIPTION_CANCEL_FAILED": "Your subscription could not be cancelled, so nothing was deleted. Try again shortly — deleting now would leave you paying for an account you cannot reach.",
+      "GENERIC": "The account could not be deleted. Please try again."
+    }
   },
   "patient": {
     "title": "Patient",

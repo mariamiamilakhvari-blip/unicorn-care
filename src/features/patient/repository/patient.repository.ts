@@ -57,4 +57,11 @@ export const patientRepository = {
     const result = await PatientModel.updateOne({ _id: id, clinicId }, { $set: { isArchived: true } });
     return result.matchedCount > 0;
   },
+  /** Purges every row this clinic owns. Only the account-deletion service calls this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await PatientModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
 };

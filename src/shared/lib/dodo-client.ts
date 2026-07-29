@@ -19,6 +19,10 @@ export type CheckoutInput = {
   metadata: Record<string, string>;
 };
 
+export type CancelResult =
+  | { ok: true }
+  | { ok: false; statusCode: number; message: string };
+
 export type CheckoutResult =
   | { ok: true; checkoutUrl: string; sessionId: string }
   | { ok: false; statusCode: number; message: string };
@@ -42,6 +46,41 @@ class DodoClient {
 
   isLiveMode(): boolean {
     return process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode';
+  }
+
+  /**
+   * Ends a subscription so billing stops.
+   *
+   * `PATCH /subscriptions/{id}` with a `cancelled` status is the whole contract — Dodo has no
+   * DELETE for subscriptions. A 404 counts as success: the subscription is already gone, and the
+   * caller's goal is "this clinic is no longer billed", which is satisfied either way.
+   */
+  async cancelSubscription(subscriptionId: string): Promise<CancelResult> {
+    const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+    if (!apiKey) return { ok: false, statusCode: 0, message: 'DODO_API_KEY_MISSING' };
+
+    try {
+      const response = await fetch(`${this.baseUrl()}/subscriptions/${subscriptionId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'cancelled' }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+
+      if (response.ok || response.status === 404) return { ok: true };
+
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      return {
+        ok: false,
+        statusCode: response.status,
+        message: body.message ?? 'CANCEL_FAILED',
+      };
+    } catch {
+      return { ok: false, statusCode: 0, message: 'CANCEL_UNREACHABLE' };
+    }
   }
 
   async createCheckoutSession(input: CheckoutInput): Promise<CheckoutResult> {
