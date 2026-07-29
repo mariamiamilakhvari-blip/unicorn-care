@@ -58,10 +58,8 @@ export const PLANS: Plan[] = [
     patientLimit: TRIAL_PATIENT_LIMIT,
     trialDays: TRIAL_DAYS,
     features: [
-      { key: 'patientPortal', status: 'available' },
       { key: 'procedureRecords', status: 'available' },
       { key: 'complicationsGuide', status: 'available' },
-      { key: 'pushNotifications', status: 'available' },
       { key: 'noCreditCard', status: 'available' },
     ],
   },
