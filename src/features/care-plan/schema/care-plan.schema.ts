@@ -57,6 +57,10 @@ const CarePlanSchema = new Schema(
     medications: { type: [MedicationSchema], default: [] },
     rehabTasks: { type: [RehabTaskSchema], default: [] },
     checkups: { type: [CheckupSchema], default: [] },
+    // Clinic-local `YYYY-MM-DD` of the last daily email sent for this plan. The once-per-day guard
+    // for the digest sweep: a calendar-day key, not a timestamp, because "already emailed today"
+    // is a question about the clinic's calendar rather than a rolling 24 hours.
+    lastDigestOn: { type: String, required: false, default: '' },
   },
   { timestamps: true }
 );

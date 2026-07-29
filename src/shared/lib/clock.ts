@@ -31,6 +31,33 @@ class Clock {
     return this.resolve(parts.year, parts.month, parts.day, hour, minute, timeZone);
   }
 
+  /**
+   * The zone-local calendar date as `YYYY-MM-DD`.
+   *
+   * Used as a once-per-day key: "has this patient already had today's email" is a question about
+   * their clinic's calendar day, not about a rolling 24 hours, so it must not be derived from UTC.
+   */
+  dateKeyInZone(date: Date, timeZone: string): string {
+    const parts = this.partsInZone(date, timeZone);
+    const month = String(parts.month).padStart(2, '0');
+    const day = String(parts.day).padStart(2, '0');
+    return `${parts.year}-${month}-${day}`;
+  }
+
+  /** Hour 0-23 as seen in the zone, for deciding whether a clinic's morning has arrived. */
+  hourInZone(date: Date, timeZone: string): number {
+    return this.partsInZone(date, timeZone).hour;
+  }
+
+  /** Whole zone-local days from one date to another; negative when `to` is in the past. */
+  daysBetweenInZone(from: Date, to: Date, timeZone: string): number {
+    const start = this.partsInZone(from, timeZone);
+    const end = this.partsInZone(to, timeZone);
+    const startCivil = Date.UTC(start.year, start.month - 1, start.day);
+    const endCivil = Date.UTC(end.year, end.month - 1, end.day);
+    return Math.round((endCivil - startCivil) / MS_PER_DAY);
+  }
+
   /** Weekday 0-6 (Sunday = 0) for a Date as seen in the given zone. */
   weekdayInZone(date: Date, timeZone: string): number {
     const parts = this.partsInZone(date, timeZone);

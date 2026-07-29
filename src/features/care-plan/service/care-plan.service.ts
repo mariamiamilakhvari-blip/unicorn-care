@@ -3,26 +3,23 @@ import { Types } from 'mongoose';
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { CarePlanDocument, CarePlanInput } from '@/features/care-plan/schema/care-plan.schema';
+import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import {
-  ReminderOccurrenceDocument,
-  ReminderStatus,
-} from '@/features/care-plan/schema/reminder-occurrence.schema';
+  buildDayBuckets,
+  sumTotals,
+} from '@/features/care-plan/service/adherence.service';
 import {
   buildOccurrences,
   DEFAULT_HORIZON_DAYS,
 } from '@/features/care-plan/service/occurrence-generator.service';
-import {
-  AdherenceDayBucket,
-  AdherenceSummary,
-  AdherenceTotals,
-  ReminderDisplayStatus,
-} from '@/features/care-plan/types/care-plan.types';
+import { AdherenceSummary } from '@/features/care-plan/types/care-plan.types';
 import {
   ActivateCarePlanSchema,
   CreateCarePlanType,
   UpdateCarePlanType,
 } from '@/features/care-plan/validations/care-plan.validation';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
@@ -37,18 +34,6 @@ type CarePlanContentPatch = Pick<
   CarePlanInput,
   'startsAt' | 'rehabEndsAt' | 'medications' | 'rehabTasks' | 'checkups'
 >;
-
-const ADHERENCE_DAYS = 7;
-
-const EMPTY_TOTALS: AdherenceTotals = { pending: 0, sent: 0, done: 0, skipped: 0, missed: 0 };
-
-/**
- * Folds the transient claim state into `pending`. A row sits in `sending` only while a dispatch
- * run holds it, and from the patient's side nothing has happened yet.
- */
-function toDisplayStatus(status: ReminderStatus): ReminderDisplayStatus {
-  return status === 'sending' ? 'pending' : status;
-}
 
 /**
  * `clinicId` always arrives from `clinicGuard`, never from the request body, and is passed to every
@@ -157,6 +142,14 @@ export async function activateCarePlanService(
   const activated = await carePlanRepository.findById(id, clinicId);
   if (!activated) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
+  /*
+    The whole plan goes to the patient here rather than when their record is saved: medications,
+    procedures, the checkup and the guide only exist once a plan is built, so an email sent earlier
+    would arrive almost empty. Failure is logged inside the service and never fails activation — a
+    live plan with no email beats no plan at all.
+  */
+  await sendWelcomeEmailService(activated, clinic);
+
   return { data: activated, status: 200 };
 }
 
@@ -198,66 +191,6 @@ export async function getAdherenceService(
   const lastSevenDays = await buildDayBuckets(patientId, clinic.timezone);
 
   return { data: { patientId, totals, lastSevenDays }, status: 200 };
-}
-
-async function sumTotals(plans: CarePlanDocument[], clinicId: string): Promise<AdherenceTotals> {
-  const totals: AdherenceTotals = { ...EMPTY_TOTALS };
-
-  for (const plan of plans) {
-    const counts = await reminderOccurrenceRepository.countByStatusForPlan(
-      plan._id.toString(),
-      clinicId
-    );
-    counts.forEach(entry => {
-      totals[toDisplayStatus(entry._id)] += entry.count;
-    });
-  }
-
-  return totals;
-}
-
-/**
- * Buckets are clinic-local calendar days: `eachDayInZone` returns the UTC instant of local midnight
- * for each of the last seven days plus tomorrow, which doubles as the exclusive upper bound.
- */
-async function buildDayBuckets(patientId: string, timezone: string): Promise<AdherenceDayBucket[]> {
-  const now = clock.now();
-  const edges = clock.eachDayInZone(
-    clock.addDays(now, -(ADHERENCE_DAYS - 1)),
-    clock.addDays(now, 1),
-    timezone
-  );
-  const starts = edges.slice(0, ADHERENCE_DAYS);
-  const end = edges[edges.length - 1];
-
-  const occurrences = await reminderOccurrenceRepository.findByPatientAndRange(
-    patientId,
-    starts[0],
-    end
-  );
-
-  const buckets = starts.map(start => emptyBucket(start));
-  occurrences.forEach(occurrence => {
-    const index = bucketIndexFor(starts, occurrence.dueAt);
-    if (index < 0) return;
-    buckets[index][toDisplayStatus(occurrence.status)] += 1;
-    buckets[index].total += 1;
-  });
-
-  return buckets;
-}
-
-function emptyBucket(start: Date): AdherenceDayBucket {
-  return { date: start.toISOString(), total: 0, ...EMPTY_TOTALS };
-}
-
-/** Index of the last day-start at or before `dueAt`, or -1 when the row predates the window. */
-function bucketIndexFor(starts: Date[], dueAt: Date): number {
-  let index = -1;
-  starts.forEach((start, position) => {
-    if (start.getTime() <= dueAt.getTime()) index = position;
-  });
-  return index;
 }
 
 /**

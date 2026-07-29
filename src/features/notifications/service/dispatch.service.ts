@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
+import { sendDailyDigestsService } from '@/features/notifications/service/email-dispatch.service';
 import { sendToPatientService } from '@/features/notifications/service/push.service';
 import { DispatchSummary } from '@/features/notifications/types/push.types';
 import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
@@ -110,8 +111,13 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
 
   const extendedPlans = await extendActivePlansService(now);
 
+  // Each plan is claimed for its own clinic-local date, so running this on every five-minute sweep
+  // still sends a patient exactly one email a day — at their clinic's morning, not a fixed UTC hour.
+  const digests = await sendDailyDigestsService();
+  const emailed = 'sent' in digests.data ? digests.data.sent : 0;
+
   return {
-    data: { processed: due.length, sent, undelivered, missed, extendedPlans },
+    data: { processed: due.length, sent, undelivered, missed, extendedPlans, emailed },
     status: 200,
   };
 }

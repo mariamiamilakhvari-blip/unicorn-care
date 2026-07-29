@@ -27,11 +27,16 @@ vi.mock('@/features/care-plan/service/dispatch-extension.service', () => ({
   extendActivePlansService: vi.fn(),
 }));
 
+vi.mock('@/features/notifications/service/email-dispatch.service', () => ({
+  sendDailyDigestsService: vi.fn(),
+}));
+
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
 import { pushSubscriptionRepository } from '@/features/notifications/repository/push-subscription.repository';
 import { PushSubscriptionDocument } from '@/features/notifications/schema/push-subscription.schema';
+import { sendDailyDigestsService } from '@/features/notifications/service/email-dispatch.service';
 import { webPushClient } from '@/shared/lib/web-push-client';
 
 import { dispatchDueRemindersService } from './dispatch.service';
@@ -40,6 +45,7 @@ const occurrenceRepo = vi.mocked(reminderOccurrenceRepository);
 const subscriptionRepo = vi.mocked(pushSubscriptionRepository);
 const pushClient = vi.mocked(webPushClient);
 const extendPlans = vi.mocked(extendActivePlansService);
+const sendDigests = vi.mocked(sendDailyDigestsService);
 
 const PATIENT_ID = '507f1f77bcf86cd799439011';
 const CLINIC_ID = '507f1f77bcf86cd799439022';
@@ -107,6 +113,7 @@ describe('dispatchDueRemindersService', () => {
     subscriptionRepo.incrementFailure.mockResolvedValue(true);
     subscriptionRepo.markSuccess.mockResolvedValue(true);
     extendPlans.mockResolvedValue(0);
+    sendDigests.mockResolvedValue({ data: { considered: 0, sent: 0, failed: 0, skipped: 0 }, status: 200 });
   });
 
   it('queries the 6h window with the 500 cap and marks a delivered occurrence sent', async () => {

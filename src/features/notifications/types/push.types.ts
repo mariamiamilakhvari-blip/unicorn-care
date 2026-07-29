@@ -23,6 +23,8 @@ export type DispatchSummary = {
   missed: number;
   /** Active care plans whose occurrence horizon was rolled forward. */
   extendedPlans: number;
+  /** Daily patient emails sent by this sweep. */
+  emailed: number;
 };
 
 /** Client-side opt-in state machine for `use-push-subscription`. */

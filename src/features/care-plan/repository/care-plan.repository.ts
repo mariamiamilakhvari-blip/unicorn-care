@@ -56,6 +56,31 @@ export const carePlanRepository = {
    * is `/api/cron/dispatch-reminders`, which is authorised by `CRON_SECRET` and never reachable
    * from a clinic or patient session.
    */
+  /**
+   * Cron-scoped — deliberately NOT clinic-scoped, like the dispatch sweep. The digest runs as the
+   * platform under `CRON_SECRET` and has no clinic session.
+   */
+  async findActiveForDigest(limit: number): Promise<CarePlanDocument[]> {
+    await mongo.connect();
+    return CarePlanModel.find({ status: 'active' }, null, { limit })
+      .lean<CarePlanDocument[]>()
+      .exec();
+  },
+
+  /**
+   * Takes today's digest for one plan. `lastDigestOn: { $ne: localDate }` makes it a compare-and-set
+   * that MongoDB applies atomically, so when two sweeps overlap exactly one wins and the patient
+   * receives one email rather than two.
+   */
+  async claimDigest(id: string, localDate: string): Promise<boolean> {
+    await mongo.connect();
+    const result = await CarePlanModel.updateOne(
+      { _id: id, lastDigestOn: { $ne: localDate } },
+      { $set: { lastDigestOn: localDate } }
+    );
+    return result.modifiedCount > 0;
+  },
+
   async findActivePlansNeedingExtension(beforeDate: Date): Promise<CarePlanDocument[]> {
     await mongo.connect();
     return CarePlanModel.find({ status: 'active', rehabEndsAt: { $gt: beforeDate } })
