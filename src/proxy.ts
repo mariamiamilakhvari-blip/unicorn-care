@@ -43,9 +43,32 @@ export function proxy(req: NextRequest) {
     if (!patientToken) return NextResponse.redirect(new URL(LINK_EXPIRED_ROUTE, req.url));
   }
 
-  return NextResponse.next();
+  /*
+    The locale used to come only from a cookie, which meant both languages lived at the same URL.
+    A crawler carries no cookie, so it always saw Georgian and the English pages could not be
+    indexed at all. `x-pathname` lets the i18n config read the URL prefix instead — see
+    `src/i18n/request.ts`. Next.js does not expose the pathname to server components otherwise.
+  */
+  const headers = new Headers(req.headers);
+  headers.set('x-pathname', pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/p/:path*', '/p', '/sign-in', '/sign-up'],
+  /*
+    Public marketing paths are matched too, so `x-pathname` reaches the i18n config on the pages
+    that are actually crawled. Static assets and API routes stay out of it.
+  */
+  matcher: [
+    '/dashboard/:path*',
+    '/p/:path*',
+    '/p',
+    '/sign-in',
+    '/sign-up',
+    '/',
+    '/en',
+    '/en/:path*',
+    '/pricing',
+    '/clinic-sign-up',
+  ],
 };

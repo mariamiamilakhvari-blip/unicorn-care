@@ -1,13 +1,17 @@
 import { Activity, ArrowRight, Bell, Pill, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
+import { AudienceSection } from '@/features/marketing/components/audience-section';
+import { FaqSection } from '@/features/marketing/components/faq-section';
+import { StructuredData } from '@/features/marketing/components/structured-data';
 import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { HOME_FEATURES, HOME_STAT_KEYS, type HomeFeatureIcon } from '@/shared/const/home.const';
 import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
+import { AppLocale } from '@/shared/types/roles';
 
 const FEATURE_ICON_MAP: Record<HomeFeatureIcon, LucideIcon> = {
   pill: Pill,
@@ -17,9 +21,11 @@ const FEATURE_ICON_MAP: Record<HomeFeatureIcon, LucideIcon> = {
 
 export const HomePage = () => {
   const t = useTranslations('marketing');
+  const locale = useLocale() as AppLocale;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <StructuredData locale={locale} />
       <Header />
 
       <main className="flex-1">
@@ -96,6 +102,10 @@ export const HomePage = () => {
             })}
           </div>
         </section>
+
+        {/* Below the feature grid: the body copy a search engine can actually read and rank. */}
+        <AudienceSection locale={locale} />
+        <FaqSection locale={locale} />
       </main>
 
       <Footer />

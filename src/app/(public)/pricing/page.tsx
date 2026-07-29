@@ -3,8 +3,15 @@ import { getTranslations } from 'next-intl/server';
 import { PricingPurchase } from '@/features/clinic/components/pricing-purchase';
 import { PricingTable } from '@/features/clinic/components/pricing-table';
 import { auth } from '@/shared/lib/auth';
+import { buildPageMetadata } from '@/shared/lib/page-metadata';
+
+import type { Metadata } from 'next';
 
 type SessionUser = { clinicId?: string | null };
+
+export function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata('pricing', '/pricing');
+}
 
 export default async function PricingPage() {
   const t = await getTranslations('pricing');
