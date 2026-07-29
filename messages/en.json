@@ -308,7 +308,7 @@
   "pricing": {
     "title": "Pricing",
     "subtitle": "Start free for 7 days. No credit card required.",
-    "footnote": "Prices in USD, billed annually. Items marked “coming soon” are on the roadmap and are not part of what you pay for today.",
+    "footnote": "Prices in USD, billed annually.",
     "free": "Free",
     "perMonth": "/month",
     "billedAnnually": "billed annually ({annual}/year — save {saving})",
@@ -347,15 +347,10 @@
       }
     },
     "feature": {
-      "patientPortal": "Patient portal (magic link access)",
       "procedureRecords": "Procedure + medication records",
       "complicationsGuide": "Complications guide per patient",
-      "pushNotifications": "Push notifications to patients",
       "checkupReminders": "Checkup date reminders",
       "careAssistant": "Post-op care assistant",
-      "dailyCheckIn": "Daily check-in + triage (Normal / Monitor / Urgent)",
-      "emailReminders": "Email reminders",
-      "patientRatings": "Patient review + rating system",
       "unlimitedPatients": "Unlimited patients",
       "customGuidePerProcedure": "Custom complications guide per procedure type",
       "noCreditCard": "No credit card required"
