@@ -37,15 +37,10 @@ export const STANDARD_PATIENT_LIMIT = 50;
 
 /** Feature keys resolve to `pricing.feature.<key>` in the message catalogue. */
 const STANDARD_FEATURES: PlanFeature[] = [
-  { key: 'patientPortal', status: 'available' },
   { key: 'procedureRecords', status: 'available' },
   { key: 'complicationsGuide', status: 'available' },
-  { key: 'pushNotifications', status: 'available' },
   { key: 'checkupReminders', status: 'available' },
   { key: 'careAssistant', status: 'available' },
-  { key: 'dailyCheckIn', status: 'planned' },
-  { key: 'emailReminders', status: 'planned' },
-  { key: 'patientRatings', status: 'planned' },
 ];
 
 export const PLANS: Plan[] = [
