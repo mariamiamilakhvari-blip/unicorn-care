@@ -118,6 +118,66 @@ describe('applySubscriptionEventService', () => {
     };
   }
 
+  /**
+   * A clinic can hold two subscriptions at once — a duplicate checkout, or an upgrade bought before
+   * the old one was cancelled. This is the case that locked a paying clinic out of its own account.
+   */
+  describe('when the clinic holds more than one subscription', () => {
+    it('ignores a cancellation from a subscription the clinic has moved off', async () => {
+      clinics.findById.mockResolvedValue(
+        clinicDoc({
+          plan: 'standard',
+          subscriptionStatus: 'active',
+          dodoSubscriptionId: 'sub_current',
+        })
+      );
+
+      const { data } = await applySubscriptionEventService(
+        event('subscription.cancelled', { subscription_id: 'sub_duplicate' })
+      );
+
+      expect(data).toEqual({ applied: false });
+      expect(clinics.updateById).not.toHaveBeenCalled();
+    });
+
+    it('still applies a cancellation from the subscription the clinic is actually on', async () => {
+      clinics.findById.mockResolvedValue(
+        clinicDoc({
+          plan: 'standard',
+          subscriptionStatus: 'active',
+          dodoSubscriptionId: 'sub_current',
+        })
+      );
+
+      await applySubscriptionEventService(
+        event('subscription.cancelled', { subscription_id: 'sub_current' })
+      );
+
+      expect(clinics.updateById).toHaveBeenCalledWith(
+        CLINIC_ID,
+        expect.objectContaining({ subscriptionStatus: 'cancelled' })
+      );
+    });
+
+    it('never filters an activation, so a new subscription becomes the current one', async () => {
+      clinics.findById.mockResolvedValue(
+        clinicDoc({ subscriptionStatus: 'cancelled', dodoSubscriptionId: 'sub_old' })
+      );
+
+      await applySubscriptionEventService(
+        event('subscription.active', { subscription_id: 'sub_new' })
+      );
+
+      expect(clinics.updateById).toHaveBeenCalledWith(
+        CLINIC_ID,
+        expect.objectContaining({
+          subscriptionStatus: 'active',
+          dodoSubscriptionId: 'sub_new',
+        })
+      );
+    });
+  });
+
   it('activates the purchased plan and stores the provider ids', async () => {
     await applySubscriptionEventService(event('subscription.active'));
 

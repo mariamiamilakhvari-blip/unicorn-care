@@ -105,7 +105,22 @@
     "email": "Email",
     "archive": "Archive",
     "archiveTitle": "Archive this patient?",
-    "archiveWarning": "They will be hidden from the list. Their records and history are kept."
+    "archiveWarning": "They will be hidden from the list. Their records and history are kept.",
+    "writeError": {
+      "SUBSCRIPTION_INACTIVE": {
+        "title": "Your subscription is not active",
+        "body": "New patients cannot be added while the subscription is inactive. Existing patients and their plans are untouched."
+      },
+      "PATIENT_LIMIT_REACHED": {
+        "title": "You have reached your patient limit",
+        "body": "Archive a patient who has finished recovery, or move to a plan with more seats."
+      },
+      "GENERIC": {
+        "title": "The patient could not be saved",
+        "body": "Please check the details and try again."
+      },
+      "action": "View plans"
+    }
   },
   "procedure": {
     "title": "Procedure",

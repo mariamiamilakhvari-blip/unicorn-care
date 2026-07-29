@@ -101,6 +101,33 @@ export async function applySubscriptionEventService(
   */
   const keepsPlan = status === 'past_due' || status === 'cancelled' || status === 'expired';
 
+  /*
+    A clinic can hold more than one subscription — a duplicate checkout, or an upgrade bought before
+    the old one was cancelled. Applying every ending event blindly meant cancelling the *duplicate*
+    revoked access while the clinic's real subscription was still active and still being charged:
+    they kept paying and were locked out of adding patients.
+
+    So an ending event only counts when it comes from the subscription the clinic is actually on.
+    Activations are never filtered — they are how a clinic moves to a new subscription, and the
+    write below records that new id as the current one.
+  */
+  const eventSubscriptionId = event.data?.subscription_id ?? null;
+  const endsSubscription = keepsPlan;
+  const isStaleSubscription =
+    endsSubscription &&
+    Boolean(clinic.dodoSubscriptionId) &&
+    Boolean(eventSubscriptionId) &&
+    eventSubscriptionId !== clinic.dodoSubscriptionId;
+
+  if (isStaleSubscription) {
+    console.warn('[billing] ignoring end event for a subscription the clinic has moved off', {
+      clinicId,
+      event: eventSubscriptionId,
+      current: clinic.dodoSubscriptionId,
+    });
+    return { data: { applied: false }, status: 200 };
+  }
+
   await clinicRepository.updateById(clinicId, {
     plan: keepsPlan ? clinic.plan : plan,
     subscriptionStatus: status,

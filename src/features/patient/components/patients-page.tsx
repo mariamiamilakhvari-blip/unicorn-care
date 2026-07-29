@@ -5,6 +5,11 @@ import { useState } from 'react';
 
 import { PatientForm } from '@/features/patient/components/patient-form';
 import { PatientList } from '@/features/patient/components/patient-list';
+import {
+  PatientWriteError,
+  PatientWriteErrorNotice,
+  toPatientWriteError,
+} from '@/features/patient/components/patient-write-error';
 import { usePatients } from '@/features/patient/hooks/use-patients';
 import { CreatePatientType } from '@/features/patient/validations/patient.validation';
 import { Button } from '@/shared/components/ui/button';
@@ -20,12 +25,21 @@ export function PatientsPage() {
   const { patients, isLoading, hasError, create, archive } = usePatients(debouncedSearch || undefined);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [writeError, setWriteError] = useState<PatientWriteError | null>(null);
 
+  /*
+    A refused write is an answer, not a crash. Without this catch the rejection escaped to the
+    error overlay and the clinic saw `SUBSCRIPTION_INACTIVE` as a stack trace, with the form
+    contents lost and nothing to click. The form stays open so the typed details survive.
+  */
   async function handleCreate(values: CreatePatientType) {
     setIsPending(true);
+    setWriteError(null);
     try {
       await create(values);
       setIsFormOpen(false);
+    } catch (caught) {
+      setWriteError(toPatientWriteError(caught));
     } finally {
       setIsPending(false);
     }
@@ -39,6 +53,8 @@ export function PatientsPage() {
           {isFormOpen ? tCommon('cancel') : t('createPatient')}
         </Button>
       </div>
+
+      {writeError && <PatientWriteErrorNotice error={writeError} />}
 
       {isFormOpen && (
         <Card>
