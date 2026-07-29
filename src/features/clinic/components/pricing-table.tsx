@@ -9,7 +9,12 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { BILLING_PERIODS, BillingPeriod } from '@/shared/const/billing.const';
-import { formatPrice, PLANS } from '@/shared/const/plan.const';
+import {
+  formatPrice,
+  monthlyRateMinor,
+  PLANS,
+  yearlyAtMonthlyRateMinor,
+} from '@/shared/const/plan.const';
 import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
 import { cn } from '@/shared/lib/utils';
 
@@ -72,17 +77,21 @@ export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableP
                 ) : (
                   <div>
                     <p className="text-2xl font-semibold">
-                      {formatPrice(plan.monthlyPriceMinor)}
+                      {formatPrice(monthlyRateMinor(plan, period))}
                       <span className="text-sm font-normal text-muted-foreground">
                         {' '}
                         {t('perMonth')}
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {t('billedAnnually', {
-                        annual: formatPrice(plan.annualPriceMinor),
-                        saving: formatPrice(plan.annualSavingMinor),
-                      })}
+                      {period === 'yearly'
+                        ? t('billedAnnually', {
+                          annual: formatPrice(plan.annualPriceMinor),
+                          saving: formatPrice(plan.annualSavingMinor),
+                        })
+                        : t('billedMonthly', {
+                          yearly: formatPrice(yearlyAtMonthlyRateMinor(plan)),
+                        })}
                     </p>
                   </div>
                 )}

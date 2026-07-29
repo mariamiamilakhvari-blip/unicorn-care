@@ -95,3 +95,19 @@ export function findPlan(key: PlanKey): Plan {
 export function formatPrice(minor: number): string {
   return `$${Math.round(minor / 100)}`;
 }
+
+/**
+ * The headline monthly figure for a billing period.
+ *
+ * Annual is quoted as its monthly equivalent — $948/year reads as $79/month — because that is the
+ * number a clinic compares against the monthly plan. Quoting the same $99 for both made the toggle
+ * look broken and hid the saving entirely.
+ */
+export function monthlyRateMinor(plan: Plan, period: 'monthly' | 'yearly'): number {
+  return period === 'monthly' ? plan.monthlyPriceMinor : Math.round(plan.annualPriceMinor / 12);
+}
+
+/** What a year costs when paying month to month — the figure the annual saving is measured against. */
+export function yearlyAtMonthlyRateMinor(plan: Plan): number {
+  return plan.monthlyPriceMinor * 12;
+}

@@ -361,6 +361,7 @@
     },
     "trialBanner": "{count, plural, one {# day left on your free trial} other {# days left on your free trial}}",
     "viewPlans": "View plans",
-    "trialIncluded": "Included at sign-up"
+    "trialIncluded": "Included at sign-up",
+    "billedMonthly": "billed monthly ({yearly}/year)"
   }
 }

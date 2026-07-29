@@ -361,6 +361,7 @@
     },
     "trialBanner": "{count, plural, one {უფასო საცდელს დარჩა # დღე} other {უფასო საცდელს დარჩა # დღე}}",
     "viewPlans": "პაკეტების ნახვა",
-    "trialIncluded": "შედის რეგისტრაციისას"
+    "trialIncluded": "შედის რეგისტრაციისას",
+    "billedMonthly": "თვიური გადახდა ({yearly}/წელი)"
   }
 }
