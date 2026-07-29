@@ -14,6 +14,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -154,6 +155,27 @@ export function MedicationFields({ control }: { control: Control<CarePlanFormTyp
                   <Checkbox checked={input.value} onCheckedChange={input.onChange} />
                 </FormControl>
                 <FormLabel className="font-normal">{t('withFood')}</FormLabel>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name={`medications.${index}.remindHoursBefore`}
+            render={({ field: input }) => (
+              <FormItem className="sm:max-w-xs">
+                <FormLabel>{t('remindHoursBefore')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={336}
+                    value={input.value ?? 0}
+                    onChange={event => input.onChange(Number(event.target.value))}
+                  />
+                </FormControl>
+                <FormDescription>{t('remindHoursBeforeHint')}</FormDescription>
+                <FormMessage />
               </FormItem>
             )}
           />

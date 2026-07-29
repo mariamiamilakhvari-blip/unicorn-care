@@ -33,6 +33,7 @@ const MedicationRow = z
     endsOn: RequiredDate,
     withFood: z.boolean(),
     instructions: z.string().max(500),
+    remindHoursBefore: z.number().int().min(0).max(336),
   })
   .refine(item => item.endsOn >= item.startsOn, {
     message: 'End date is before the start date',
@@ -49,6 +50,7 @@ const RehabTaskRow = z
     daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, { message: 'Pick at least one day' }),
     startsOn: RequiredDate,
     endsOn: RequiredDate,
+    remindHoursBefore: z.number().int().min(0).max(336),
   })
   .refine(item => item.endsOn >= item.startsOn, {
     message: 'End date is before the start date',

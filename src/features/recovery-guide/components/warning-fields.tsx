@@ -41,7 +41,7 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => append({ title: '', description: '', severity: 'call_clinic' })}
+          onClick={() => append({ title: '', description: '', severity: 'call_clinic', fromDay: 0, toDay: 14 })}
         >
           <Plus className="size-4" aria-hidden />
           {t('addWarning')}
@@ -50,7 +50,7 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
 
       {fields.map((row, index) => (
         <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-4">
             <FormField
               control={control}
               name={`warning.${index}.title`}
@@ -84,6 +84,42 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`warning.${index}.fromDay`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('fromDay')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={field.value ?? 0}
+                      onChange={event => field.onChange(Number(event.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`warning.${index}.toDay`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('toDay')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={field.value ?? 0}
+                      onChange={event => field.onChange(Number(event.target.value))}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

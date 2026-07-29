@@ -15,6 +15,9 @@ const MedicationSchema = new Schema({
   endsOn: { type: Date, required: true },
   withFood: { type: Boolean, default: false, required: true },
   instructions: { type: String, required: false, default: '' },
+  // Heads-up ahead of the FIRST dose, same shape as a checkup's. 0 = no advance notice, which is
+  // what every plan written before this field existed keeps doing.
+  remindHoursBefore: { type: Number, default: 0, required: true },
 });
 
 const RehabTaskSchema = new Schema({
@@ -27,6 +30,7 @@ const RehabTaskSchema = new Schema({
   daysOfWeek: { type: [Number], default: [0, 1, 2, 3, 4, 5, 6] },
   startsOn: { type: Date, required: true },
   endsOn: { type: Date, required: true },
+  remindHoursBefore: { type: Number, default: 0, required: true },
 });
 
 const CheckupSchema = new Schema({

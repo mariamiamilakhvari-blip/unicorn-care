@@ -13,6 +13,7 @@ import { INTENSITY_VALUES } from '@/features/care-plan/validations/care-plan.val
 import { Button } from '@/shared/components/ui/button';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -159,6 +160,28 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                 <FormControl>
                   <Textarea rows={2} {...input} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+
+          <FormField
+            control={control}
+            name={`rehabTasks.${index}.remindHoursBefore`}
+            render={({ field: input }) => (
+              <FormItem className="sm:max-w-xs">
+                <FormLabel>{t('remindHoursBefore')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={336}
+                    value={input.value ?? 0}
+                    onChange={event => input.onChange(Number(event.target.value))}
+                  />
+                </FormControl>
+                <FormDescription>{t('remindHoursBeforeHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

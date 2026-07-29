@@ -176,7 +176,8 @@
     "error": {
       "INVALID_CLINIC_TIMEZONE": "Your clinic timezone is not valid. Fix it under Clinic, then activate the plan again.",
       "INCOMPLETE_PLAN": "Add at least one medication, rehab task or checkup before activating."
-    }
+    },
+    "remindHoursBeforeHint": "Advance notice before the first dose or session. 0 = none."
   },
   "portal": {
     "today": "Today",
@@ -192,7 +193,8 @@
     "greeting": "Hello, {name}",
     "linkExpired": "This link has expired",
     "linkExpiredHelp": "Contact your clinic to get a new link",
-    "offline": "You are offline"
+    "offline": "You are offline",
+    "kind_guide": "What is expected"
   },
   "push": {
     "enableNotifications": "Enable notifications",

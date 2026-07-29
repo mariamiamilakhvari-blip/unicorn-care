@@ -31,6 +31,10 @@ const RecoveryGuideSchema = new Schema(
         title: { type: String, required: true },
         description: { type: String, required: false, default: '' },
         severity: { type: String, enum: WARNING_SEVERITIES, required: true },
+        // The window this sign is worth watching for, in days since the operation — the same
+        // day-based scale the expected signs use, so both halves of the guide read alike.
+        fromDay: { type: Number, required: true, default: 0 },
+        toDay: { type: Number, required: true, default: 0 },
       },
     ],
 

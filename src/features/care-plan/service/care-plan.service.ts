@@ -7,7 +7,10 @@ import {
   ReminderOccurrenceDocument,
   ReminderStatus,
 } from '@/features/care-plan/schema/reminder-occurrence.schema';
-import { buildOccurrences } from '@/features/care-plan/service/occurrence-generator.service';
+import {
+  buildOccurrences,
+  DEFAULT_HORIZON_DAYS,
+} from '@/features/care-plan/service/occurrence-generator.service';
 import {
   AdherenceDayBucket,
   AdherenceSummary,
@@ -21,6 +24,8 @@ import {
 } from '@/features/care-plan/validations/care-plan.validation';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
+import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { isValidTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { PaginatedResult, ServiceResult } from '@/shared/types/common';
@@ -130,7 +135,20 @@ export async function activateCarePlanService(
     return { data: { error: 'INVALID_CLINIC_TIMEZONE' }, status: 422 };
   }
 
-  const drafts = buildOccurrences(plan, clinic.timezone);
+  const guide = await resolveGuideForProcedure(
+    plan.procedureId.toString(),
+    clinicId,
+    clinic.locale
+  );
+
+  const drafts = buildOccurrences(
+    plan,
+    clinic.timezone,
+    DEFAULT_HORIZON_DAYS,
+    defaultOccurrenceTranslator,
+    clock.now(),
+    guide
+  );
   await reminderOccurrenceRepository.deletePendingByCarePlan(id, clinicId);
   if (drafts.length > 0) await reminderOccurrenceRepository.insertMany(drafts);
 

@@ -54,6 +54,8 @@ export function toCarePlanFormValues(plan: StoredCarePlan): CarePlanFormType {
       endsOn: toDateInput(item.endsOn),
       withFood: item.withFood,
       instructions: item.instructions ?? '',
+      // Plans written before this field existed have no advance notice; 0 keeps them as they were.
+      remindHoursBefore: item.remindHoursBefore ?? 0,
     })),
     rehabTasks: (plan.rehabTasks ?? []).map(item => ({
       title: item.title,
@@ -64,6 +66,7 @@ export function toCarePlanFormValues(plan: StoredCarePlan): CarePlanFormType {
       daysOfWeek: [...item.daysOfWeek],
       startsOn: toDateInput(item.startsOn),
       endsOn: toDateInput(item.endsOn),
+      remindHoursBefore: item.remindHoursBefore ?? 0,
     })),
     checkups: (plan.checkups ?? []).map(item => ({
       scheduledAt: toDateTimeInput(item.scheduledAt),

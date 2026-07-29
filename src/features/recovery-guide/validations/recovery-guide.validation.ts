@@ -18,11 +18,18 @@ const ExpectedItemSchema = z
     path: ['toDay'],
   });
 
-const WarningItemSchema = z.object({
-  title: z.string().min(1).max(160),
-  description: z.string().max(1000).default(''),
-  severity: z.enum(WARNING_SEVERITIES),
-});
+const WarningItemSchema = z
+  .object({
+    title: z.string().min(1).max(160),
+    description: z.string().max(1000).default(''),
+    severity: z.enum(WARNING_SEVERITIES),
+    fromDay: z.number().int().min(0).max(365).default(0),
+    toDay: z.number().int().min(0).max(365).default(0),
+  })
+  .refine(item => item.toDay >= item.fromDay, {
+    message: 'END_DAY_BEFORE_START_DAY',
+    path: ['toDay'],
+  });
 
 /** `clinicId` is never in the body — it comes from `clinicGuard`, like every clinical write. */
 export const UpsertRecoveryGuideSchema = z.object({

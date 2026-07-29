@@ -5,10 +5,11 @@ import {
   RehabTaskItem,
 } from '@/features/care-plan/schema/care-plan.schema';
 import {
-  OccurrenceCopyKey,
-  OccurrenceDraft,
-  OccurrenceTranslator,
-} from '@/features/care-plan/types/care-plan.types';
+  buildGuideOccurrences,
+  RecoveryGuideForOccurrences,
+} from '@/features/care-plan/service/guide-occurrence.service';
+import { OccurrenceDraft, OccurrenceTranslator } from '@/features/care-plan/types/care-plan.types';
+import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { clock } from '@/shared/lib/clock';
 
 /** PRD 03 §3 — a one-year plan must not write a year of rows on day one. */
@@ -17,19 +18,6 @@ export const DEFAULT_HORIZON_DAYS = 90;
 const MS_PER_HOUR = 60 * 60 * 1000;
 
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
-
-const EN_COPY: Record<OccurrenceCopyKey, string> = {
-  withFood: 'Take with food.',
-  withoutFood: 'Take on an empty stomach.',
-  minutesShort: 'min',
-  today: 'Today',
-  tomorrow: 'Tomorrow',
-  light: 'Light',
-  moderate: 'Moderate',
-  intense: 'Intense',
-};
-
-export const defaultOccurrenceTranslator: OccurrenceTranslator = key => EN_COPY[key];
 
 type GeneratorContext = {
   plan: CarePlanDocument;
@@ -74,7 +62,8 @@ export function buildOccurrences(
   timezone: string,
   horizonDays: number = DEFAULT_HORIZON_DAYS,
   translate: OccurrenceTranslator = defaultOccurrenceTranslator,
-  generatedAt: Date = clock.now()
+  generatedAt: Date = clock.now(),
+  guide: RecoveryGuideForOccurrences | null = null
 ): OccurrenceDraft[] {
   const context: GeneratorContext = {
     plan,
@@ -88,6 +77,7 @@ export function buildOccurrences(
     ...plan.medications.flatMap(item => medicationDrafts(context, item)),
     ...plan.rehabTasks.flatMap(item => rehabDrafts(context, item)),
     ...plan.checkups.flatMap(item => checkupDrafts(context, item)),
+    ...buildGuideOccurrences(context, guide),
   ].sort((left, right) => left.dueAt.getTime() - right.dueAt.getTime());
 }
 
@@ -96,7 +86,7 @@ function medicationDrafts(context: GeneratorContext, item: MedicationItem): Occu
   const title = `${item.name} — ${item.dosage}`;
   const foodNote = context.t(item.withFood ? 'withFood' : 'withoutFood');
 
-  return dailyDrafts(context, {
+  const doses = dailyDrafts(context, {
     startsOn: item.startsOn,
     endsOn: item.endsOn,
     daysOfWeek: EVERY_DAY,
@@ -110,6 +100,8 @@ function medicationDrafts(context: GeneratorContext, item: MedicationItem): Occu
       intensity: null,
     }),
   });
+
+  return [...advanceDrafts(context, doses, 'medication', item._id, title, item.remindHoursBefore), ...doses];
 }
 
 /** Same cadence as a medication, but only on the weekdays the clinic prescribed. */
@@ -119,7 +111,7 @@ function rehabDrafts(context: GeneratorContext, item: RehabTaskItem): Occurrence
   const body = `${context.t(item.intensity)}${duration}`;
   const configured = item.daysOfWeek ?? EVERY_DAY;
 
-  return dailyDrafts(context, {
+  const sessions = dailyDrafts(context, {
     startsOn: item.startsOn,
     endsOn: item.endsOn,
     daysOfWeek: configured.length > 0 ? configured : EVERY_DAY,
@@ -133,6 +125,11 @@ function rehabDrafts(context: GeneratorContext, item: RehabTaskItem): Occurrence
       intensity: item.intensity,
     }),
   });
+
+  return [
+    ...advanceDrafts(context, sessions, 'rehab', item._id, item.title, item.remindHoursBefore),
+    ...sessions,
+  ];
 }
 
 /** A single row, `remindHoursBefore` ahead of the appointment. */
@@ -152,6 +149,45 @@ function checkupDrafts(context: GeneratorContext, item: CheckupItem): Occurrence
       dueAt,
       title: item.title,
       body,
+      intensity: null,
+    }),
+  ];
+}
+
+/**
+ * One heads-up ahead of the *first* dose or session, mirroring a checkup's `remindHoursBefore`.
+ *
+ * Deliberately not one per dose. A lead time longer than a day — the 30 hours a clinic is likely
+ * to set — would land the notice during the previous day's dose, so the patient would be told to
+ * prepare for something they are already mid-course on. Announcing the course once is the useful
+ * signal; the per-dose rows still fire at their own times and are what actually gets taken.
+ *
+ * `0` means no advance notice, so plans written before this field existed are unchanged.
+ */
+function advanceDrafts(
+  context: GeneratorContext,
+  scheduled: OccurrenceDraft[],
+  kind: OccurrenceDraft['kind'],
+  sourceItemId: OccurrenceDraft['sourceItemId'],
+  title: string,
+  remindHoursBefore: number | null | undefined
+): OccurrenceDraft[] {
+  const hours = remindHoursBefore ?? 0;
+  if (hours <= 0 || scheduled.length === 0) return [];
+
+  const first = scheduled[0];
+  const dueAt = new Date(first.dueAt.getTime() - hours * MS_PER_HOUR);
+  if (dueAt.getTime() > context.horizonEnd.getTime()) return [];
+
+  const when = `${dayLabel(context, dueAt, first.dueAt)} ${localTime(first.dueAt, context.timezone)}`;
+
+  return [
+    draft(context, {
+      kind,
+      sourceItemId,
+      dueAt,
+      title,
+      body: `${context.t('startingSoon')} ${when}`,
       intensity: null,
     }),
   ];

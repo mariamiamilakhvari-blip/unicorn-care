@@ -5,7 +5,9 @@ const ReminderOccurrenceSchema = new Schema(
     carePlanId: { type: Schema.Types.ObjectId, ref: 'CarePlan', required: true, index: true },
     patientId: { type: Schema.Types.ObjectId, ref: 'Patient', required: true, index: true },
     clinicId: { type: Schema.Types.ObjectId, ref: 'Clinic', required: true },
-    kind: { type: String, enum: ['medication', 'rehab', 'checkup'], required: true },
+    // `guide` is an expected-sign notice generated from the clinic's recovery guide on the day of
+    // recovery that sign begins, not from anything in the care plan itself.
+    kind: { type: String, enum: ['medication', 'rehab', 'checkup', 'guide'], required: true },
     // Subdocument _id inside the CarePlan that produced this row.
     sourceItemId: { type: Schema.Types.ObjectId, required: true },
     // title/body are rendered in the patient's locale at generation time so dispatch is a pure read.

@@ -21,7 +21,9 @@ export type OccurrenceCopyKey =
   | 'tomorrow'
   | 'light'
   | 'moderate'
-  | 'intense';
+  | 'intense'
+  | 'startingSoon'
+  | 'expectedSign';
 
 export type OccurrenceTranslator = (key: OccurrenceCopyKey) => string;
 

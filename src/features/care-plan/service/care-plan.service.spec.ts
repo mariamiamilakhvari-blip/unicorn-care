@@ -29,12 +29,17 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
   patientRepository: { findById: vi.fn() },
 }));
 
+vi.mock('@/features/recovery-guide/service/resolve-guide.service', () => ({
+  resolveGuideForProcedure: vi.fn(),
+}));
+
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { CreateCarePlanType } from '@/features/care-plan/validations/care-plan.validation';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 
 import {
   activateCarePlanService,
@@ -50,6 +55,7 @@ const plans = vi.mocked(carePlanRepository);
 const occurrences = vi.mocked(reminderOccurrenceRepository);
 const clinics = vi.mocked(clinicRepository);
 const patients = vi.mocked(patientRepository);
+const resolveGuide = vi.mocked(resolveGuideForProcedure);
 
 const CLINIC_ID = '507f1f77bcf86cd799439011';
 const PATIENT_ID = '507f1f77bcf86cd799439022';
@@ -75,6 +81,7 @@ function createInput(): CreateCarePlanType {
         endsOn: new Date('2025-06-05T00:00:00.000Z'),
         withFood: true,
         instructions: '',
+        remindHoursBefore: 0,
       },
     ],
     rehabTasks: [],
@@ -101,7 +108,8 @@ function planDoc(overrides: Partial<CarePlanDocument> = {}): CarePlanDocument {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin' } as never);
+  clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'en' } as never);
+  resolveGuide.mockResolvedValue(null);
   plans.create.mockResolvedValue(PLAN_ID);
   plans.updateById.mockResolvedValue(true);
   occurrences.deletePendingByCarePlan.mockResolvedValue(0);

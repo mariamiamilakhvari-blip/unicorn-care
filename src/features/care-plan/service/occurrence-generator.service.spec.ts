@@ -8,8 +8,9 @@ import {
   RehabTaskItem,
 } from '@/features/care-plan/schema/care-plan.schema';
 import { OccurrenceTranslator } from '@/features/care-plan/types/care-plan.types';
+import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 
-import { buildOccurrences, defaultOccurrenceTranslator } from './occurrence-generator.service';
+import { buildOccurrences } from './occurrence-generator.service';
 
 const BERLIN = 'Europe/Berlin';
 const GENERATED_AT = new Date('2025-01-01T00:00:00.000Z');
@@ -260,5 +261,102 @@ describe('buildOccurrences — translator', () => {
     const plan = makePlan({ medications: [medication()], checkups: [checkup()] });
 
     expect(build(plan)).toEqual(build(plan));
+  });
+});
+
+describe('advance notice before a course starts', () => {
+  it('adds one heads-up ahead of the first dose, not one per dose', () => {
+    const plan = makePlan({
+      medications: [
+        medication({
+          startsOn: new Date('2025-06-02T00:00:00.000Z'),
+          endsOn: new Date('2025-06-05T00:00:00.000Z'),
+          timesOfDay: ['08:00'],
+          remindHoursBefore: 30,
+        }),
+      ],
+    });
+
+    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
+    const advance = drafts.filter(draft => (draft.body ?? '').startsWith('Starts'));
+
+    // 4 dose rows + exactly 1 advance notice, regardless of how many doses there are.
+    expect(drafts).toHaveLength(5);
+    expect(advance).toHaveLength(1);
+  });
+
+  it('places the notice the configured hours before the first dose', () => {
+    const plan = makePlan({
+      medications: [
+        medication({
+          startsOn: new Date('2025-06-02T00:00:00.000Z'),
+          endsOn: new Date('2025-06-02T00:00:00.000Z'),
+          timesOfDay: ['08:00'],
+          remindHoursBefore: 30,
+        }),
+      ],
+    });
+
+    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
+    const [advance, firstDose] = drafts;
+
+    expect(advance.dueAt.getTime()).toBe(firstDose.dueAt.getTime() - 30 * 60 * 60 * 1000);
+    // 08:00 Berlin in June is 06:00Z; 30 hours earlier is 00:00Z the previous day.
+    expect(advance.dueAt.toISOString()).toBe('2025-06-01T00:00:00.000Z');
+  });
+
+  it('writes no advance notice when the field is 0, so old plans are unchanged', () => {
+    const plan = makePlan({
+      medications: [
+        medication({
+          startsOn: new Date('2025-06-02T00:00:00.000Z'),
+          endsOn: new Date('2025-06-03T00:00:00.000Z'),
+          timesOfDay: ['08:00'],
+          remindHoursBefore: 0,
+        }),
+      ],
+    });
+
+    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
+
+    expect(drafts).toHaveLength(2);
+    expect(drafts.every(draft => !(draft.body ?? '').startsWith('Starts'))).toBe(true);
+  });
+});
+
+describe('expected-sign reminders from the recovery guide', () => {
+  const SIGN_ID = new Types.ObjectId();
+
+  it('fires on the day of recovery the sign begins, counted off the plan start', () => {
+    const plan = makePlan({ startsAt: new Date('2025-06-01T00:00:00.000Z') });
+
+    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT, {
+      expected: [{ _id: SIGN_ID, title: 'Swelling', fromDay: 3 }],
+    });
+
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].kind).toBe('guide');
+    expect(drafts[0].title).toBe('Swelling');
+    expect(drafts[0].sourceItemId).toBe(SIGN_ID);
+    // Day 3 after 01 June, at 09:00 Berlin = 07:00Z.
+    expect(drafts[0].dueAt.toISOString()).toBe('2025-06-04T07:00:00.000Z');
+  });
+
+  it('writes nothing when the clinic has no guide, so activation still works', () => {
+    const plan = makePlan({ startsAt: new Date('2025-06-01T00:00:00.000Z') });
+
+    expect(
+      buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT, null)
+    ).toHaveLength(0);
+  });
+
+  it('drops a sign whose day falls beyond the generation horizon', () => {
+    const plan = makePlan({ startsAt: new Date('2025-06-01T00:00:00.000Z') });
+
+    const drafts = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT, {
+      expected: [{ _id: SIGN_ID, title: 'Late sign', fromDay: 200 }],
+    });
+
+    expect(drafts).toHaveLength(0);
   });
 });

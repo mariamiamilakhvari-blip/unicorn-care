@@ -14,6 +14,7 @@ export type MedicationFormRow = {
   endsOn: string;
   withFood: boolean;
   instructions: string;
+  remindHoursBefore: number;
 };
 
 export type RehabTaskFormRow = {
@@ -25,6 +26,7 @@ export type RehabTaskFormRow = {
   daysOfWeek: number[];
   startsOn: string;
   endsOn: string;
+  remindHoursBefore: number;
 };
 
 export type CheckupFormRow = {
@@ -51,6 +53,8 @@ export const EMPTY_MEDICATION: MedicationFormRow = {
   endsOn: '',
   withFood: false,
   instructions: '',
+  // 0 = no advance notice, matching how every plan behaved before the field existed.
+  remindHoursBefore: 0,
 };
 
 export const EMPTY_REHAB_TASK: RehabTaskFormRow = {
@@ -62,6 +66,7 @@ export const EMPTY_REHAB_TASK: RehabTaskFormRow = {
   daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
   startsOn: '',
   endsOn: '',
+  remindHoursBefore: 0,
 };
 
 export const EMPTY_CHECKUP: CheckupFormRow = {

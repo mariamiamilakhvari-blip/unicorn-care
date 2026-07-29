@@ -3,7 +3,7 @@ import { ReminderStatus } from '@/features/care-plan/schema/reminder-occurrence.
 /** JSON-safe occurrence as the patient portal renders it. */
 export type PortalOccurrence = {
   id: string;
-  kind: 'medication' | 'rehab' | 'checkup';
+  kind: 'medication' | 'rehab' | 'checkup' | 'guide';
   title: string;
   body: string;
   intensity: 'light' | 'moderate' | 'intense' | null;
