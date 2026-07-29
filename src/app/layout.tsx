@@ -4,6 +4,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import { type ReactNode } from 'react';
 
 import { APP_DESCRIPTION, APP_NAME, APP_THEME_COLOR } from '@/shared/const/app.const';
+import { SITE_URL } from '@/shared/const/seo.const';
 import { ThemeProvider } from '@/shared/providers/theme-provider';
 
 import type { Metadata, Viewport } from 'next';
@@ -28,7 +29,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: APP_NAME,
+  /*
+    Set at the root so every page inherits it. Without it Next resolves OpenGraph image URLs
+    against localhost, and a shared link renders with a broken preview in production.
+  */
+  metadataBase: new URL(SITE_URL),
+  title: { default: APP_NAME, template: '%s' },
   description: APP_DESCRIPTION,
   manifest: '/manifest.webmanifest',
   appleWebApp: {
