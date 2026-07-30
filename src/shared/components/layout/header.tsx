@@ -40,17 +40,31 @@ export const Header = () => {
     .join('');
 
   return (
-    <header className="flex items-center justify-between px-6 py-5 sm:px-10 border-b border-border">
-      <Link href="/" className="flex items-center gap-2.5">
+    /*
+      Wraps rather than overflows. The controls need ~450px and a 390px phone offers ~340 after
+      padding, so on a narrow screen the nav drops to its own row instead of pushing the page
+      sideways. Nothing is hidden: every item here is the only route to somewhere, and a phone
+      visitor who cannot reach pricing or sign-in is worse off than one reading a two-row header.
+    */
+    <header className="flex flex-wrap items-center justify-between gap-y-3 px-4 py-5 sm:flex-nowrap sm:px-10 border-b border-border">
+      <Link href="/" className="flex shrink-0 items-center gap-2.5 sm:mr-auto">
         <BrandMark size={32} />
         <span className="text-sm font-semibold tracking-tight text-foreground">
           {APP_NAME}
         </span>
       </Link>
 
-      <div className="flex items-center gap-2">
+      {/*
+        Language and theme are icon-sized, so they ride beside the brand and leave the whole
+        second row to the links. Grouping them the other way orphans the sign-up button on a
+        third row, which is what the naive wrap did.
+      */}
+      <div className="flex shrink-0 items-center gap-2">
         <LanguageSwitcher />
         <ThemeToggle />
+      </div>
+
+      <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-2 sm:w-auto sm:flex-nowrap">
 
         {/* Outside the signed-in/out branches: a clinic on the trial needs to reach pricing too. */}
         <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground hover:bg-accent">
