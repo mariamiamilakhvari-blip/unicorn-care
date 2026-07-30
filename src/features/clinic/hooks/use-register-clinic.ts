@@ -32,7 +32,7 @@ export function useRegisterClinic(): RegisterClinicState {
       setError(null);
       try {
         await http.post<RegisterClinicResult>('/clinic/register', {
-          owner: { name: values.name, email: values.email, password: values.password },
+          owner: { name: values.clinicName, email: values.email, password: values.password },
           clinic: {
             name: values.clinicName,
             country: values.country,

@@ -11,7 +11,12 @@ import {
  * hook reshapes it into the nested `{ owner, clinic }` body the API expects. Both halves reuse the
  * canonical schemas, so a field can never drift between form and endpoint.
  */
-export const ClinicSignUpSchema = ClinicOwnerSchema.extend({
+/*
+  `name` is omitted: the form no longer asks for the owner's personal name, so the hook sends the
+  clinic name in its place. The owner record still has one — `ClinicOwnerSchema` is unchanged and
+  the API still requires it — it is just no longer a question the clinic has to answer twice.
+*/
+export const ClinicSignUpSchema = ClinicOwnerSchema.omit({ name: true }).extend({
   clinicName: ClinicProfileSchema.shape.name,
   country: ClinicProfileSchema.shape.country,
   city: ClinicProfileSchema.shape.city,

@@ -44,7 +44,6 @@ export function ClinicSignUpForm() {
   const form = useForm<ClinicSignUpFormType, undefined, ClinicSignUpType>({
     resolver: zodResolver(ClinicSignUpSchema),
     defaultValues: {
-      name: '',
       email: '',
       password: '',
       clinicName: '',
@@ -79,19 +78,6 @@ export function ClinicSignUpForm() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(registerClinic)} className="flex flex-col gap-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{tAuth('name')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="email"

@@ -67,7 +67,7 @@
     "createClinic": "Create clinic",
     "country": "Country",
     "city": "City",
-    "createClinicHelp": "Register your clinic and the owner account. You can add staff afterwards.",
+    "createClinicHelp": "Register your clinic",
     "onboardingHelp": "Your account has no clinic yet. Add the clinic details to open the dashboard.",
     "finishSetup": "Finish setup",
     "profile": "Clinic details",
