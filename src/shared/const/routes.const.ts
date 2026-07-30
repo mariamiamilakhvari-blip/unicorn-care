@@ -15,6 +15,11 @@ export const SIGN_IN_ROUTE = '/sign-in';
 
 export const DASHBOARD_ROUTE = '/dashboard';
 
+/** The legal documents the registration consents point at. */
+export const TERMS_ROUTE = '/terms';
+
+export const PRIVACY_ROUTE = '/privacy';
+
 /** Where a freshly registered clinic lands: it has a trial but has not chosen a plan yet. */
 export const PRICING_ROUTE = '/pricing';
 

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Control, FieldValues, Path } from 'react-hook-form';
 
@@ -24,6 +25,13 @@ type ConsentChecklistProps<T extends FieldValues> = {
   namespace: string;
   /** Section heading, already translated by the caller. */
   heading: string;
+  /*
+    Consent key → href, for the lines that reference a document. Those messages carry a `<link>`
+    tag and are rendered with `t.rich`; everything else is plain text. Asking someone to agree to
+    a document they cannot open is not consent, so the two that name one have to be reachable
+    from the checkbox itself.
+  */
+  links?: Record<string, string>;
   /** Field names in schema order. Rendered in the order given. */
   fields: readonly Path<T>[];
 };
@@ -51,6 +59,7 @@ export function ConsentChecklist<T extends FieldValues>({
   namespace,
   heading,
   fields,
+  links,
 }: ConsentChecklistProps<T>) {
   const t = useTranslations(namespace);
 
@@ -82,7 +91,25 @@ export function ConsentChecklist<T extends FieldValues>({
                   />
                 </FormControl>
                 <span className="text-sm leading-relaxed text-muted-foreground">
-                  {t(String(name).split('.').pop() ?? String(name))}
+                  {(() => {
+                    const key = String(name).split('.').pop() ?? String(name);
+                    const href = links?.[key];
+                    if (!href) return t(key);
+                    return t.rich(key, {
+                      // `stopPropagation` so opening the document does not also tick the box —
+                      // the link sits inside the label that toggles it.
+                      link: chunks => (
+                        <Link
+                          href={href}
+                          target="_blank"
+                          onClick={event => event.stopPropagation()}
+                          className="underline underline-offset-4 hover:text-foreground"
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    });
+                  })()}
                 </span>
               </label>
               <ConsentMessage />

@@ -60,6 +60,20 @@ npm run test:run   # Vitest once
 
 The Husky pre-commit hook runs `lint → build → test` and blocks on failure.
 
+### Running a production build locally
+
+`next start` outside Vercel needs `AUTH_TRUST_HOST` or NextAuth v5 refuses every request with
+`UntrustedHost: Host must be trusted`, and sign-in fails with no obvious cause:
+
+```bash
+npm run build
+AUTH_TRUST_HOST=true npx next start -p 3001
+```
+
+Not needed on Vercel, which sets `VERCEL=1` and is trusted automatically — and not needed for
+`npm run dev` either. Port 3001 matches the `NEXTAUTH_URL` in `.env`; on another port the OAuth
+callbacks break.
+
 ## How it fits together
 
 ```

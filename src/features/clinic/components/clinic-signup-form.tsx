@@ -31,6 +31,7 @@ import {
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
 import { Separator } from '@/shared/components/ui/separator';
+import { PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
 
 /** Registers the owner account and the clinic in one submit, then signs the owner straight in. */
 export function ClinicSignUpForm() {
@@ -143,6 +144,7 @@ export function ClinicSignUpForm() {
               namespace="consent.clinic"
               heading={tConsent('clinicHeading')}
               fields={CLINIC_CONSENT_KEYS.map(key => `consents.${key}` as const)}
+              links={{ terms: TERMS_ROUTE, privacy: PRIVACY_ROUTE }}
             />
 
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}
