@@ -9,7 +9,7 @@ import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
-import { HOME_FEATURES, HOME_STAT_KEYS, type HomeFeatureIcon } from '@/shared/const/home.const';
+import { HOME_FEATURES, type HomeFeatureIcon } from '@/shared/const/home.const';
 import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -56,17 +56,6 @@ export const HomePage = () => {
               <Link href="/sign-in">{t('ctaSecondary')}</Link>
             </Button>
           </div>
-
-          <dl className="animate-rise animate-rise-4 mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
-            {HOME_STAT_KEYS.map((key) => (
-              <div key={key} className="bg-background px-5 py-4">
-                <dt className="font-heading text-xl font-bold tracking-tight">
-                  {t(`stats.${key}.value`)}
-                </dt>
-                <dd className="mt-0.5 text-sm text-muted-foreground">{t(`stats.${key}.label`)}</dd>
-              </div>
-            ))}
-          </dl>
         </section>
 
         <section aria-label={t('featuresEyebrow')} className="mx-auto w-full max-w-5xl px-6 pb-24 sm:px-10">

@@ -11,7 +11,3 @@ export const HOME_FEATURES: HomeFeature[] = [
   { key: 'reminders', icon: 'bell' },
   { key: 'adherence', icon: 'activity' },
 ];
-
-export type HomeStatKey = 'languages' | 'push' | 'setup';
-
-export const HOME_STAT_KEYS: HomeStatKey[] = ['languages', 'push', 'setup'];

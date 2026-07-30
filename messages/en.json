@@ -250,20 +250,6 @@
     "ctaPrimary": "Set up your clinic",
     "ctaSecondary": "Sign in",
     "featuresEyebrow": "What's included",
-    "stats": {
-      "languages": {
-        "value": "ka + en",
-        "label": "Patient-facing in both languages from day one"
-      },
-      "push": {
-        "value": "Push + email",
-        "label": "Reminders reach the patient either way"
-      },
-      "setup": {
-        "value": "3 min",
-        "label": "Patient, procedure and plan in one sitting"
-      }
-    },
     "features": {
       "carePlan": {
         "label": "Care plan",
@@ -273,12 +259,12 @@
       "reminders": {
         "label": "Reminders",
         "title": "A notification, not a leaflet",
-        "description": "Every item on the plan becomes a dated reminder — a push notification on the phone and an email to the patient's address."
+        "description": "Every item on the plan becomes a dated reminder and reaches the patient as an email."
       },
       "adherence": {
         "label": "Adherence",
-        "title": "Proof the plan was followed",
-        "description": "Done, skipped or missed — every occurrence is recorded, so the clinic sees how the recovery actually went."
+        "title": "Support for the patient",
+        "description": "The patient receives reminders on schedule and works through the plan. If their condition gets worse, they contact the clinic."
       }
     }
   },
