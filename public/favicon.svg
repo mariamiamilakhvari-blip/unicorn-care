@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Unicorn Care">
+  <!--
+    Favicon mark, cut down from `unicorn.svg`. The full sitting unicorn is unreadable at 16-32px —
+    thin contour, four hooves and a tail collapse into grey mush — so this keeps the head, horn and
+    ear only, redrawn at icon weight rather than scaled down.
+
+    It sits on a Midnight Indigo field instead of the transparent white the full logo uses. A
+    near-white line-art mark disappears against a light tab strip and again against a dark one; a
+    filled field gives the same silhouette on both, and the indigo already matches `theme_color`
+    in manifest.webmanifest.
+
+    Brand hexes are literals, same as `unicorn.svg` — the mark must not shift with CSS tokens. The
+    ear is Moss where the full logo has it Indigo: Indigo on an Indigo field would vanish. Both
+    brand colours still carry, which is the point of the pairing.
+
+    Draw order matters: horn and ear first, head over them, so the joins are hidden and the two
+    do not read as a floating pair of spikes.
+  -->
+  <rect width="64" height="64" rx="14" fill="#092B4D" />
+
+  <g stroke="#092B4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- horn: tall and narrow, centred on the skull, base buried under the head -->
+    <path d="M31 21 L37 3 L40 22 Z" fill="#5F661F" />
+
+    <!-- ear: deliberately shorter and blunter than the horn, or the two read as a matched pair -->
+    <path d="M19 24 C15 21 14 16 16 13 C21 15 24 19 24 24 Z" fill="#5F661F" />
+
+    <!-- head: skull top-left tapering into the snout bottom-right, drawn over both bases -->
+    <path d="M20 24 C26 18 36 18 42 24 C47 29 50 34 53 40 C56 45 54 52 47 53
+             C40 55 30 54 23 49 C15 44 13 34 20 24 Z"
+          fill="#FDFDFB" />
+
+    <!-- muzzle: an inset of the head shape at the snout end, never crossing the outline.
+         Unstroked on purpose — an Indigo ring around it out-weighs the eye at 32px and the
+         mark starts reading as a one-eyed blob. -->
+    <path d="M42 42 C47 41 49 44 48 47 C47 50 43 50 41 48 C39 46 39 43 42 42 Z"
+          fill="#DCE6EC" stroke="none" />
+
+    <!-- closed, content eye — the heaviest stroke in the mark, so it is the detail that survives -->
+    <path d="M24 32 C26 29 30 29 32 32" fill="none" stroke-width="3.4" />
+  </g>
+</svg>

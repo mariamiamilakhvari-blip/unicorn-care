@@ -43,7 +43,10 @@ export function StructuredData({ locale }: { locale: AppLocale }) {
       '@type': 'Organization',
       name: APP_NAME,
       url: SITE_URL,
-      logo: `${SITE_URL}/unicorn.svg`,
+      // Google's logo rich result wants a crawlable raster it can crop to a square. An SVG is
+      // accepted by the parser but is not what the guidance asks for, so this points at the same
+      // 512² PNG the manifest and the favicon are cut from.
+      logo: `${SITE_URL}/icons/icon-512.png`,
     },
     {
       '@type': 'FAQPage',
