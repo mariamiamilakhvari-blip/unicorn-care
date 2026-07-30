@@ -22,6 +22,16 @@ const ClinicSchema = new Schema(
     locale: { type: String, enum: ['ka', 'en'], default: 'ka', required: true },
     // All reminder wall-clock times are resolved in this IANA zone; instants are stored in UTC.
     timezone: { type: String, required: true, default: 'Asia/Tbilisi' },
+    /*
+      Evidence, not a flag. GDPR Art. 7(1) asks the controller to demonstrate that consent was
+      given, which a bare boolean cannot do: it says nothing about when, or to which wording.
+      Written server-side at creation from `clock.now()` — a timestamp the browser supplies is
+      not evidence of anything. Optional so clinics created before this shipped still load.
+    */
+    consent: {
+      version: { type: String, required: false, default: '' },
+      acceptedAt: { type: Date, required: false, default: null },
+    },
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     isActive: { type: Boolean, default: true, required: true },
 

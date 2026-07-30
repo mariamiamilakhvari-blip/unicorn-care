@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DEFAULT_TIMEZONE, isValidTimeZone } from '@/shared/const/timezone.const';
+import { requiredConsent } from '@/shared/utils/consent';
 
 /**
  * Alphanumerics separated by single spaces or hyphens, and nothing else.
@@ -55,6 +56,34 @@ export type ClinicProfileType = z.infer<typeof ClinicProfileSchema>;
 /** Pre-validation shape: the `.default()` calls make fields optional going in, required coming out. */
 export type ClinicProfileFormType = z.input<typeof ClinicProfileSchema>;
 
+/**
+ * The consents a clinic gives when it registers.
+ *
+ * Deliberately *not* part of `ClinicProfileSchema`. `UpdateClinicSchema` is that schema made
+ * partial, so folding consents in would let the settings form re-submit them — or worse, let a
+ * PATCH silently overwrite a recorded acceptance. Consent is captured once, at registration.
+ *
+ * The keys are the source of truth for both the schema and the rendered list: `CLINIC_CONSENT_KEYS`
+ * is derived from this shape below, so a consent cannot exist in one and not the other.
+ */
+export const ClinicConsentSchema = z.object({
+  terms: requiredConsent(),
+  privacy: requiredConsent(),
+  patientConsents: requiredConsent(),
+  accuracy: requiredConsent(),
+  credentials: requiredConsent(),
+  processingPurpose: requiredConsent(),
+  remindersNotMedicalAdvice: requiredConsent(),
+  regulatoryCompliance: requiredConsent(),
+});
+
+export type ClinicConsentType = z.infer<typeof ClinicConsentSchema>;
+
+/** Render order for the checklist. Derived from the schema so the two can never drift apart. */
+export const CLINIC_CONSENT_KEYS = Object.keys(
+  ClinicConsentSchema.shape
+) as (keyof ClinicConsentType)[];
+
 export const ClinicOwnerSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
@@ -67,7 +96,19 @@ export type ClinicOwnerType = z.infer<typeof ClinicOwnerSchema>;
 export const RegisterClinicSchema = z.object({
   owner: ClinicOwnerSchema,
   clinic: ClinicProfileSchema,
+  consents: ClinicConsentSchema,
 });
+
+/**
+ * `POST /api/clinic` — the repair path, attaching a clinic to an account that already exists.
+ * It creates a clinic just as registration does, so it collects the same consents; the profile
+ * schema alone would let that route in without them.
+ */
+export const CreateClinicForUserSchema = ClinicProfileSchema.extend({
+  consents: ClinicConsentSchema,
+});
+
+export type CreateClinicForUserType = z.infer<typeof CreateClinicForUserSchema>;
 
 export type RegisterClinicType = z.infer<typeof RegisterClinicSchema>;
 

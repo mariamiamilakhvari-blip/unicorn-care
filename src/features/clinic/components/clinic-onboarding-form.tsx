@@ -11,6 +11,8 @@ import {
   ClinicOnlySchema,
   ClinicOnlyType,
 } from '@/features/clinic/validations/clinic-signup.validation';
+import { CLINIC_CONSENT_KEYS } from '@/features/clinic/validations/clinic.validation';
+import { ConsentChecklist } from '@/shared/components/consent-checklist';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -25,6 +27,7 @@ import { Form } from '@/shared/components/ui/form';
 export function ClinicOnboardingForm() {
   const t = useTranslations('clinic');
   const tCommon = useTranslations('common');
+  const tConsent = useTranslations('consent');
   const { isPending, error, attachClinic } = useRegisterClinic();
 
   const form = useForm<ClinicOnlyFormType, undefined, ClinicOnlyType>({
@@ -36,6 +39,16 @@ export function ClinicOnboardingForm() {
       addressLine: '',
       phone: '',
       taxId: '',
+      consents: {
+        terms: false,
+        privacy: false,
+        patientConsents: false,
+        accuracy: false,
+        credentials: false,
+        processingPurpose: false,
+        remindersNotMedicalAdvice: false,
+        regulatoryCompliance: false,
+      },
       locale: 'ka',
       timezone: 'Asia/Tbilisi',
     },
@@ -61,6 +74,18 @@ export function ClinicOnboardingForm() {
               taxIdField="taxId"
               timezoneField="timezone"
               localeField="locale"
+            />
+
+
+            {/*
+              Consent sits directly above the submit button on purpose: it is the last thing read
+              before the clinic commits, and burying it mid-form invites scrolling past it.
+            */}
+            <ConsentChecklist
+              control={form.control}
+              namespace="consent.clinic"
+              heading={tConsent('clinicHeading')}
+              fields={CLINIC_CONSENT_KEYS.map(key => `consents.${key}` as const)}
             />
 
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}

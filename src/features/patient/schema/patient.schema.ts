@@ -19,6 +19,16 @@ const PatientSchema = new Schema(
     locale: { type: String, enum: ['ka', 'en'], default: 'ka', required: true },
     allergies: { type: [String], default: [] },
     notes: { type: String, required: false, default: '' },
+    /*
+      The clinic's attestation that it holds this patient's consent, with the wording version and
+      the moment it was given. Storing the booleans would say nothing — all six are mandatory, so
+      the request could not have succeeded otherwise. What has to survive is the timestamp and the
+      version. Optional so patients created before this shipped still load.
+    */
+    consent: {
+      version: { type: String, required: false, default: '' },
+      confirmedAt: { type: Date, required: false, default: null },
+    },
     isArchived: { type: Boolean, default: false, required: true },
   },
   { timestamps: true }

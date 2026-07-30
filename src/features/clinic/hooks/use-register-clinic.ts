@@ -43,6 +43,7 @@ export function useRegisterClinic(): RegisterClinicState {
             locale: values.locale,
             timezone: values.timezone,
           },
+          consents: values.consents,
         });
 
         const result = await signIn('credentials', {

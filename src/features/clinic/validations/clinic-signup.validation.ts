@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  ClinicConsentSchema,
   ClinicOwnerSchema,
   ClinicProfileSchema,
 } from '@/features/clinic/validations/clinic.validation';
@@ -19,12 +20,15 @@ export const ClinicSignUpSchema = ClinicOwnerSchema.extend({
   taxId: ClinicProfileSchema.shape.taxId,
   locale: ClinicProfileSchema.shape.locale,
   timezone: ClinicProfileSchema.shape.timezone,
+  // Nested rather than flattened like the other clinic fields: these keys are shared verbatim
+  // with the onboarding form and the API body, and flattening would fork them into three lists.
+  consents: ClinicConsentSchema,
 });
 
 export type ClinicSignUpType = z.infer<typeof ClinicSignUpSchema>;
 export type ClinicSignUpFormType = z.input<typeof ClinicSignUpSchema>;
 
 /** The repair path: the account exists already, so only the clinic half is collected. */
-export const ClinicOnlySchema = ClinicProfileSchema;
+export const ClinicOnlySchema = ClinicProfileSchema.extend({ consents: ClinicConsentSchema });
 export type ClinicOnlyType = z.infer<typeof ClinicOnlySchema>;
 export type ClinicOnlyFormType = z.input<typeof ClinicOnlySchema>;

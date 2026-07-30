@@ -7,7 +7,7 @@ import {
 } from '@/features/clinic/service/clinic.service';
 import { deleteClinicService } from '@/features/clinic/service/delete-clinic.service';
 import {
-  ClinicProfileSchema,
+  CreateClinicForUserSchema,
   DeleteClinicSchema,
   UpdateClinicSchema,
 } from '@/features/clinic/validations/clinic.validation';
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const user = session?.user as SessionUser | undefined;
     if (!user?.id) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 
-    const validated = await validateBody(req, ClinicProfileSchema);
+    const validated = await validateBody(req, CreateClinicForUserSchema);
     if (validated instanceof NextResponse) return validated;
 
     const { data, status } = await createClinicForUserService(user.id, validated.data);

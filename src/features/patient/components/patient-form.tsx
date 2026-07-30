@@ -3,11 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 
+import { PatientIdentityFields } from '@/features/patient/components/patient-identity-fields';
 import {
   CreatePatientFormType,
   CreatePatientSchema,
   CreatePatientType,
+  PATIENT_CONSENT_KEYS,
 } from '@/features/patient/validations/patient.validation';
+import { ConsentChecklist } from '@/shared/components/consent-checklist';
 import { Button } from '@/shared/components/ui/button';
 import {
   Form,
@@ -17,14 +20,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/shared/components/ui/form';
-import { Input } from '@/shared/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
 import { Textarea } from '@/shared/components/ui/textarea';
 
 type PatientFormProps = {
@@ -32,11 +27,9 @@ type PatientFormProps = {
   isPending: boolean;
 };
 
-const SEX_KEYS = ['female', 'male', 'other'] as const;
-
 export function PatientForm({ onSubmit, isPending }: PatientFormProps) {
   const t = useTranslations('patient');
-  const tCommon = useTranslations('common');
+  const tConsent = useTranslations('consent');
 
   const form = useForm<CreatePatientFormType, undefined, CreatePatientType>({
     resolver: zodResolver(CreatePatientSchema),
@@ -50,6 +43,14 @@ export function PatientForm({ onSubmit, isPending }: PatientFormProps) {
       locale: 'ka',
       allergies: [],
       notes: '',
+      consents: {
+        personalData: false,
+        healthData: false,
+        reminders: false,
+        informed: false,
+        accurate: false,
+        corrections: false,
+      },
     },
   });
 
@@ -61,123 +62,7 @@ export function PatientForm({ onSubmit, isPending }: PatientFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('firstName')}</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('lastName')}</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('phone')}</FormLabel>
-                <FormControl>
-                  <Input type="tel" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('email')}</FormLabel>
-                <FormControl>
-                  <Input type="email" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="dateOfBirth"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('dateOfBirth')}</FormLabel>
-                <FormControl>
-                  <Input
-                    type="date"
-                    value={typeof field.value === 'string' ? field.value : ''}
-                    onChange={event => field.onChange(event.target.value || null)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="sex"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('sex')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="unspecified">{tCommon('none')}</SelectItem>
-                    {SEX_KEYS.map(key => (
-                      <SelectItem key={key} value={key}>
-                        {t(`sex${key.charAt(0).toUpperCase()}${key.slice(1)}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="locale"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{tCommon('language')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="ka">ქართული</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <PatientIdentityFields control={form.control} />
 
         <FormField
           control={form.control}
@@ -191,6 +76,17 @@ export function PatientForm({ onSubmit, isPending }: PatientFormProps) {
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        {/*
+          Immediately above the submit button, because this is the point where the clinic takes
+          responsibility for a real person's health data — not something to scroll past.
+        */}
+        <ConsentChecklist
+          control={form.control}
+          namespace="consent.patient"
+          heading={tConsent('patientHeading')}
+          fields={PATIENT_CONSENT_KEYS.map(key => `consents.${key}` as const)}
         />
 
         <Button type="submit" disabled={isPending} className="self-start">

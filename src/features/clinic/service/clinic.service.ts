@@ -11,11 +11,12 @@ import {
   RegisterClinicResult,
 } from '@/features/clinic/types/clinic.types';
 import {
-  ClinicProfileType,
+  CreateClinicForUserType,
   CreateStaffType,
   RegisterClinicType,
   UpdateClinicType,
 } from '@/features/clinic/validations/clinic.validation';
+import { CONSENT_VERSION } from '@/shared/const/consent.const';
 import { TRIAL_DAYS } from '@/shared/const/plan.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
@@ -51,6 +52,18 @@ function toClinicProfile(clinic: ClinicDocument): ClinicProfile {
   };
 }
 
+
+/**
+ * The consent record written beside a new clinic.
+ *
+ * The booleans themselves are not stored. Every one of them is mandatory, so a row of `true`
+ * carries no information — what has to be provable later is *when* the clinic accepted and
+ * *which wording* it accepted, and the schema rejected the request outright if any box was
+ * unticked. The clock is read here rather than trusted from the body.
+ */
+function recordConsent() {
+  return { consent: { version: CONSENT_VERSION, acceptedAt: clock.now() } };
+}
 
 /**
  * Every clinic begins on the free trial. Set at creation rather than lazily on first read, so the
@@ -93,6 +106,7 @@ export async function registerClinicService(
       ownerId: new Types.ObjectId(userId),
       isActive: true,
       ...startTrial(),
+      ...recordConsent(),
     });
 
     const linked = await userRepository.updateById(userId, {
@@ -119,20 +133,31 @@ export async function registerClinicService(
  */
 export async function createClinicForUserService(
   userId: string,
-  input: ClinicProfileType
+  input: CreateClinicForUserType
 ): Promise<ServiceResult<ClinicProfile>> {
   const user = await userRepository.findById(userId);
   if (!user) return { data: { error: 'NOT_FOUND' }, status: 404 };
   // Never let an existing membership be silently replaced — that would strand the old clinic.
   if (user.clinicId) return { data: { error: 'ALREADY_IN_CLINIC' }, status: 409 };
 
+  /*
+    Defence in depth. The route schema already rejects a missing or false consent, but this
+    service is callable from anywhere in the codebase, and the consent record written below is
+    only honest if every box really was ticked. Cheap to check, and it fails loudly if some
+    future caller skips validation.
+  */
+  const { consents, ...profile } = input;
+  if (Object.values(consents).some(given => given !== true)) {
+    return { data: { error: 'CONSENT_REQUIRED' }, status: 400 };
+  }
   const clinicId = await clinicRepository.create({
-    ...input,
+    ...profile,
     slug: toSlug(input.name),
     logoUrl: '',
     ownerId: new Types.ObjectId(userId),
     isActive: true,
     ...startTrial(),
+    ...recordConsent(),
   });
 
   const linked = await userRepository.updateById(userId, {

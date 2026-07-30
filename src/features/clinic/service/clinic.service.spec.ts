@@ -46,6 +46,16 @@ const registerInput = {
     locale: 'ka' as const,
     timezone: 'Asia/Tbilisi',
   },
+  consents: {
+    terms: true,
+    privacy: true,
+    patientConsents: true,
+    accuracy: true,
+    credentials: true,
+    processingPurpose: true,
+    remindersNotMedicalAdvice: true,
+    regulatoryCompliance: true,
+  },
 };
 
 const fakeClinic = {

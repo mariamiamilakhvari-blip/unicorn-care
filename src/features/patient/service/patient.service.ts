@@ -8,6 +8,8 @@ import {
   CreatePatientType,
   UpdatePatientType,
 } from '@/features/patient/validations/patient.validation';
+import { CONSENT_VERSION } from '@/shared/const/consent.const';
+import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 
 export const PATIENT_PAGE_SIZE = 20;
@@ -42,9 +44,20 @@ export async function createPatientService(
   const seat = await checkPatientSeat(clinicId);
   if (!seat.ok) return { data: { error: seat.reason }, status: 402 };
 
+  /*
+    Defence in depth. The route schema already rejects a missing or false consent, but this
+    service is callable from anywhere in the codebase, and the consent record written below is
+    only honest if every box really was ticked. Cheap to check, and it fails loudly if some
+    future caller skips validation.
+  */
+  const { consents, ...patient } = input;
+  if (Object.values(consents).some(given => given !== true)) {
+    return { data: { error: 'CONSENT_REQUIRED' }, status: 400 };
+  }
   const patientId = await patientRepository.create({
-    ...input,
+    ...patient,
     clinicId: new Types.ObjectId(clinicId),
+    consent: { version: CONSENT_VERSION, confirmedAt: clock.now() },
     isArchived: false,
   });
 
