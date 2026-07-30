@@ -3,6 +3,19 @@ import { z } from 'zod';
 import { DEFAULT_TIMEZONE, isValidTimeZone } from '@/shared/const/timezone.const';
 
 /**
+ * Alphanumerics separated by single spaces or hyphens, and nothing else.
+ *
+ * Deliberately not a per-country rule. The same field has to hold a German VAT number
+ * (DE123456789), a US EIN (12-3456789), a UK company number (SC123456), and a Georgian tax ID
+ * (204567891) — anchoring it to one shape makes the product unusable everywhere else, and a
+ * clinic that cannot enter its own real number cannot be invoiced.
+ *
+ * What it does reject is punctuation that only ever arrives by accident: a stray comma, a pasted
+ * newline, a trailing separator. Those are typos, not formats.
+ */
+const TAX_ID_PATTERN = /^[A-Za-z0-9]+(?:[ -][A-Za-z0-9]+)*$/;
+
+/**
  * Clinic profile fields (PRD 01 §2). `slug`, `ownerId`, `logoUrl` and `isActive` are derived
  * server-side and are deliberately absent from every request body.
  */
@@ -12,6 +25,17 @@ export const ClinicProfileSchema = z.object({
   city: z.string().max(80).default(''),
   addressLine: z.string().max(200).default(''),
   phone: z.string().max(40).default(''),
+  /*
+    Optional, because it is needed to raise an invoice and not to open an account — a required
+    field here loses sign-ups from clinics whose registration number is with their accountant.
+    Trimmed before the pattern runs so a copy-pasted value with surrounding whitespace passes.
+  */
+  taxId: z
+    .string()
+    .trim()
+    .max(40)
+    .refine(value => value === '' || TAX_ID_PATTERN.test(value), { message: 'INVALID_TAX_ID' })
+    .default(''),
   locale: z.enum(['ka', 'en']).default('ka'),
   /*
     Rejected at the boundary rather than trusted. An invalid zone makes `Intl.DateTimeFormat`

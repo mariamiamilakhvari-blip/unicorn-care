@@ -35,6 +35,7 @@ export function ClinicOnboardingForm() {
       city: '',
       addressLine: '',
       phone: '',
+      taxId: '',
       locale: 'ka',
       timezone: 'Asia/Tbilisi',
     },
@@ -57,6 +58,7 @@ export function ClinicOnboardingForm() {
               cityField="city"
               countryField="country"
               addressField="addressLine"
+              taxIdField="taxId"
               timezoneField="timezone"
               localeField="locale"
             />

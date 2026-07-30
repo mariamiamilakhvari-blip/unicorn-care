@@ -9,6 +9,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -32,9 +33,30 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
   cityField: Path<T>;
   countryField: Path<T>;
   addressField: Path<T>;
+  taxIdField: Path<T>;
   timezoneField: Path<T>;
   localeField: Path<T>;
 };
+
+/**
+ * The tax ID rule raises the bare code `INVALID_TAX_ID`, which is fine on the wire and useless to
+ * a clinic owner reading a form. `FormMessage` always prefers `error.message` over its children,
+ * so translating it means rendering the paragraph here — reusing `formMessageId` so the input's
+ * `aria-describedby` still resolves. Anything that is not the code (a length error, say) falls
+ * through unchanged.
+ */
+function TaxIdMessage() {
+  const t = useTranslations('clinic');
+  const { error, formMessageId } = useFormField();
+
+  if (!error) return null;
+
+  return (
+    <p id={formMessageId} className="text-sm font-medium text-destructive">
+      {error.message === 'INVALID_TAX_ID' ? t('taxIdInvalid') : String(error.message ?? '')}
+    </p>
+  );
+}
 
 export function ClinicProfileFields<T extends FieldValues>({
   control,
@@ -43,6 +65,7 @@ export function ClinicProfileFields<T extends FieldValues>({
   cityField,
   countryField,
   addressField,
+  taxIdField,
   timezoneField,
   localeField,
 }: ClinicProfileFieldsProps<T>) {
@@ -112,6 +135,23 @@ export function ClinicProfileFields<T extends FieldValues>({
               <Input type="tel" {...field} />
             </FormControl>
             <FormMessage />
+          </FormItem>
+        )}
+      />
+      {/*
+        Spans both columns: the label is long in either language, and the value it holds is what
+        an invoice is raised against, so it should not read as an afterthought beside the phone.
+      */}
+      <FormField
+        control={control}
+        name={taxIdField}
+        render={({ field }) => (
+          <FormItem className="sm:col-span-2">
+            <FormLabel>{t('taxId')}</FormLabel>
+            <FormControl>
+              <Input placeholder={t('taxIdPlaceholder')} autoComplete="off" {...field} />
+            </FormControl>
+            <TaxIdMessage />
           </FormItem>
         )}
       />

@@ -48,6 +48,7 @@ export function ClinicSignUpForm() {
       city: '',
       addressLine: '',
       clinicPhone: '',
+      taxId: '',
       locale: 'ka',
       timezone: 'Asia/Tbilisi',
     },
@@ -114,6 +115,7 @@ export function ClinicSignUpForm() {
               cityField="city"
               countryField="country"
               addressField="addressLine"
+              taxIdField="taxId"
               timezoneField="timezone"
               localeField="locale"
             />

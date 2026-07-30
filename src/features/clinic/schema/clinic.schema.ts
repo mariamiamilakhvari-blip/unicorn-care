@@ -11,6 +11,13 @@ const ClinicSchema = new Schema(
     city: { type: String, required: false, default: '' },
     addressLine: { type: String, required: false, default: '' },
     phone: { type: String, required: false, default: '' },
+    /*
+      Tax ID / VAT / business registration number, held as free text on purpose. Every country
+      formats this differently — DE123456789, 12-3456789, 204567891 — and a clinic that cannot
+      enter its own real number is a clinic that cannot be invoiced. Optional: it is needed at
+      billing time, not at sign-up, and blocking onboarding on it loses accounts.
+    */
+    taxId: { type: String, required: false, default: '' },
     logoUrl: { type: String, required: false, default: '' },
     locale: { type: String, enum: ['ka', 'en'], default: 'ka', required: true },
     // All reminder wall-clock times are resolved in this IANA zone; instants are stored in UTC.

@@ -16,6 +16,7 @@ export const ClinicSignUpSchema = ClinicOwnerSchema.extend({
   city: ClinicProfileSchema.shape.city,
   addressLine: ClinicProfileSchema.shape.addressLine,
   clinicPhone: ClinicProfileSchema.shape.phone,
+  taxId: ClinicProfileSchema.shape.taxId,
   locale: ClinicProfileSchema.shape.locale,
   timezone: ClinicProfileSchema.shape.timezone,
 });

@@ -39,6 +39,7 @@ export function useRegisterClinic(): RegisterClinicState {
             city: values.city,
             addressLine: values.addressLine,
             phone: values.clinicPhone,
+            taxId: values.taxId,
             locale: values.locale,
             timezone: values.timezone,
           },

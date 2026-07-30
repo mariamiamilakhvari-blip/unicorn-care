@@ -11,6 +11,8 @@ export type ClinicProfile = {
   city: string;
   addressLine: string;
   phone: string;
+  /** Tax ID / VAT / business registration number. Empty string when the clinic has not supplied one. */
+  taxId: string;
   logoUrl: string;
   locale: AppLocale;
   timezone: string;
