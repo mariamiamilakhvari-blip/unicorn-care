@@ -77,7 +77,25 @@ export function ClinicSignUpForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(registerClinic)} className="flex flex-col gap-5">
+            {/*
+              Clinic name leads. It is the thing being registered, and asking for an email before
+              naming the clinic reads as an account form that happens to mention clinics. Email and
+              password then share a row rather than leaving half of one empty.
+            */}
             <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="clinicName"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>{t('name')}</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -95,7 +113,7 @@ export function ClinicSignUpForm() {
                 control={form.control}
                 name="password"
                 render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
+                  <FormItem>
                     <FormLabel>{tAuth('password')}</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
@@ -110,7 +128,6 @@ export function ClinicSignUpForm() {
 
             <ClinicProfileFields
               control={form.control}
-              nameField="clinicName"
               phoneField="clinicPhone"
               cityField="city"
               countryField="country"

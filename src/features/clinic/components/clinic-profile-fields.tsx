@@ -28,7 +28,12 @@ import { COMMON_TIMEZONES } from '@/shared/const/timezone.const';
  */
 type ClinicProfileFieldsProps<T extends FieldValues> = {
   control: Control<T>;
-  nameField: Path<T>;
+  /*
+    Optional. Registration puts the clinic name at the very top, above the account credentials,
+    because that is the question the form is really asking — so it renders that field itself and
+    leaves this unset. Onboarding and settings still pass it and get it in place.
+  */
+  nameField?: Path<T>;
   phoneField: Path<T>;
   cityField: Path<T>;
   countryField: Path<T>;
@@ -73,19 +78,21 @@ export function ClinicProfileFields<T extends FieldValues>({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <FormField
-        control={control}
-        name={nameField}
-        render={({ field }) => (
-          <FormItem className="sm:col-span-2">
-            <FormLabel>{t('name')}</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {nameField && (
+        <FormField
+          control={control}
+          name={nameField}
+          render={({ field }) => (
+            <FormItem className="sm:col-span-2">
+              <FormLabel>{t('name')}</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
       <FormField
         control={control}
         name={cityField}
