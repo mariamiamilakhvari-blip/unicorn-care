@@ -6,6 +6,7 @@ import { SubscriptionStatus } from '@/shared/const/subscription.const';
 import { clock } from '@/shared/lib/clock';
 import { dodoClient } from '@/shared/lib/dodo-client';
 import { ServiceResult } from '@/shared/types/common';
+import { toCountryCode } from '@/shared/utils/country';
 
 export type CheckoutStart = { checkoutUrl: string };
 
@@ -31,12 +32,25 @@ export async function startCheckoutService(
   const owner = await userRepository.findById(userId);
   if (!owner) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
+  /*
+    B2B invoice details, carried over so the clinic does not retype what it already gave us at
+    registration. `tax_id` is rejected without a country, and the stored country is free text, so
+    an unresolvable one means a plain invoice — never a checkout that fails outright.
+  */
+  const countryCode = toCountryCode(clinic.country ?? '');
+  const taxId = (clinic.taxId ?? '').trim();
+
   const result = await dodoClient.createCheckoutSession({
     lines: [{ productId, quantity: 1 }],
-    returnUrl: `${appUrl}/dashboard/clinic?billing=success`,
+    // Straight to the dashboard: paying is the last step of onboarding, and the clinic should
+    // land on the product rather than back in the settings page it started checkout from.
+    returnUrl: `${appUrl}/dashboard?billing=success`,
     cancelUrl: `${appUrl}/dashboard/clinic?billing=cancelled`,
     customerEmail: owner.email,
     customerName: clinic.name,
+    taxId: taxId || undefined,
+    businessName: clinic.name,
+    countryCode: countryCode ?? undefined,
     metadata: { clinicId, plan, period },
   });
 

@@ -15,6 +15,15 @@ export type CheckoutInput = {
   cancelUrl: string;
   customerEmail: string;
   customerName: string;
+  /*
+    B2B invoice details. All three travel together or not at all: Dodo rejects a `tax_id` that
+    arrives without a `billing_address.country`, so a clinic whose free-text country could not be
+    resolved to an alpha-2 code gets a plain invoice rather than a failed checkout.
+  */
+  taxId?: string;
+  businessName?: string;
+  /** ISO 3166-1 alpha-2. */
+  countryCode?: string;
   /** Echoed back on every webhook, and the only way we know which clinic paid. */
   metadata: Record<string, string>;
 };
@@ -100,6 +109,12 @@ class DodoClient {
             quantity: line.quantity,
           })),
           customer: { email: input.customerEmail, name: input.customerName },
+          // `tax_id`, `customer_business_name` and `billing_address` are top-level in this API,
+          // not nested under `customer`. Spread conditionally so the keys are absent rather than
+          // undefined when there is nothing to send.
+          ...(input.taxId && input.countryCode ? { tax_id: input.taxId } : {}),
+          ...(input.businessName ? { customer_business_name: input.businessName } : {}),
+          ...(input.countryCode ? { billing_address: { country: input.countryCode } } : {}),
           return_url: input.returnUrl,
           cancel_url: input.cancelUrl,
           metadata: input.metadata,

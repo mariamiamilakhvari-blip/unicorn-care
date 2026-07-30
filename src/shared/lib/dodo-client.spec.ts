@@ -72,6 +72,70 @@ describe('createCheckoutSession', () => {
     expect(body.metadata.clinicId).toBe('507f1f77bcf86cd799439011');
   });
 
+  /*
+    The B2B invoice fields are top-level in this API, not nested under `customer`. Pinned because
+    getting the nesting wrong fails silently: Dodo accepts the request and issues an invoice with
+    no VAT number on it, which nobody notices until a clinic's accountant asks for one.
+  */
+  it('sends the tax id, business name and billing country at the top level', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ session_id: 'cks_1', checkout_url: 'https://x' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new DodoClient().createCheckoutSession({
+      ...INPUT,
+      taxId: '204567891',
+      businessName: 'Gold Esthetic',
+      countryCode: 'GE',
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.tax_id).toBe('204567891');
+    expect(body.customer_business_name).toBe('Gold Esthetic');
+    expect(body.billing_address).toEqual({ country: 'GE' });
+    expect(body.customer.tax_id).toBeUndefined();
+  });
+
+  /*
+    Dodo rejects a `tax_id` with no `billing_address.country`. A clinic whose free-text country
+    could not be resolved must still be able to pay, so the tax id is dropped rather than sent
+    alone — a plain invoice beats a checkout that 422s.
+  */
+  it('omits the tax id when the country could not be resolved', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ session_id: 'cks_1', checkout_url: 'https://x' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new DodoClient().createCheckoutSession({
+      ...INPUT,
+      taxId: '204567891',
+      businessName: 'Gold Esthetic',
+      countryCode: undefined,
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect('tax_id' in body).toBe(false);
+    expect('billing_address' in body).toBe(false);
+    // The business name is independent of tax registration, so it still travels.
+    expect(body.customer_business_name).toBe('Gold Esthetic');
+  });
+
+  it('omits every billing key when the clinic supplied none', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ session_id: 'cks_1', checkout_url: 'https://x' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new DodoClient().createCheckoutSession(INPUT);
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect('tax_id' in body).toBe(false);
+    expect('customer_business_name' in body).toBe(false);
+    expect('billing_address' in body).toBe(false);
+  });
+
   /** A missing or misspelled environment must never be treated as live. */
   it('defaults to test mode and only uses live when explicitly set', async () => {
     const fetchMock = vi
