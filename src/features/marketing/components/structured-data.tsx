@@ -1,5 +1,6 @@
 import { APP_NAME } from '@/shared/const/app.const';
 import { faqFor } from '@/shared/const/faq.const';
+import { findPlan, monthlyRateMinor } from '@/shared/const/plan.const';
 import { pageCopy, SITE_URL } from '@/shared/const/seo.const';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -19,6 +20,13 @@ export function StructuredData({ locale }: { locale: AppLocale }) {
 
   const faq = faqFor(locale);
 
+  /*
+    Read from the plan constants rather than typed in: this figure was hardcoded to "99" and had
+    already drifted away from the pricing page it claims to match. A price in a rich result that
+    undercuts the real one is a bait-and-switch as far as a search engine is concerned.
+  */
+  const standardAnnualMonthlyRate = (monthlyRateMinor(findPlan('standard'), 'yearly') / 100).toFixed(2);
+
   const graph = [
     {
       '@type': 'SoftwareApplication',
@@ -29,7 +37,7 @@ export function StructuredData({ locale }: { locale: AppLocale }) {
       url: SITE_URL,
       offers: {
         '@type': 'Offer',
-        price: '99',
+        price: standardAnnualMonthlyRate,
         priceCurrency: 'USD',
         // Matches the Standard plan's monthly-equivalent annual rate on the pricing page.
         description: isEnglish ? 'Standard plan, billed annually' : 'Standard პაკეტი, წლიური გადახდა',

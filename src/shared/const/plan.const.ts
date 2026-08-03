@@ -60,9 +60,9 @@ export const PLANS: Plan[] = [
   },
   {
     key: 'standard',
-    monthlyPriceMinor: 9_900,
-    annualPriceMinor: 94_800,
-    annualSavingMinor: 24_000,
+    monthlyPriceMinor: 2_900,
+    annualPriceMinor: 23_900,
+    annualSavingMinor: 10_900,
     currency: 'USD',
     patientLimit: STANDARD_PATIENT_LIMIT,
     trialDays: null,
@@ -70,9 +70,9 @@ export const PLANS: Plan[] = [
   },
   {
     key: 'premium',
-    monthlyPriceMinor: 19_900,
-    annualPriceMinor: 190_800,
-    annualSavingMinor: 48_000,
+    monthlyPriceMinor: 5_900,
+    annualPriceMinor: 48_900,
+    annualSavingMinor: 21_900,
     currency: 'USD',
     patientLimit: null,
     trialDays: null,
@@ -91,17 +91,24 @@ export function findPlan(key: PlanKey): Plan {
   return plan ?? PLANS[0];
 }
 
-/** Minor units → "$99". Whole dollars only; every listed price is a round number. */
+/**
+ * Minor units → "$29" or "$19.92".
+ *
+ * Cents are shown only when there are any. Every listed price is a round number, but the annual
+ * plans divided by twelve are not — $239/year is $19.92/month — and rounding that to "$20" quotes
+ * a rate the clinic is never charged.
+ */
 export function formatPrice(minor: number): string {
-  return `$${Math.round(minor / 100)}`;
+  const major = minor / 100;
+  return Number.isInteger(major) ? `$${major}` : `$${major.toFixed(2)}`;
 }
 
 /**
  * The headline monthly figure for a billing period.
  *
- * Annual is quoted as its monthly equivalent — $948/year reads as $79/month — because that is the
- * number a clinic compares against the monthly plan. Quoting the same $99 for both made the toggle
- * look broken and hid the saving entirely.
+ * Annual is quoted as its monthly equivalent — $239/year reads as $19.92/month — because that is
+ * the number a clinic compares against the monthly plan. Quoting the same $29 for both made the
+ * toggle look broken and hid the saving entirely.
  */
 export function monthlyRateMinor(plan: Plan, period: 'monthly' | 'yearly'): number {
   return period === 'monthly' ? plan.monthlyPriceMinor : Math.round(plan.annualPriceMinor / 12);
@@ -110,4 +117,17 @@ export function monthlyRateMinor(plan: Plan, period: 'monthly' | 'yearly'): numb
 /** What a year costs when paying month to month — the figure the annual saving is measured against. */
 export function yearlyAtMonthlyRateMinor(plan: Plan): number {
   return plan.monthlyPriceMinor * 12;
+}
+
+/**
+ * The annual discount as a whole percentage, for the "Save 31%" badge.
+ *
+ * Derived rather than stored: a hardcoded badge silently goes stale the next time a price moves,
+ * and a discount that overstates itself is the kind of claim a regulator reads as advertising.
+ * Returns 0 for the trial, which has no monthly rate to discount against.
+ */
+export function annualSavingPercent(plan: Plan): number {
+  const yearAtMonthlyRate = yearlyAtMonthlyRateMinor(plan);
+  if (yearAtMonthlyRate === 0) return 0;
+  return Math.round(((yearAtMonthlyRate - plan.annualPriceMinor) / yearAtMonthlyRate) * 100);
 }

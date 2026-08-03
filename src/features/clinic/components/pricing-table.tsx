@@ -10,6 +10,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { BILLING_PERIODS, BillingPeriod } from '@/shared/const/billing.const';
 import {
+  annualSavingPercent,
   formatPrice,
   monthlyRateMinor,
   PLANS,
@@ -75,19 +76,25 @@ export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableP
                 {plan.key === 'trial' ? (
                   <p className="text-2xl font-semibold">{t('free')}</p>
                 ) : (
-                  <div>
-                    <p className="text-2xl font-semibold">
-                      {formatPrice(monthlyRateMinor(plan, period))}
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {' '}
-                        {t('perMonth')}
-                      </span>
-                    </p>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-2xl font-semibold">
+                        {formatPrice(monthlyRateMinor(plan, period))}
+                        <span className="text-sm font-normal text-muted-foreground">
+                          {t('perMonth')}
+                        </span>
+                      </p>
+                      {/* The discount only exists on the annual rate, so the badge follows it. */}
+                      {period === 'yearly' && (
+                        <Badge variant="secondary">
+                          {t('saveBadge', { percent: annualSavingPercent(plan) })}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {period === 'yearly'
                         ? t('billedAnnually', {
                           annual: formatPrice(plan.annualPriceMinor),
-                          saving: formatPrice(plan.annualSavingMinor),
                         })
                         : t('billedMonthly', {
                           yearly: formatPrice(yearlyAtMonthlyRateMinor(plan)),
