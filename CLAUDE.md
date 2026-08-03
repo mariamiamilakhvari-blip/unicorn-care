@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # start dev server (localhost:3000)
+npm run dev          # start dev server (localhost:3001, matches NEXTAUTH_URL)
 npm run build        # production build
 npm run lint         # ESLint check
 npm run lint:fix     # ESLint auto-fix

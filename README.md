@@ -50,7 +50,7 @@ a **development** pair — regenerate before deploying.
 ## Commands
 
 ```bash
-npm run dev        # dev server on :3000 (webpack, see below)
+npm run dev        # dev server on :3001 (webpack, see below)
 npm run build      # production build
 npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
