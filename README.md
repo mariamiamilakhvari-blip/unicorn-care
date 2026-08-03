@@ -50,7 +50,7 @@ a **development** pair — regenerate before deploying.
 ## Commands
 
 ```bash
-npm run dev        # dev server on :3000
+npm run dev        # dev server on :3000 (webpack, see below)
 npm run build      # production build
 npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
@@ -59,6 +59,23 @@ npm run test:run   # Vitest once
 ```
 
 The Husky pre-commit hook runs `lint → build → test` and blocks on failure.
+
+### Why `dev` runs on webpack
+
+Next 16 uses Turbopack for `next dev` by default. On this project it compiles a single route in
+one to eight minutes, climbs until the server prints `Server is approaching the used memory
+threshold, restarting...`, and then stops answering requests altogether. The same routes on
+webpack compile in under a second and the server sits at roughly 0.7 GB.
+
+```
+                     Turbopack        webpack
+/ (first compile)    8.1 min          4.3 s
+/terms               27 s, then hung  0.45 s
+warm requests        —                ~50 ms
+```
+
+So `dev` passes `--webpack`. `next build` still uses Turbopack, where it is fast and stable —
+this only concerns the dev server. Drop the flag and try again after a Next upgrade.
 
 ### Running a production build locally
 
