@@ -1,5 +1,5 @@
 /** The Privacy Policy, in both locales. Split from `legal.const.ts` to keep each file readable. */
-import { LEGAL_CONTACT_EMAIL } from '@/shared/const/legal.const';
+import { LEGAL_CONTACT_EMAIL } from '@/shared/const/legal-contact.const';
 import { LegalDocument } from '@/shared/const/legal.types';
 import { AppLocale } from '@/shared/types/roles';
 

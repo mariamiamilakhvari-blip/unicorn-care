@@ -19,10 +19,7 @@ import { AppLocale } from '@/shared/types/roles';
 
 export type { LegalDocument, LegalSection, LegalSlug } from '@/shared/const/legal.types';
 
-export const LEGAL_LAST_UPDATED = '2026-07-30';
-
-/** Where a data subject or a clinic writes to. Change this and both pages follow. */
-export const LEGAL_CONTACT_EMAIL = 'privacy@unicorn.care';
+export { LEGAL_CONTACT_EMAIL, LEGAL_LAST_UPDATED } from '@/shared/const/legal-contact.const';
 
 const DOCUMENTS: Record<LegalSlug, Record<AppLocale, LegalDocument>> = {
   terms: TERMS,
