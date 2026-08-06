@@ -1,6 +1,5 @@
 import Link from 'next/link';
 
-import { APP_NAME } from '@/shared/const/app.const';
 import { PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
 
 /**
@@ -25,9 +24,6 @@ export const Footer = () => {
           Privacy
         </Link>
       </nav>
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        {APP_NAME} ships with Next.js 16, NextAuth v5, Mongoose, Zustand, and shadcn/ui.
-      </p>
     </footer>
   );
 };

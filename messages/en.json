@@ -367,7 +367,6 @@
   "pricing": {
     "title": "Pricing",
     "subtitle": "Start free for 7 days. No credit card required.",
-    "footnote": "Prices in USD, billed annually.",
     "free": "Free",
     "perMonth": "/mo",
     "billedAnnually": "Billed annually at {annual}/yr",

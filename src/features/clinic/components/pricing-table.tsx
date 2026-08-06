@@ -30,7 +30,7 @@ type PricingTableProps = {
 
 export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableProps) {
   const t = useTranslations('pricing');
-  // Display only — the charge is USD in either locale, which is what the footnote discloses.
+  // Display only — the charge is USD in either locale.
   const currency = displayCurrencyFor(useLocale() as AppLocale);
   const [period, setPeriod] = useState<BillingPeriod>('yearly');
 

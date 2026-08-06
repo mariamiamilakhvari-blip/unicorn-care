@@ -109,8 +109,9 @@ export type DisplayCurrency = (typeof DISPLAY_CURRENCIES)[number];
  *
  * Fixed on purpose: a live rate would move the advertised price between one visitor and the next,
  * and a plan that costs a different amount every morning is not a price list. It follows that this
- * figure drifts from the market — the quoted lari amount is indicative, the charge is USD, and the
- * Georgian footnote says so. Update this one constant when the drift stops being acceptable.
+ * figure drifts from the market — the quoted lari amount is indicative and the charge is USD, but
+ * nothing on the page says so since the footnote was removed. Update this one constant when the
+ * drift stops being acceptable.
  */
 export const USD_TO_GEL = 2.7;
 

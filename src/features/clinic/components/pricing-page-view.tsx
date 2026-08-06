@@ -38,8 +38,6 @@ export function PricingPageView({ hasClinic }: { hasClinic: boolean }) {
             registration form they had already completed.
           */}
           {hasClinic ? <PricingPurchase /> : <PricingTable />}
-
-          <p className="text-xs text-muted-foreground">{t('footnote')}</p>
         </div>
       </main>
 
