@@ -280,10 +280,25 @@
     "unsupported": "Your browser does not support notifications"
   },
   "marketing": {
-    "eyebrow": "For plastic surgery clinics",
-    "headline": "Post-op care your clinic actually",
-    "headlineAccent": "controls.",
-    "subheadline": "The clinic fills in the whole recovery plan on the website: medications, procedures and checkup visits — and it reaches the patient by email.",
+    "eyebrow": "Platform for plastic surgery and aesthetic clinics",
+    "headline": "Automated postoperative care — patient peace,",
+    "headlineAccent": "time saved.",
+    "subheadline": "Enter patient appointments, visits and expected symptoms in seconds. Unicorn Care will automatically send the patient personalized reminders and instructions via email.",
+    "benefitsEyebrow": "Why clinics use it",
+    "benefits": {
+      "fewerCalls": {
+        "title": "80% fewer after-hours calls",
+        "description": "Clear guidance reduces repetitive patient calls."
+      },
+      "saferRecovery": {
+        "title": "Flawless recovery and safety",
+        "description": "Timely reminders for meds, checkups and warning symptoms."
+      },
+      "fastSetup": {
+        "title": "Setup in 60 seconds",
+        "description": "No complex setup — just enter patient data and dispatch."
+      }
+    },
     "ctaPrimary": "Set up your clinic",
     "ctaSecondary": "Sign in",
     "featuresEyebrow": "What's included",

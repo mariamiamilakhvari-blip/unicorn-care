@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { AudienceSection } from '@/features/marketing/components/audience-section';
+import { BenefitCards } from '@/features/marketing/components/benefit-cards';
 import { FaqSection } from '@/features/marketing/components/faq-section';
 import { FeatureDeck } from '@/features/marketing/components/feature-deck';
 import { StructuredData } from '@/features/marketing/components/structured-data';
@@ -55,6 +56,9 @@ export const HomePage = () => {
             </Button>
           </div>
         </section>
+
+        {/* The payoff, before the deck explains the mechanics behind it. */}
+        <BenefitCards />
 
         <FeatureDeck />
 
