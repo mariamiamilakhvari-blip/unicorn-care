@@ -11,7 +11,7 @@ export const APP_THEME_COLOR = '#092B4D';
 
 export const APP_BACKGROUND_COLOR = '#092B4D';
 
-/** Moss Green — the second brand colour. Kept here so non-CSS surfaces can reference it. */
-export const APP_ACCENT_COLOR = '#5F661F';
+/** Sage Green — the second brand colour. Kept here so non-CSS surfaces can reference it. */
+export const APP_ACCENT_COLOR = '#79947E';
 
 export const LOCALE_COOKIE_NAME = 'NEXT_LOCALE';

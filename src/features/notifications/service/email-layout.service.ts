@@ -21,7 +21,9 @@ export function escapeHtml(value: string): string {
 }
 
 const BRAND = '#092B4D';
-const MOSS = '#5F661F';
+const SAGE = '#79947E';
+/* Sage is light enough that white on it is 3.31:1. Badge text is 11px, so it gets ink at 5.31:1. */
+const SAGE_INK = '#071A2E';
 const TEXT = '#1f2933';
 const MUTED = '#6b7280';
 const BORDER = '#e5e7eb';
@@ -60,7 +62,7 @@ export function muted(text: string): string {
 export function badge(text: string): string {
   const style = [
     'display:inline-block;padding:1px 7px;margin-left:6px;border-radius:10px;',
-    `background:${MOSS};color:#ffffff;font-size:11px;`,
+    `background:${SAGE};color:${SAGE_INK};font-size:11px;`,
   ].join('');
   return `<span style="${style}">${escapeHtml(text)}</span>`;
 }

@@ -315,15 +315,19 @@ Product:    SaaS dashboard / B2B — clinical, calm, trustworthy
 Palette:    Two brand colours, no third.
             Midnight Indigo #092B4D — primary: actions, focus rings, brand chrome
               tokens: --primary oklch(0.286 0.073 252.1) light / oklch(0.62 0.105 251.5) dark
-            Moss Green    #5F661F — second brand colour: mark, accents, chart series 2/4
-              tokens: --moss oklch(0.489 0.094 114.7) light / oklch(0.685 0.115 115.5) dark
+            Sage Green    #79947E — second brand colour: mark, accents, chart series 2/4
+              tokens: --moss / --primary oklch(0.639 0.045 150.5), identical in both themes
+              on-sage text is ink oklch(0.20 0.05 252.1), NEVER white — white is 3.31:1
+              edge/ring lifts to oklch(0.72 0.048 150.5) light / oklch(0.745 0.048 150.5) dark
             Neutrals carry a trace of the indigo hue so the palette reads as one system.
             #092B4D is unreadable on dark surfaces — the dark theme lifts the hue, never reuses
-            the raw hex. Moss is a brand colour, NEVER a success/status signal.
+            the raw hex. Sage is a brand colour, NEVER a success/status signal.
+            The `--moss` token name is kept: it is referenced across the feature components, and
+            renaming it is a separate change from re-colouring it.
 Type:       Geometric sans — Space Grotesk (display, 500/600/700) + Inter (body) + Geist Mono (data)
 Feel:       Balanced — CSS load-rise stagger + hover micro-interactions; reduced-motion respected
 Logo:       Sitting unicorn, hand-drawn line style — `public/unicorn.svg`, rendered via
-            `<BrandMark />` in `src/shared/components/layout/brand-mark.tsx`. Moss horn/mane/tail/
+            `<BrandMark />` in `src/shared/components/layout/brand-mark.tsx`. Sage horn/mane/tail/
             hooves, indigo ear and dapples, near-black contour. PWA icons derive from this file.
 Signature:  Left-aligned typographic hero with one accent word + honest stat strip;
             dashboard app-shell with mobile drawer sidebar and segmented brand-coloured meters

@@ -10,7 +10,7 @@
     in manifest.webmanifest.
 
     Brand hexes are literals, same as `unicorn.svg` — the mark must not shift with CSS tokens. The
-    ear is Moss where the full logo has it Indigo: Indigo on an Indigo field would vanish. Both
+    ear is Sage where the full logo has it Indigo: Indigo on an Indigo field would vanish. Both
     brand colours still carry, which is the point of the pairing.
 
     Draw order matters: horn and ear first, head over them, so the joins are hidden and the two
@@ -21,10 +21,10 @@
   <g stroke="#092B4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
 
     <!-- horn: tall and narrow, centred on the skull, base buried under the head -->
-    <path d="M31 21 L37 3 L40 22 Z" fill="#5F661F" />
+    <path d="M31 21 L37 3 L40 22 Z" fill="#79947E" />
 
     <!-- ear: deliberately shorter and blunter than the horn, or the two read as a matched pair -->
-    <path d="M19 24 C15 21 14 16 16 13 C21 15 24 19 24 24 Z" fill="#5F661F" />
+    <path d="M19 24 C15 21 14 16 16 13 C21 15 24 19 24 24 Z" fill="#79947E" />
 
     <!-- head: skull top-left tapering into the snout bottom-right, drawn over both bases -->
     <path d="M20 24 C26 18 36 18 42 24 C47 29 50 34 53 40 C56 45 54 52 47 53

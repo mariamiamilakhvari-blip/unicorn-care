@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 128" fill="none" role="img" aria-label="Unicorn Care">
   <!--
-    Sitting unicorn in a hand-drawn line style: moss-green horn, mane, tail and hooves; indigo ear
+    Sitting unicorn in a hand-drawn line style: sage-green horn, mane, tail and hooves; indigo ear
     and dapples; near-black contour. Brand hexes are literals so the mark stays on-brand on any
     surface, light or dark.
     Geometry note: the horn base sits *inside* the head outline and the head is drawn after it, so
@@ -9,14 +9,14 @@
   <g stroke="#141414" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
 
     <!-- horn: rooted at the skull, tip up and slightly right -->
-    <path d="M58 34 L69 6 L76 36 Z" fill="#5F661F" />
+    <path d="M58 34 L69 6 L76 36 Z" fill="#79947E" />
 
     <!-- ear: left of the horn, tipped outward -->
     <path d="M44 40 C38 32 37 22 41 16 C48 21 52 30 52 39 Z" fill="#092B4D" />
 
     <!-- mane: sweeps from behind the ear down the left of the body -->
     <path d="M45 38 C33 44 27 57 30 70 C32 80 29 89 22 95 C34 94 42 85 45 74 C47 64 46 50 54 43 Z"
-          fill="#5F661F" />
+          fill="#79947E" />
 
     <!-- head: drawn over the horn and ear bases so the joins disappear -->
     <path d="M52 38 C70 34 88 44 91 60 C94 76 84 89 68 91 C52 93 40 82 40 66 C40 54 45 43 52 38 Z"
@@ -36,15 +36,15 @@
     <!-- dapples -->
     <ellipse cx="49" cy="72" rx="6" ry="8" transform="rotate(-20 49 72)"
              fill="#092B4D" fill-opacity="0.30" stroke="none" />
-    <ellipse cx="60" cy="106" rx="9" ry="6" fill="#5F661F" fill-opacity="0.30" stroke="none" />
+    <ellipse cx="60" cy="106" rx="9" ry="6" fill="#79947E" fill-opacity="0.30" stroke="none" />
     <ellipse cx="86" cy="103" rx="6" ry="5" fill="#092B4D" fill-opacity="0.26" stroke="none" />
 
     <!-- hooves -->
-    <path d="M38 114 C38 120 42 124 49 124 C56 124 60 120 60 114 Z" fill="#5F661F" />
-    <path d="M72 114 C72 120 76 124 83 124 C90 124 94 120 94 114 Z" fill="#5F661F" />
+    <path d="M38 114 C38 120 42 124 49 124 C56 124 60 120 60 114 Z" fill="#79947E" />
+    <path d="M72 114 C72 120 76 124 83 124 C90 124 94 120 94 114 Z" fill="#79947E" />
 
     <!-- tail: curls out from behind the left haunch -->
     <path d="M27 100 C16 103 11 113 15 121 C18 126 24 126 27 122 C21 119 20 113 23 108 Z"
-          fill="#5F661F" />
+          fill="#79947E" />
   </g>
 </svg>
