@@ -2,6 +2,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 
 import { useLogin } from '@/features/auth/hooks/use-login';
@@ -18,8 +19,10 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
+import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
 
 export const LoginForm = () => {
+  const t = useTranslations('auth');
   const { login } = useLogin();
   const { loading, error } = useAuthStore();
 
@@ -31,8 +34,8 @@ export const LoginForm = () => {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-2xl">Sign in</CardTitle>
-        <CardDescription>Enter your credentials to access your account</CardDescription>
+        <CardTitle className="text-2xl">{t('signIn')}</CardTitle>
+        <CardDescription>{t('signInDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -42,9 +45,9 @@ export const LoginForm = () => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('email')}</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@example.com" {...field} />
+                    <Input type="email" placeholder={t('emailPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -55,7 +58,7 @@ export const LoginForm = () => {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t('password')}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
@@ -67,14 +70,14 @@ export const LoginForm = () => {
               <p className="text-sm font-medium text-destructive">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? t('signingIn') : t('signIn')}
             </Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
+                <span className="bg-card px-2 text-muted-foreground">{t('or')}</span>
               </div>
             </div>
             <Button
@@ -83,12 +86,12 @@ export const LoginForm = () => {
               className="w-full"
               onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
             >
-              Continue with Google
+              {t('continueWithGoogle')}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Link href="/sign-up" className="underline underline-offset-4 hover:text-primary">
-                Sign up
+              {t('noAccount')}{' '}
+              <Link href={CLINIC_SIGN_UP_ROUTE} className="underline underline-offset-4 hover:text-primary">
+                {t('signUp')}
               </Link>
             </p>
           </form>

@@ -2,6 +2,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 
 import { useRegister } from '@/features/auth/hooks/use-register';
@@ -20,6 +21,7 @@ import {
 import { Input } from '@/shared/components/ui/input';
 
 export const SignUpForm = () => {
+  const t = useTranslations('auth');
   const { register } = useRegister();
   const { loading, error } = useAuthStore();
 
@@ -31,8 +33,8 @@ export const SignUpForm = () => {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-2xl">Create account</CardTitle>
-        <CardDescription>Enter your details to get started</CardDescription>
+        <CardTitle className="text-2xl">{t('createAccount')}</CardTitle>
+        <CardDescription>{t('createAccountDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -42,9 +44,9 @@ export const SignUpForm = () => {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full name</FormLabel>
+                  <FormLabel>{t('fullName')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input placeholder={t('namePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -55,9 +57,9 @@ export const SignUpForm = () => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('email')}</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@example.com" {...field} />
+                    <Input type="email" placeholder={t('emailPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -68,7 +70,7 @@ export const SignUpForm = () => {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t('password')}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
@@ -80,14 +82,14 @@ export const SignUpForm = () => {
               <p className="text-sm font-medium text-destructive">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? t('creatingAccount') : t('createAccount')}
             </Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
+                <span className="bg-card px-2 text-muted-foreground">{t('or')}</span>
               </div>
             </div>
             <Button
@@ -96,12 +98,12 @@ export const SignUpForm = () => {
               className="w-full"
               onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
             >
-              Continue with Google
+              {t('continueWithGoogle')}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
+              {t('alreadyHaveAccount')}{' '}
               <Link href="/sign-in" className="underline underline-offset-4 hover:text-primary">
-                Sign in
+                {t('signIn')}
               </Link>
             </p>
           </form>

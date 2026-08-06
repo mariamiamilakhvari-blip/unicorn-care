@@ -49,7 +49,18 @@
     "alreadyHaveAccount": "Already have an account?",
     "noAccount": "Don't have an account?",
     "invalidCredentials": "Email or password is incorrect",
-    "sessionExpired": "Your session expired, please sign in again"
+    "sessionExpired": "Your session expired, please sign in again",
+    "signInDescription": "Enter your credentials to access your account",
+    "signingIn": "Signing in...",
+    "createAccount": "Create account",
+    "createAccountDescription": "Enter your details to get started",
+    "creatingAccount": "Creating account...",
+    "fullName": "Full name",
+    "namePlaceholder": "John Doe",
+    "emailPlaceholder": "you@example.com",
+    "or": "or",
+    "signInFailed": "Sign in failed, please try again",
+    "registrationFailed": "Registration failed, please try again"
   },
   "clinic": {
     "title": "Clinic",

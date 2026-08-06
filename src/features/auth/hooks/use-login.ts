@@ -1,5 +1,6 @@
 'use client';
 import { signIn, getSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 
 import { useAuthStore } from '@/features/auth/hooks/useAuthStore';
 import { User } from '@/features/auth/types/auth.types';
@@ -7,6 +8,7 @@ import { LoginType } from '@/features/auth/validations/auth.validation';
 
 
 export const useLogin = () => {
+  const t = useTranslations('auth');
   const { setUser, setLoading, setError } = useAuthStore();
 
   const handleSession = async (setUserFn: typeof setUser) => {
@@ -36,15 +38,16 @@ export const useLogin = () => {
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        setError(t('invalidCredentials'));
         return;
       }
 
       if (result?.ok) {
         await handleSession(setUser);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+    } catch {
+      // The thrown message is an internal code, never something to show a clinic.
+      setError(t('signInFailed'));
     } finally {
       setLoading(false);
     }

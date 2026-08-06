@@ -49,7 +49,18 @@
     "alreadyHaveAccount": "უკვე გაქვთ ანგარიში?",
     "noAccount": "არ გაქვთ ანგარიში?",
     "invalidCredentials": "ელფოსტა ან პაროლი არასწორია",
-    "sessionExpired": "სესიის ვადა ამოიწურა, გთხოვთ, ხელახლა შეხვიდეთ"
+    "sessionExpired": "სესიის ვადა ამოიწურა, გთხოვთ, ხელახლა შეხვიდეთ",
+    "signInDescription": "შეიყვანეთ მონაცემები ანგარიშზე შესასვლელად",
+    "signingIn": "მიმდინარეობს შესვლა...",
+    "createAccount": "ანგარიშის შექმნა",
+    "createAccountDescription": "შეიყვანეთ თქვენი მონაცემები დასაწყებად",
+    "creatingAccount": "მიმდინარეობს ანგარიშის შექმნა...",
+    "fullName": "სახელი და გვარი",
+    "namePlaceholder": "გიორგი მაისურაძე",
+    "emailPlaceholder": "you@example.com",
+    "or": "ან",
+    "signInFailed": "შესვლა ვერ მოხერხდა, სცადეთ ხელახლა",
+    "registrationFailed": "რეგისტრაცია ვერ მოხერხდა, სცადეთ ხელახლა"
   },
   "clinic": {
     "title": "კლინიკა",
