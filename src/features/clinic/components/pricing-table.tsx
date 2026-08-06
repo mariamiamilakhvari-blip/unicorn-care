@@ -2,7 +2,7 @@
 
 import { Check, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { Badge } from '@/shared/components/ui/badge';
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { BILLING_PERIODS, BillingPeriod } from '@/shared/const/billing.const';
 import {
   annualSavingPercent,
+  displayCurrencyFor,
   formatPrice,
   monthlyRateMinor,
   PLANS,
@@ -18,6 +19,7 @@ import {
 } from '@/shared/const/plan.const';
 import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
 import { cn } from '@/shared/lib/utils';
+import { AppLocale } from '@/shared/types/roles';
 
 type PricingTableProps = {
   /** On the marketing page every card links to sign-up; in the dashboard they start checkout. */
@@ -28,6 +30,8 @@ type PricingTableProps = {
 
 export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableProps) {
   const t = useTranslations('pricing');
+  // Display only — the charge is USD in either locale, which is what the footnote discloses.
+  const currency = displayCurrencyFor(useLocale() as AppLocale);
   const [period, setPeriod] = useState<BillingPeriod>('yearly');
 
   return (
@@ -79,7 +83,7 @@ export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableP
                   <div className="flex flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-2xl font-semibold">
-                        {formatPrice(monthlyRateMinor(plan, period))}
+                        {formatPrice(monthlyRateMinor(plan, period), currency)}
                         <span className="text-sm font-normal text-muted-foreground">
                           {t('perMonth')}
                         </span>
@@ -94,10 +98,10 @@ export function PricingTable({ onSelect, currentPlan, isPending }: PricingTableP
                     <p className="text-xs text-muted-foreground">
                       {period === 'yearly'
                         ? t('billedAnnually', {
-                          annual: formatPrice(plan.annualPriceMinor),
+                          annual: formatPrice(plan.annualPriceMinor, currency),
                         })
                         : t('billedMonthly', {
-                          yearly: formatPrice(yearlyAtMonthlyRateMinor(plan)),
+                          yearly: formatPrice(yearlyAtMonthlyRateMinor(plan), currency),
                         })}
                     </p>
                   </div>

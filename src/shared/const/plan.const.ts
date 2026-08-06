@@ -8,6 +8,8 @@
  * sold on the roadmap but not built — the pricing page renders those visibly as upcoming rather
  * than as included, so nobody pays for something that does not exist yet.
  */
+import { AppLocale } from '@/shared/types/roles';
+
 export const PLAN_KEYS = ['trial', 'standard', 'premium'] as const;
 
 export type PlanKey = (typeof PLAN_KEYS)[number];
@@ -92,15 +94,49 @@ export function findPlan(key: PlanKey): Plan {
 }
 
 /**
- * Minor units → "$29" or "$19.92".
+ * What a price is *displayed* in. Not what it is charged in.
+ *
+ * Every plan is priced in USD and every Dodo product is a USD product — `Plan.currency` is the
+ * billing currency and stays USD. A Georgian visitor is quoted lari because that is the number
+ * they can judge, and Dodo's adaptive currency does the real conversion at checkout.
+ */
+export const DISPLAY_CURRENCIES = ['USD', 'GEL'] as const;
+
+export type DisplayCurrency = (typeof DISPLAY_CURRENCIES)[number];
+
+/**
+ * The rate the lari figures on the pricing page are quoted at.
+ *
+ * Fixed on purpose: a live rate would move the advertised price between one visitor and the next,
+ * and a plan that costs a different amount every morning is not a price list. It follows that this
+ * figure drifts from the market — the quoted lari amount is indicative, the charge is USD, and the
+ * Georgian footnote says so. Update this one constant when the drift stops being acceptable.
+ */
+export const USD_TO_GEL = 2.7;
+
+const CURRENCY_SYMBOL: Record<DisplayCurrency, string> = { USD: '$', GEL: '₾' };
+
+/** Georgian is quoted in lari; everything else in dollars. */
+export function displayCurrencyFor(locale: AppLocale): DisplayCurrency {
+  return locale === 'ka' ? 'GEL' : 'USD';
+}
+
+/** USD minor units → the display currency's minor units. */
+export function convertMinor(minorUsd: number, currency: DisplayCurrency): number {
+  return currency === 'USD' ? minorUsd : Math.round(minorUsd * USD_TO_GEL);
+}
+
+/**
+ * Minor units → "$29", "$19.92", "₾78" or "₾53.78".
  *
  * Cents are shown only when there are any. Every listed price is a round number, but the annual
  * plans divided by twelve are not — $239/year is $19.92/month — and rounding that to "$20" quotes
  * a rate the clinic is never charged.
  */
-export function formatPrice(minor: number): string {
-  const major = minor / 100;
-  return Number.isInteger(major) ? `$${major}` : `$${major.toFixed(2)}`;
+export function formatPrice(minor: number, currency: DisplayCurrency = 'USD'): string {
+  const major = convertMinor(minor, currency) / 100;
+  const amount = Number.isInteger(major) ? `${major}` : major.toFixed(2);
+  return `${CURRENCY_SYMBOL[currency]}${amount}`;
 }
 
 /**
