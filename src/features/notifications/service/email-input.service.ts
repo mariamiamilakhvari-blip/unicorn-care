@@ -94,7 +94,13 @@ export async function toWelcomeInput(
       email: patient.email ?? '',
       locale,
     },
-    clinic: { name: clinic.name, phone: clinic.phone ?? '', timezone: clinic.timezone },
+    clinic: {
+      name: clinic.name,
+      addressLine: clinic.addressLine ?? '',
+      phone: clinic.phone ?? '',
+      email: clinic.email ?? '',
+      timezone: clinic.timezone,
+    },
     procedure: procedure
       ? {
         manipulationType: procedure.manipulationType,
@@ -140,7 +146,13 @@ export async function toDailyInput(
       email: patient.email ?? '',
       locale,
     },
-    clinic: { name: clinic.name, phone: clinic.phone ?? '', timezone: zone },
+    clinic: {
+      name: clinic.name,
+      addressLine: clinic.addressLine ?? '',
+      phone: clinic.phone ?? '',
+      email: clinic.email ?? '',
+      timezone: zone,
+    },
     medications: toMedications(plan).filter(item => runsToday(item, now, zone)),
     // A rehab task also has to fall on a weekday the clinic prescribed, unlike a medication.
     rehabTasks: toRehabTasks(plan).filter(

@@ -45,7 +45,7 @@ export function buildWelcomeEmail(input: WelcomeEmailInput): BuiltEmail {
   return {
     subject: `${copy.welcomeSubject} — ${input.clinic.name}`,
     html: shell(copy.welcomeSubject, sections, input.clinic, copy),
-    text: toPlainText(copy.welcomeSubject, plainLines(input, copy, zone), input.clinic),
+    text: toPlainText(copy.welcomeSubject, plainLines(input, copy, zone), input.clinic, copy),
   };
 }
 

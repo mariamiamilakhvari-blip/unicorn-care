@@ -25,6 +25,12 @@ export type DispatchSummary = {
   extendedPlans: number;
   /** Daily patient emails sent by this sweep. */
   emailed: number;
+  /**
+   * Timed reminder emails sent by this sweep — one per occurrence dispatched, distinct from the
+   * once-a-day digest counted by `emailed`. Kept apart because they answer different questions:
+   * a digest that stops arriving is a scheduling bug, a reminder that stops is a dispatch bug.
+   */
+  emailedReminders: number;
 };
 
 /** Client-side opt-in state machine for `use-push-subscription`. */

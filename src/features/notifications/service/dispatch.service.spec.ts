@@ -29,6 +29,7 @@ vi.mock('@/features/care-plan/service/dispatch-extension.service', () => ({
 
 vi.mock('@/features/notifications/service/email-dispatch.service', () => ({
   sendDailyDigestsService: vi.fn(),
+  createReminderEmailSender: vi.fn(),
 }));
 
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
@@ -36,7 +37,10 @@ import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
 import { pushSubscriptionRepository } from '@/features/notifications/repository/push-subscription.repository';
 import { PushSubscriptionDocument } from '@/features/notifications/schema/push-subscription.schema';
-import { sendDailyDigestsService } from '@/features/notifications/service/email-dispatch.service';
+import {
+  createReminderEmailSender,
+  sendDailyDigestsService,
+} from '@/features/notifications/service/email-dispatch.service';
 import { webPushClient } from '@/shared/lib/web-push-client';
 
 import { dispatchDueRemindersService } from './dispatch.service';
@@ -46,6 +50,10 @@ const subscriptionRepo = vi.mocked(pushSubscriptionRepository);
 const pushClient = vi.mocked(webPushClient);
 const extendPlans = vi.mocked(extendActivePlansService);
 const sendDigests = vi.mocked(sendDailyDigestsService);
+const makeReminderSender = vi.mocked(createReminderEmailSender);
+
+/** The per-occurrence email sender the sweep builds once per run. */
+let sendReminderEmail: ReturnType<typeof createReminderEmailSender>;
 
 const PATIENT_ID = '507f1f77bcf86cd799439011';
 const CLINIC_ID = '507f1f77bcf86cd799439022';
@@ -114,6 +122,8 @@ describe('dispatchDueRemindersService', () => {
     subscriptionRepo.markSuccess.mockResolvedValue(true);
     extendPlans.mockResolvedValue(0);
     sendDigests.mockResolvedValue({ data: { considered: 0, sent: 0, failed: 0, skipped: 0 }, status: 200 });
+    sendReminderEmail = vi.fn().mockResolvedValue(true);
+    makeReminderSender.mockReturnValue(sendReminderEmail);
   });
 
   it('queries the 6h window with the 500 cap and marks a delivered occurrence sent', async () => {
@@ -278,5 +288,85 @@ describe('dispatchDueRemindersService', () => {
     expect(extendPlans).toHaveBeenCalledWith(NOW);
     expect(result).toMatchObject({ status: 200 });
     expect(result.data).toMatchObject({ extendedPlans: 3 });
+  });
+});
+
+/**
+ * The timed reminder email rides the same claim as the push, which is what makes it exactly-once.
+ * These cases pin that relationship rather than the email's contents — a second guard here would
+ * be a second source of truth about whether a reminder has already gone out.
+ */
+describe('dispatchDueRemindersService — timed reminder emails', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    givenDue([]);
+    occurrenceRepo.releaseStaleClaims.mockResolvedValue(0);
+    occurrenceRepo.updateStatus.mockResolvedValue(true);
+    occurrenceRepo.markMissedBefore.mockResolvedValue(0);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
+    extendPlans.mockResolvedValue(0);
+    sendDigests.mockResolvedValue({
+      data: { considered: 0, sent: 0, failed: 0, skipped: 0 },
+      status: 200,
+    });
+    sendReminderEmail = vi.fn().mockResolvedValue(true);
+    makeReminderSender.mockReturnValue(sendReminderEmail);
+  });
+
+  it('emails once per claimed occurrence and counts it', async () => {
+    givenDue([buildOccurrence(), buildOccurrence('507f1f77bcf86cd799439066')]);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(sendReminderEmail).toHaveBeenCalledTimes(2);
+    expect('emailedReminders' in result.data && result.data.emailedReminders).toBe(2);
+  });
+
+  it('emails nothing for a row another run claimed first', async () => {
+    // Found by this run, won by another: the loop only ever walks rows carrying its own claim.
+    givenDue([buildOccurrence()], []);
+
+    await dispatchDueRemindersService();
+
+    expect(sendReminderEmail).not.toHaveBeenCalled();
+  });
+
+  it('builds one sender per run, so the patient and clinic are read once each', async () => {
+    givenDue([buildOccurrence(), buildOccurrence('507f1f77bcf86cd799439066')]);
+
+    await dispatchDueRemindersService();
+
+    expect(makeReminderSender).toHaveBeenCalledTimes(1);
+  });
+
+  it('still marks the occurrence sent when the email could not be delivered', async () => {
+    // The push may well have landed, and leaving the row pending would re-send it forever.
+    sendReminderEmail = vi.fn().mockResolvedValue(false);
+    makeReminderSender.mockReturnValue(sendReminderEmail);
+    givenDue([buildOccurrence()]);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(
+      OCCURRENCE_ID,
+      expect.objectContaining({ status: 'sent' })
+    );
+    expect('emailedReminders' in result.data && result.data.emailedReminders).toBe(0);
+  });
+
+  it('counts reminder emails apart from the daily digest', async () => {
+    givenDue([buildOccurrence()]);
+    sendDigests.mockResolvedValue({
+      data: { considered: 3, sent: 3, failed: 0, skipped: 0 },
+      status: 200,
+    });
+
+    const result = await dispatchDueRemindersService();
+
+    // A digest that stops arriving is a scheduling bug; a reminder that stops is a dispatch bug.
+    expect('emailed' in result.data && result.data.emailed).toBe(3);
+    expect('emailedReminders' in result.data && result.data.emailedReminders).toBe(1);
   });
 });

@@ -307,6 +307,37 @@ describe('lead time before each dose', () => {
     expect(draft.body).toContain('08:00');
   });
 
+  /*
+    Any lead the clinic sets, not a fixed menu of them: the generator multiplies the stored
+    minutes, so 10, 15 and an arbitrary 37 are the same code path. Pinned explicitly because the
+    trigger time is what the whole reminder pipeline is anchored to — every later stage, push and
+    email alike, reads `dueAt` and never recomputes it.
+  */
+  it.each([
+    [10, '2025-06-02T05:50:00.000Z'],
+    [15, '2025-06-02T05:45:00.000Z'],
+    [37, '2025-06-02T05:23:00.000Z'],
+    [90, '2025-06-02T04:30:00.000Z'],
+  ])('subtracts a %i-minute lead from the prescribed intake time', (lead, expected) => {
+    const plan = makePlan({
+      medications: [
+        medication({
+          startsOn: new Date('2025-06-02T00:00:00.000Z'),
+          endsOn: new Date('2025-06-02T00:00:00.000Z'),
+          // 08:00 Berlin in June is 06:00Z.
+          timesOfDay: ['08:00'],
+          remindMinutesBefore: lead,
+        }),
+      ],
+    });
+
+    const [draft] = buildOccurrences(plan, BERLIN, 90, defaultOccurrenceTranslator, GENERATED_AT);
+
+    expect(draft.dueAt.toISOString()).toBe(expected);
+    // The intake time survives in the body, so an early reminder still says when to take it.
+    expect(draft.body).toContain('08:00');
+  });
+
   it('fires at the dose time when the lead is 0, so old plans are unchanged', () => {
     const plan = makePlan({
       medications: [

@@ -8,7 +8,13 @@ import { applicableOnDay, buildDailyEmail } from './daily-email.service';
 function input(overrides: Partial<DailyEmailInput> = {}): DailyEmailInput {
   return {
     patient: { firstName: 'Lika', lastName: 'Gabrichidze', email: 'p@example.com', locale: 'en' },
-    clinic: { name: 'Unicorn Clinic', phone: '+995 555 10 20 30', timezone: 'Asia/Tbilisi' },
+    clinic: {
+      name: 'Unicorn Clinic',
+      addressLine: '12 Rustaveli Ave',
+      phone: '+995 555 10 20 30',
+      email: 'info@unicorn.clinic',
+      timezone: 'Asia/Tbilisi',
+    },
     medications: [
       {
         name: 'ibuprofeni',

@@ -12,9 +12,19 @@ export type EmailPatient = {
   locale: AppLocale;
 };
 
+/**
+ * The clinic as an email footer needs it.
+ *
+ * Every field but `name` and `timezone` is optional in practice — the profile form requires none
+ * of them — so each arrives as a possibly-empty string and the footer omits what is empty rather
+ * than printing a stranded label. A patient reading "Phone:" with nothing after it learns only
+ * that something is broken.
+ */
 export type EmailClinic = {
   name: string;
+  addressLine: string;
   phone: string;
+  email: string;
   timezone: string;
 };
 
@@ -75,6 +85,27 @@ export type DailyEmailInput = {
   guide: EmailGuide | null;
   /** Days since the operation, used to pick which guide entries still apply. */
   recoveryDay: number;
+};
+
+/**
+ * One reminder about one thing, at the moment it is due.
+ *
+ * `title` and `body` are copied straight off the occurrence, which had them rendered in the
+ * patient's locale when the plan was activated — the same strings the push notification carries.
+ * Nothing clinical is composed at send time, here or anywhere else in dispatch.
+ *
+ * `dueAt` is already the scheduled send time: the occurrence generator subtracted the lead
+ * minutes from the prescribed intake time when it created the row, so this is what the patient
+ * was told to expect, not the dose time.
+ */
+export type ReminderEmailInput = {
+  patient: EmailPatient;
+  clinic: EmailClinic;
+  title: string;
+  body: string;
+  dueAt: Date;
+  /** Portal URL for the CTA. No token: an email must never carry a portal credential. */
+  portalUrl: string;
 };
 
 export type EmailSendSummary = {

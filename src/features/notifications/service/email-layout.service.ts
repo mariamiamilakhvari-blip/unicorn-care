@@ -68,6 +68,32 @@ export function badge(text: string): string {
 }
 
 /**
+ * The clinic's contact block, built from whatever the clinic has actually filled in.
+ *
+ * Each line is dropped entirely when its value is empty — label included. The profile form
+ * requires none of these fields, so a half-filled clinic is the normal case rather than the
+ * broken one, and an email that prints "Address:" followed by nothing reads as a fault in the
+ * platform rather than a gap in the clinic's own record.
+ *
+ * The phone and email are live links: a patient reading this on the phone that is already in
+ * their hand should be one tap from the clinic, not copying digits across apps.
+ */
+function contactLines(clinic: EmailClinic, copy: EmailCopy): string {
+  const style = `margin:6px 0 0 0;font-size:13px;color:${MUTED};`;
+  const linkStyle = `color:${MUTED};`;
+
+  const lines = [
+    clinic.addressLine && `${escapeHtml(copy.addressLabel)} ${escapeHtml(clinic.addressLine)}`,
+    clinic.phone &&
+      `${escapeHtml(copy.phoneLabel)} <a href="tel:${escapeHtml(clinic.phone.replace(/\s+/g, ''))}" style="${linkStyle}">${escapeHtml(clinic.phone)}</a>`,
+    clinic.email &&
+      `${escapeHtml(copy.emailLabel)} <a href="mailto:${escapeHtml(clinic.email)}" style="${linkStyle}">${escapeHtml(clinic.email)}</a>`,
+  ].filter(Boolean);
+
+  return lines.map(line => `<p style="${style}">${line}</p>`).join('');
+}
+
+/**
  * Wraps the sections in a table-based shell. Tables rather than flex or grid because Outlook still
  * renders mail with Word's engine, which supports neither.
  */
@@ -77,10 +103,7 @@ export function shell(
   clinic: EmailClinic,
   copy: EmailCopy
 ): string {
-  const phoneStyle = `margin:6px 0 0 0;font-size:13px;color:${MUTED};`;
-  const phone = clinic.phone
-    ? `<p style="${phoneStyle}">${escapeHtml(copy.questionsCall)} ${escapeHtml(clinic.phone)}</p>`
-    : '';
+  const contact = contactLines(clinic, copy);
   const cardStyle = [
     'max-width:560px;background:#ffffff;border-radius:12px;',
     `border:1px solid ${BORDER};`,
@@ -99,7 +122,7 @@ export function shell(
         <tr><td style="padding:24px;">
           <div style="border-top:1px solid ${BORDER};padding-top:16px;">
             <p style="margin:0;font-size:14px;font-weight:600;color:${TEXT};">${escapeHtml(clinic.name)}</p>
-            ${phone}
+            ${contact}
             <p style="margin:10px 0 0 0;font-size:12px;color:${MUTED};">${escapeHtml(copy.footerNote)}</p>
           </div>
         </td></tr>
@@ -107,6 +130,30 @@ export function shell(
     </td></tr>
   </table>
 </body></html>`;
+}
+
+/**
+ * The primary action button.
+ *
+ * A table rather than a styled `<a>`: Outlook ignores padding on inline elements, so a bare
+ * anchor renders as a bordered sliver of text. Bulletproof-button markup is ugly and is the only
+ * thing that produces a tappable target in every client.
+ */
+export function button(label: string, href: string): string {
+  const cell = [
+    `background:${BRAND};border-radius:8px;`,
+    'font-size:15px;font-weight:600;line-height:1;',
+  ].join('');
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 0 0;">
+      <tr><td style="${cell}">
+        <a href="${escapeHtml(href)}"
+          style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;">
+          ${escapeHtml(label)}
+        </a>
+      </td></tr>
+    </table>`;
 }
 
 /** Formats a date in the clinic's zone. Numeric so it reads the same in both languages. */
@@ -129,7 +176,18 @@ export function zonedTime(date: Date, timezone: string): string {
 }
 
 /** The plain-text alternative every client falls back to, derived from the same section text. */
-export function toPlainText(headline: string, lines: string[], clinic: EmailClinic): string {
-  const phone = clinic.phone ? `\n${clinic.phone}` : '';
-  return [headline, '', ...lines, '', clinic.name + phone].join('\n');
+export function toPlainText(
+  headline: string,
+  lines: string[],
+  clinic: EmailClinic,
+  copy: EmailCopy
+): string {
+  // Same omission rule as the HTML footer: a label with nothing after it is worse than no label.
+  const contact = [
+    clinic.addressLine && `${copy.addressLabel} ${clinic.addressLine}`,
+    clinic.phone && `${copy.phoneLabel} ${clinic.phone}`,
+    clinic.email && `${copy.emailLabel} ${clinic.email}`,
+  ].filter(Boolean) as string[];
+
+  return [headline, '', ...lines, '', clinic.name, ...contact].join('\n');
 }

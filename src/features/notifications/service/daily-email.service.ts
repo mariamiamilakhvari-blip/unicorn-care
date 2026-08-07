@@ -44,7 +44,7 @@ export function buildDailyEmail(input: DailyEmailInput): BuiltEmail {
   return {
     subject: `${copy.dailySubject} — ${zonedDate(new Date(), zone)}`,
     html: shell(copy.dailySubject, sections, input.clinic, copy),
-    text: toPlainText(copy.dailySubject, plainLines(input, copy, zone), input.clinic),
+    text: toPlainText(copy.dailySubject, plainLines(input, copy, zone), input.clinic, copy),
   };
 }
 

@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
-import { sendDailyDigestsService } from '@/features/notifications/service/email-dispatch.service';
+import {
+  createReminderEmailSender,
+  sendDailyDigestsService,
+} from '@/features/notifications/service/email-dispatch.service';
 import { sendToPatientService } from '@/features/notifications/service/push.service';
 import { DispatchSummary } from '@/features/notifications/types/push.types';
 import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
@@ -93,9 +96,25 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
 
   let sent = 0;
   let undelivered = 0;
+  let emailedReminders = 0;
+
+  /*
+    One sender for the whole run: it memoises the patient and clinic behind each occurrence, and a
+    run's rows cluster hard — one patient's four daily doses, one clinic's entire caseload.
+  */
+  const sendReminderEmail = createReminderEmailSender();
 
   for (const occurrence of due) {
     const result = await sendToPatientService(occurrence.patientId.toString(), toPayload(occurrence));
+
+    /*
+      Email rides the same claim as the push, so it inherits exactly-once: this row is already out
+      of `pending` and no other run can reach it. Sent after the push because push is the faster
+      channel and a patient may have both — the ordering decides which one arrives first, and the
+      one that can wake a phone should.
+    */
+    if (await sendReminderEmail(occurrence)) emailedReminders += 1;
+
     await reminderOccurrenceRepository.updateStatus(occurrence._id.toString(), {
       status: 'sent',
       sentAt: now,
@@ -117,7 +136,7 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
   const emailed = 'sent' in digests.data ? digests.data.sent : 0;
 
   return {
-    data: { processed: due.length, sent, undelivered, missed, extendedPlans, emailed },
+    data: { processed: due.length, sent, undelivered, missed, extendedPlans, emailed, emailedReminders },
     status: 200,
   };
 }

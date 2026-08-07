@@ -32,6 +32,15 @@ export type EmailCopy = {
   severity: Record<string, string>;
   footerNote: string;
   questionsCall: string;
+  /* Footer labels. Each line is omitted whole when the clinic has not filled the field in. */
+  addressLabel: string;
+  phoneLabel: string;
+  emailLabel: string;
+  /* The timed reminder: one message about one dose or task, at the moment it is due. */
+  reminderSubject: string;
+  reminderDue: string;
+  reminderAt: string;
+  openPortal: string;
 };
 
 const EN: EmailCopy = {
@@ -63,6 +72,13 @@ const EN: EmailCopy = {
   },
   footerNote: 'This email is from your clinic. Do not reply to this address.',
   questionsCall: 'Questions? Call',
+  addressLabel: 'Address:',
+  phoneLabel: 'Phone:',
+  emailLabel: 'Email:',
+  reminderSubject: 'Reminder',
+  reminderDue: 'Due now',
+  reminderAt: 'Scheduled for',
+  openPortal: 'Open your portal',
 };
 
 const KA: EmailCopy = {
@@ -94,6 +110,13 @@ const KA: EmailCopy = {
   },
   footerNote: 'ეს წერილი გამოგზავნილია თქვენი კლინიკის მიერ. გთხოვთ, არ უპასუხოთ ამ მისამართს.',
   questionsCall: 'კითხვები? დარეკეთ',
+  addressLabel: 'მისამართი:',
+  phoneLabel: 'ტელეფონი:',
+  emailLabel: 'ელფოსტა:',
+  reminderSubject: 'შეხსენება',
+  reminderDue: 'დროა',
+  reminderAt: 'დაგეგმილია',
+  openPortal: 'გახსენით თქვენი პორტალი',
 };
 
 export function emailCopy(locale: AppLocale): EmailCopy {
