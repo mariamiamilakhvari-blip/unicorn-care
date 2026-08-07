@@ -1,7 +1,7 @@
 'use client';
 
-import { AlertTriangle, CircleCheck, PhoneCall, Siren } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { AlertTriangle, CircleCheck, Languages, PhoneCall, Siren } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { useRecoveryGuide } from '@/features/recovery-guide/hooks/use-recovery-guide';
@@ -27,6 +27,7 @@ const SEVERITY_CLASS: Record<WarningSeverity, string> = {
 export function RecoveryGuidePanel() {
   const t = useTranslations('recoveryGuide');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
   const { guide, isLoading, isReporting, reportedAt, error, report } = useRecoveryGuide();
   const [note, setNote] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -60,6 +61,18 @@ export function RecoveryGuidePanel() {
           <Siren className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
           {t('emergencyBanner')}
         </p>
+
+        {/*
+          The clinic has not published this guide in the language the patient is reading. The
+          content is shown anyway — an empty panel helps nobody — but it is never translated, so
+          the patient is told which language they are looking at rather than left to work it out.
+        */}
+        {guide && guide.locale !== locale && (
+          <p className="flex items-start gap-2 rounded-md border border-border p-3 text-xs text-muted-foreground">
+            <Languages className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {t('otherLanguage', { language: t(`language.${guide.locale}`) })}
+          </p>
+        )}
 
         {guide && guide.expected.length > 0 && (
           <section className="flex flex-col gap-2">
@@ -102,17 +115,41 @@ export function RecoveryGuidePanel() {
                     {item.description && (
                       <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
                     )}
-                    <p className="mt-1 text-xs font-medium">{t(`severity.${item.severity}`)}</p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="mt-2"
-                      disabled={isReporting}
-                      onClick={() => void flag(item.title, item.severity)}
-                    >
-                      {t('flagThis')}
-                    </Button>
+                    {/*
+                      One row, wrapping. The call link and the report button are two different
+                      actions and must not read as one control — `gap-x-4` keeps them apart on a
+                      wide screen, and the wrap drops the button onto its own line on a narrow one
+                      rather than squeezing it against the phone number.
+                    */}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {/*
+                        The severity label doubles as the action when a phone number exists: a
+                        patient reading "call your clinic" with a post-operative symptom in front
+                        of them should not then have to go and find the number. Plain text when
+                        the clinic has not supplied one — a dead `tel:` link is worse than none.
+                      */}
+                      {guide.clinic.phone ? (
+                        <a
+                          href={`tel:${guide.clinic.phone.replace(/\s+/g, '')}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-4"
+                        >
+                          <PhoneCall className="size-3.5 shrink-0" aria-hidden />
+                          {t(`severity.${item.severity}`)}
+                          <span className="text-muted-foreground">{guide.clinic.phone}</span>
+                        </a>
+                      ) : (
+                        <p className="text-xs font-medium">{t(`severity.${item.severity}`)}</p>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isReporting}
+                        onClick={() => void flag(item.title, item.severity)}
+                      >
+                        {t('flagThis')}
+                      </Button>
+                    </div>
                   </li>
                 );
               })}
@@ -126,7 +163,19 @@ export function RecoveryGuidePanel() {
           {reportedAt ? (
             <p className="text-sm font-medium text-moss">{t('reportSent')}</p>
           ) : (
-            <Button type="button" variant="outline" onClick={() => setIsFormOpen(open => !open)}>
+            /*
+              Destructive styling and an icon, not the outline used by every other control here.
+              This is the escalation path: a patient who cannot find their symptom in the list
+              above must be able to spot it at a glance, one-handed, possibly frightened.
+            */
+            <Button
+              type="button"
+              variant="destructive"
+              size="lg"
+              className="w-full gap-2 font-semibold"
+              onClick={() => setIsFormOpen(open => !open)}
+            >
+              <AlertTriangle className="size-5 shrink-0" aria-hidden />
               {t('somethingWrong')}
             </Button>
           )}

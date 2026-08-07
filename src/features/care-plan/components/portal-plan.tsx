@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarCheck } from 'lucide-react';
+import { CalendarCheck, CircleCheck } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -86,7 +86,7 @@ export function PortalPlan() {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('nothingToday')}</p>
+          <NothingToday title={t('nothingToday')} body={t('nothingTodayHelp')} />
         )}
       </section>
 
@@ -95,6 +95,26 @@ export function PortalPlan() {
       {/* A patient worried about a symptom reaches clinic-authored guidance and the
           "contact your clinic" path — the only route the portal offers for a medical question. */}
       <RecoveryGuidePanel />
+    </div>
+  );
+}
+
+/**
+ * The empty day.
+ *
+ * A blank line of grey text reads like the portal failed to load something — which, to a patient
+ * two days out of surgery checking whether they have missed a dose, is the wrong thing to leave
+ * ambiguous. This says the same fact positively and looks deliberate: nothing is due, and that is
+ * the plan working, not a gap in it.
+ */
+function NothingToday({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-primary-edge bg-moss/10 p-4">
+      <CircleCheck className="size-6 shrink-0 text-moss" aria-hidden />
+      <div className="flex flex-col gap-0.5">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground">{body}</p>
+      </div>
     </div>
   );
 }

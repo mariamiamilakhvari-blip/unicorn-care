@@ -2,6 +2,7 @@
 import { BellOff, BellRing, CheckCircle2, Share } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import { PushDeniedNotice } from '@/features/notifications/components/push-denied-notice';
 import { usePushSubscription } from '@/features/notifications/hooks/use-push-subscription';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -63,20 +64,12 @@ export const PushOptIn = () => {
     );
   }
 
-  // Permission is a one-way door: once denied, the browser will not let us prompt again.
-  if (status === 'denied') {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BellOff className="size-4 text-muted-foreground" />
-            {t('permissionDenied')}
-          </CardTitle>
-          <CardDescription>{t('permissionDeniedHelp')}</CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  /*
+    Permission is a one-way door: once denied, the browser will not let us prompt again. So there
+    is no button to offer and nothing for the patient to do here — it drops to a dismissable line
+    rather than a card, and the plan gets the space back.
+  */
+  if (status === 'denied') return <PushDeniedNotice />;
 
   return (
     <Card className="w-full">

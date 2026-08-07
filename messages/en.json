@@ -273,7 +273,8 @@
     "linkExpired": "This link has expired",
     "linkExpiredHelp": "Contact your clinic to get a new link",
     "offline": "You are offline",
-    "kind_guide": "What is expected"
+    "kind_guide": "What is expected",
+    "nothingTodayHelp": "Nothing is due today. Your plan continues tomorrow."
   },
   "push": {
     "enableNotifications": "Enable notifications",
@@ -282,10 +283,19 @@
     "addToHomeScreen": "Add to home screen",
     "notificationsEnabled": "Notifications enabled",
     "permissionDenied": "Notification permission denied",
-    "permissionDeniedHelp": "Enable notifications in your browser settings",
     "iosInstallHint": "Tap Share, then choose Add to Home Screen",
     "reminderTitle": "Reminder",
-    "unsupported": "Your browser does not support notifications"
+    "unsupported": "Your browser does not support notifications",
+    "howToFix": "How to fix",
+    "howToFixTitle": "Turn notifications back on",
+    "howToFixIntro": "Your browser will not ask again, so this has to be changed in its settings.",
+    "dismiss": "Dismiss",
+    "fixStep": {
+      "openSettings": "Tap the lock or settings icon in the address bar.",
+      "findNotifications": "Open Site settings, then find Notifications.",
+      "allow": "Change it from Block to Allow.",
+      "reload": "Reload this page."
+    }
   },
   "marketing": {
     "eyebrow": "Platform for plastic surgery and aesthetic clinics",
@@ -377,7 +387,12 @@
     },
     "saveGuide": "Save guide",
     "sharedAcrossPatients": "Written per procedure type — every patient with this procedure sees it.",
-    "usingDefault": "Showing the default guide. Saving creates your clinic’s own version."
+    "usingDefault": "Showing the default guide. Saving creates your clinic’s own version.",
+    "otherLanguage": "Your clinic has not published this guidance in your language, so it is shown in {language}.",
+    "language": {
+      "ka": "Georgian",
+      "en": "English"
+    }
   },
   "pricing": {
     "title": "Pricing",
