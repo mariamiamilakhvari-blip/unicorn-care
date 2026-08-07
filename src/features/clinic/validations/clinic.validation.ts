@@ -2,41 +2,32 @@ import { z } from 'zod';
 
 import { DEFAULT_TIMEZONE, isValidTimeZone } from '@/shared/const/timezone.const';
 import { requiredConsent } from '@/shared/utils/consent';
-
-/**
- * Alphanumerics separated by single spaces or hyphens, and nothing else.
- *
- * Deliberately not a per-country rule. The same field has to hold a German VAT number
- * (DE123456789), a US EIN (12-3456789), a UK company number (SC123456), and a Georgian tax ID
- * (204567891) — anchoring it to one shape makes the product unusable everywhere else, and a
- * clinic that cannot enter its own real number cannot be invoiced.
- *
- * What it does reject is punctuation that only ever arrives by accident: a stray comma, a pasted
- * newline, a trailing separator. Those are typos, not formats.
- */
-const TAX_ID_PATTERN = /^[A-Za-z0-9]+(?:[ -][A-Za-z0-9]+)*$/;
+import { normaliseTaxId, taxIdIssue } from '@/shared/utils/tax-id';
 
 /**
  * Clinic profile fields (PRD 01 §2). `slug`, `ownerId`, `logoUrl` and `isActive` are derived
  * server-side and are deliberately absent from every request body.
+ *
+ * Unrefined on purpose. The tax ID rule reads two fields at once, so it can only be attached at
+ * object level — and Zod refuses `.partial()` on an object that carries refinements, which is
+ * exactly what `UpdateClinicSchema` needs. So the base stays plain and every schema built from it
+ * puts the rule back with `withTaxIdRule`.
  */
-export const ClinicProfileSchema = z.object({
+const ClinicProfileBase = z.object({
   name: z.string().min(2).max(120),
   country: z.string().max(80).default(''),
   city: z.string().max(80).default(''),
   addressLine: z.string().max(200).default(''),
   phone: z.string().max(40).default(''),
   /*
-    Optional, because it is needed to raise an invoice and not to open an account — a required
-    field here loses sign-ups from clinics whose registration number is with their accountant.
-    Trimmed before the pattern runs so a copy-pasted value with surrounding whitespace passes.
+    Sanitised, not merely trimmed: spaces and hyphens are how a registration number is *printed*,
+    so they are stripped before anything looks at it. The shape rule itself is country-dependent
+    and lives in `withTaxIdRule` below — it needs `country`, which a field-level check cannot see.
+
+    The raw cap is generous because it applies before stripping; every country branch imposes its
+    own real bound afterwards.
   */
-  taxId: z
-    .string()
-    .trim()
-    .max(40)
-    .refine(value => value === '' || TAX_ID_PATTERN.test(value), { message: 'INVALID_TAX_ID' })
-    .default(''),
+  taxId: z.string().max(80).transform(normaliseTaxId).default(''),
   locale: z.enum(['ka', 'en']).default('ka'),
   /*
     Rejected at the boundary rather than trusted. An invalid zone makes `Intl.DateTimeFormat`
@@ -50,6 +41,30 @@ export const ClinicProfileSchema = z.object({
     .refine(isValidTimeZone, { message: 'INVALID_TIMEZONE' })
     .default(DEFAULT_TIMEZONE),
 });
+
+/** The two fields the rule reads. Both optional so a partial (PATCH) body satisfies it too. */
+type TaxIdAware = { taxId?: string; country?: string };
+
+/**
+ * Attaches the country-aware tax ID rule to any schema that carries `taxId` and `country`.
+ *
+ * Applied per schema rather than once on the base because Zod drops — or refuses — refinements
+ * when an object is reshaped, and because the sign-up form flattens the clinic fields alongside
+ * the owner's. Both field names survive that flattening, so one helper covers every case.
+ *
+ * The issue is raised at `path: ['taxId']` so `react-hook-form` puts the message under the input
+ * rather than at the top of the form. On a PATCH that sends `taxId` without `country`, the
+ * country resolves to nothing and the generic 5–15 rule applies — the settings form always sends
+ * both, so this only affects a hand-made request.
+ */
+export function withTaxIdRule<Schema extends z.ZodType<TaxIdAware>>(schema: Schema): Schema {
+  return schema.superRefine((value, ctx) => {
+    const issue = taxIdIssue(value.taxId ?? '', value.country ?? '');
+    if (issue) ctx.addIssue({ code: 'custom', message: issue, path: ['taxId'] });
+  }) as Schema;
+}
+
+export const ClinicProfileSchema = withTaxIdRule(ClinicProfileBase);
 
 export type ClinicProfileType = z.infer<typeof ClinicProfileSchema>;
 
@@ -104,16 +119,16 @@ export const RegisterClinicSchema = z.object({
  * It creates a clinic just as registration does, so it collects the same consents; the profile
  * schema alone would let that route in without them.
  */
-export const CreateClinicForUserSchema = ClinicProfileSchema.extend({
-  consents: ClinicConsentSchema,
-});
+export const CreateClinicForUserSchema = withTaxIdRule(
+  ClinicProfileBase.extend({ consents: ClinicConsentSchema })
+);
 
 export type CreateClinicForUserType = z.infer<typeof CreateClinicForUserSchema>;
 
 export type RegisterClinicType = z.infer<typeof RegisterClinicSchema>;
 
-/** `PATCH /api/clinic` — any subset of the profile fields. */
-export const UpdateClinicSchema = ClinicProfileSchema.partial();
+/** `PATCH /api/clinic` — any subset of the profile fields, tax ID still checked against country. */
+export const UpdateClinicSchema = withTaxIdRule(ClinicProfileBase.partial());
 
 export type UpdateClinicType = z.infer<typeof UpdateClinicSchema>;
 

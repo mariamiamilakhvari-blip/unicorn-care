@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { TAX_ID_MESSAGE_KEYS, TaxIdIssue } from '@/shared/const/tax-id.const';
 import { COMMON_TIMEZONES } from '@/shared/const/timezone.const';
 
 /**
@@ -44,11 +45,11 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
 };
 
 /**
- * The tax ID rule raises the bare code `INVALID_TAX_ID`, which is fine on the wire and useless to
- * a clinic owner reading a form. `FormMessage` always prefers `error.message` over its children,
- * so translating it means rendering the paragraph here — reusing `formMessageId` so the input's
- * `aria-describedby` still resolves. Anything that is not the code (a length error, say) falls
- * through unchanged.
+ * The tax ID rule raises a bare code — `INVALID_TAX_ID_GE` and friends — which is fine on the wire
+ * and useless to a clinic owner reading a form. `FormMessage` always prefers `error.message` over
+ * its children, so translating it means rendering the paragraph here — reusing `formMessageId` so
+ * the input's `aria-describedby` still resolves. Anything that is not one of the codes (a length
+ * error, say) falls through unchanged.
  */
 function TaxIdMessage() {
   const t = useTranslations('clinic');
@@ -56,9 +57,12 @@ function TaxIdMessage() {
 
   if (!error) return null;
 
+  const code = String(error.message ?? '');
+  const messageKey = TAX_ID_MESSAGE_KEYS[code as TaxIdIssue];
+
   return (
     <p id={formMessageId} className="text-sm font-medium text-destructive">
-      {error.message === 'INVALID_TAX_ID' ? t('taxIdInvalid') : String(error.message ?? '')}
+      {messageKey ? t(messageKey) : code}
     </p>
   );
 }
