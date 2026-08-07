@@ -23,6 +23,9 @@ const GONE_STATUS_CODES = [404, 410];
  * Server-only wrapper around `web-push` (PRD 04). Never throws — a failed send returns the
  * failure shape so the dispatch sweep can keep going through the rest of the batch.
  */
+/** Bound on one push. Generous against a healthy endpoint, decisive against a dead one. */
+const PUSH_TIMEOUT_MS = 10_000;
+
 class WebPushClient {
   private configured = false;
 
@@ -31,7 +34,13 @@ class WebPushClient {
       this.configure();
       await sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload)
+        JSON.stringify(payload),
+        /*
+          A push endpoint that accepts a connection and then goes quiet would otherwise hold this
+          send open indefinitely. The sweep sends sequentially, so one such endpoint costs every
+          patient behind it in the run.
+        */
+        { timeout: PUSH_TIMEOUT_MS }
       );
       return { ok: true };
     } catch (error) {

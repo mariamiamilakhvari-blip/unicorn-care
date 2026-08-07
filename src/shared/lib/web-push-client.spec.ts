@@ -58,7 +58,10 @@ describe('WebPushClient.send — success', () => {
     expect(result).toEqual({ ok: true });
     expect(mockSend).toHaveBeenCalledWith(
       { endpoint: SUB.endpoint, keys: { p256dh: SUB.p256dh, auth: SUB.auth } },
-      JSON.stringify(PAYLOAD)
+      JSON.stringify(PAYLOAD),
+      // An endpoint that accepts a connection then goes quiet would otherwise hold the whole
+      // sequential sweep open behind it.
+      expect.objectContaining({ timeout: expect.any(Number) })
     );
   });
 

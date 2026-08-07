@@ -12,7 +12,10 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 export type ReminderStatusCount = { _id: ReminderOccurrenceDocument['status']; count: number };
 
 export type ReminderStatusPatch = Partial<
-  Pick<ReminderOccurrenceDocument, 'status' | 'sentAt' | 'completedAt'>
+  Pick<
+    ReminderOccurrenceDocument,
+    'status' | 'sentAt' | 'completedAt' | 'pushDelivered' | 'emailDelivered'
+  >
 >;
 
 /**
@@ -112,6 +115,19 @@ export const reminderOccurrenceRepository = {
    * Without this a run that dies between claiming and sending would strand its rows in `sending`
    * for good, and the patient would silently never be reminded.
    */
+  /**
+   * Hands back rows this run claimed but never got to, so the next sweep picks them up at once
+   * rather than waiting out the stale-claim window.
+   */
+  async releaseClaim(claimId: string): Promise<number> {
+    await mongo.connect();
+    const result = await ReminderOccurrenceModel.updateMany(
+      { claimId, status: 'sending' },
+      { $set: { status: 'pending', claimId: null, claimedAt: null } }
+    );
+    return result.modifiedCount;
+  },
+
   async releaseStaleClaims(cutoff: Date): Promise<number> {
     await mongo.connect();
     const result = await ReminderOccurrenceModel.updateMany(

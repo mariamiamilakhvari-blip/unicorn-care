@@ -20,6 +20,10 @@ on:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    # curl already caps the request at 60s; this caps everything around it. Without a job timeout
+    # GitHub's default is six hours, so a runner that wedges before the step ever runs holds a
+    # slot and reports a failure whose duration says nothing about the sweep itself.
+    timeout-minutes: 5
     steps:
       - name: Trigger reminder sweep
         env:

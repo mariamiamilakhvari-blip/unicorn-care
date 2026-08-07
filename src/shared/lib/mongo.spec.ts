@@ -26,7 +26,19 @@ describe('MongoClientManager', () => {
     vi.mocked(mongoose.connect).mockResolvedValueOnce(mongoose);
     await manager.connect();
     expect(mongoose.connect).toHaveBeenCalledOnce();
-    expect(mongoose.connect).toHaveBeenCalledWith(process.env.MONGO_URI);
+    /*
+      Bounded on purpose. Mongoose defaults server selection to 30s and this manager retries five
+      times, so an unreachable cluster took ~2.5 minutes to report a failure — the whole request
+      budget of the reminder sweep spent before a single reminder was looked at.
+    */
+    expect(mongoose.connect).toHaveBeenCalledWith(
+      process.env.MONGO_URI,
+      expect.objectContaining({
+        serverSelectionTimeoutMS: expect.any(Number),
+        connectTimeoutMS: expect.any(Number),
+        socketTimeoutMS: expect.any(Number),
+      })
+    );
   });
 
   it('does not reconnect when already connected', async () => {

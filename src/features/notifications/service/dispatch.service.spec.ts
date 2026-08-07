@@ -7,6 +7,7 @@ vi.mock('@/features/care-plan/repository/reminder-occurrence.repository', () => 
     claimForDispatch: vi.fn(),
     findByClaimId: vi.fn(),
     releaseStaleClaims: vi.fn(),
+    releaseClaim: vi.fn(),
     updateStatus: vi.fn(),
     markMissedBefore: vi.fn(),
   },
@@ -134,9 +135,16 @@ describe('dispatchDueRemindersService', () => {
     const result = await dispatchDueRemindersService();
 
     expect(occurrenceRepo.findDueForDispatch).toHaveBeenCalledWith(NOW, 6, 500);
+    /*
+      What each channel managed is written with the status. `status: 'sent'` only says the sweep
+      handled the row — it is set even when nothing reached the patient — so deliverability has to
+      be recorded separately or a report off this data would read ~100% regardless of reality.
+    */
     expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(OCCURRENCE_ID, {
       status: 'sent',
       sentAt: NOW,
+      pushDelivered: true,
+      emailDelivered: true,
     });
     expect(result.data).toMatchObject({ processed: 1, sent: 1, undelivered: 0 });
   });
@@ -165,6 +173,9 @@ describe('dispatchDueRemindersService', () => {
     expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(OCCURRENCE_ID, {
       status: 'sent',
       sentAt: NOW,
+      // Retired so the sweep cannot loop, and recorded as undelivered so a report says so.
+      pushDelivered: false,
+      emailDelivered: true,
     });
     expect(result.data).toMatchObject({ processed: 1, sent: 0, undelivered: 1 });
   });
@@ -195,6 +206,8 @@ describe('dispatchDueRemindersService', () => {
     expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(OCCURRENCE_ID, {
       status: 'sent',
       sentAt: NOW,
+      pushDelivered: false,
+      emailDelivered: true,
     });
     expect(result.data).toMatchObject({ processed: 1, sent: 0, undelivered: 1 });
   });
@@ -368,5 +381,97 @@ describe('dispatchDueRemindersService — timed reminder emails', () => {
     // A digest that stops arriving is a scheduling bug; a reminder that stops is a dispatch bug.
     expect('emailed' in result.data && result.data.emailed).toBe(3);
     expect('emailedReminders' in result.data && result.data.emailedReminders).toBe(1);
+  });
+});
+
+/**
+ * Resilience. The sweep is a sequential loop over hundreds of network calls, and before these
+ * guards one bad row took the whole run with it — every remaining occurrence left claimed, so
+ * unreachable for the fifteen-minute stale window. One patient's dead endpoint became an outage
+ * for everyone behind them in the queue.
+ */
+describe('dispatchDueRemindersService — resilience', () => {
+  const SECOND_ID = '507f1f77bcf86cd799439066';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    givenDue([]);
+    occurrenceRepo.releaseStaleClaims.mockResolvedValue(0);
+    occurrenceRepo.releaseClaim.mockResolvedValue(0);
+    occurrenceRepo.updateStatus.mockResolvedValue(true);
+    occurrenceRepo.markMissedBefore.mockResolvedValue(0);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
+    extendPlans.mockResolvedValue(0);
+    sendDigests.mockResolvedValue({
+      data: { considered: 0, sent: 0, failed: 0, skipped: 0 },
+      status: 200,
+    });
+    sendReminderEmail = vi.fn().mockResolvedValue(true);
+    makeReminderSender.mockReturnValue(sendReminderEmail);
+  });
+
+  it('keeps going after one occurrence throws', async () => {
+    givenDue([buildOccurrence(), buildOccurrence(SECOND_ID)]);
+    subscriptionRepo.findActiveByPatient
+      .mockRejectedValueOnce(new Error('endpoint lookup exploded'))
+      .mockResolvedValueOnce([]);
+
+    const result = await dispatchDueRemindersService();
+
+    // The second row was still attempted.
+    expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(SECOND_ID, expect.anything());
+    expect('failed' in result.data && result.data.failed).toBe(1);
+  });
+
+  it('retires a thrown occurrence as undelivered rather than leaving it claimed', async () => {
+    // Left claimed it is stranded for the stale window; left pending it may be sent twice.
+    givenDue([buildOccurrence()]);
+    subscriptionRepo.findActiveByPatient.mockRejectedValue(new Error('boom'));
+
+    await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(OCCURRENCE_ID, {
+      status: 'sent',
+      sentAt: NOW,
+      pushDelivered: false,
+      emailDelivered: false,
+    });
+  });
+
+  it('survives a failure to retire, rather than losing the rest of the run', async () => {
+    givenDue([buildOccurrence(), buildOccurrence(SECOND_ID)]);
+    subscriptionRepo.findActiveByPatient.mockRejectedValue(new Error('boom'));
+    occurrenceRepo.updateStatus.mockRejectedValue(new Error('database gone'));
+
+    const result = await dispatchDueRemindersService();
+
+    expect(result.status).toBe(200);
+    expect('failed' in result.data && result.data.failed).toBe(2);
+  });
+
+  it('stops at the run budget and hands the untouched rows straight back', async () => {
+    givenDue([buildOccurrence(), buildOccurrence(SECOND_ID)]);
+    // The first send takes the whole budget; the second must not be attempted.
+    subscriptionRepo.findActiveByPatient.mockImplementation(async () => {
+      vi.setSystemTime(new Date(NOW.getTime() + 46_000));
+      return [];
+    });
+
+    const result = await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.updateStatus).toHaveBeenCalledTimes(1);
+    expect('abandoned' in result.data && result.data.abandoned).toBe(1);
+    // Released now, not left to the fifteen-minute stale sweep.
+    expect(occurrenceRepo.releaseClaim).toHaveBeenCalled();
+  });
+
+  it('does not release a claim when the whole run completed', async () => {
+    givenDue([buildOccurrence()]);
+
+    await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.releaseClaim).not.toHaveBeenCalled();
   });
 });

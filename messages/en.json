@@ -35,7 +35,8 @@
     "navigation": "Navigation",
     "openNavigation": "Open navigation",
     "closeNavigation": "Close navigation",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "admin": "Admin"
   },
   "auth": {
     "signIn": "Sign in",
@@ -451,5 +452,69 @@
     "viewPlans": "View plans",
     "trialIncluded": "Included at sign-up",
     "billedMonthly": "billed monthly ({yearly}/year)"
+  },
+  "admin": {
+    "title": "Admin",
+    "users": "Users",
+    "searchUsers": "Search by name or email",
+    "noUsers": "No users match that search.",
+    "active": "Active",
+    "deactivated": "Deactivated",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "role": {
+      "user": "User",
+      "admin": "Admin",
+      "clinic_owner": "Clinic owner",
+      "clinic_staff": "Clinic staff"
+    },
+    "files": "Files",
+    "filesHelp": "Uploads are publicly readable by anyone holding the link. Do not upload patient information.",
+    "upload": "Upload file",
+    "noFiles": "Nothing uploaded yet.",
+    "deleteFile": "Delete file",
+    "deleteFileHelp": "Permanently deletes {name}. The stored file and its link stop working immediately.",
+    "error": {
+      "CANNOT_MODIFY_SELF": "You cannot change your own role or access from here.",
+      "LAST_ADMIN": "This is the last active admin. Promote another account first.",
+      "NOT_FOUND": "That record no longer exists.",
+      "NO_CHANGES": "Nothing to change.",
+      "FILE_TOO_LARGE": "That file is larger than 10 MB.",
+      "UNSUPPORTED_TYPE": "That file type cannot be uploaded.",
+      "EMPTY_FILE": "That file is empty.",
+      "BLOB_NOT_CONFIGURED": "File storage is not configured on this deployment.",
+      "UPLOAD_FAILED": "The upload failed. Please try again.",
+      "ERROR": "Something went wrong."
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "help": "Aggregated metrics per clinic. Pick a clinic and a quarter.",
+    "clinic": "Clinic",
+    "year": "Year",
+    "quarter": "Quarter",
+    "activePatients": "Active patients",
+    "newPatients": "{count} added this quarter",
+    "remindersDelivered": "Reminders delivered",
+    "ofDispatched": "of {count} dispatched",
+    "adherence": "Tasks confirmed",
+    "confirmedOf": "{done} of {total} answered",
+    "hoursSaved": "Est. staff hours saved",
+    "hoursAssumption": "Estimate: {perReminder} min per reminder, {perPatient} min per patient",
+    "delivery": "Delivery rate",
+    "push": "Push notifications",
+    "email": "Email",
+    "languages": "Patient languages",
+    "noData": "Not recorded",
+    "sendReport": "Email quarterly report",
+    "sentTo": "Report sent to {email}",
+    "error": {
+      "NOT_FOUND": "That clinic no longer exists.",
+      "NO_RECIPIENT": "This clinic has no contact email and no owner address to send to.",
+      "SEND_FAILED": "The report could not be sent. Please try again.",
+      "ANALYTICS_FAILED": "The figures could not be assembled.",
+      "VALIDATION_ERROR": "That timeframe is not valid.",
+      "ERROR": "Something went wrong."
+    }
   }
 }

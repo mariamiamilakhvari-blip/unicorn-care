@@ -41,6 +41,23 @@ export type EmailCopy = {
   reminderDue: string;
   reminderAt: string;
   openPortal: string;
+  /* The quarterly impact summary. */
+  reportSubject: string;
+  reportHeadline: string;
+  reportIntro: string;
+  reportPatients: string;
+  reportRemindersSent: string;
+  reportAdherence: string;
+  reportHoursSaved: string;
+  reportHoursAssumption: string;
+  reportDelivery: string;
+  reportPush: string;
+  reportEmail: string;
+  reportLanguages: string;
+  reportNoData: string;
+  reportInsights: string;
+  reportMissed: string;
+  reportEstimateNote: string;
 };
 
 const EN: EmailCopy = {
@@ -79,6 +96,23 @@ const EN: EmailCopy = {
   reminderDue: 'Due now',
   reminderAt: 'Scheduled for',
   openPortal: 'Open your portal',
+  reportSubject: 'Your quarterly summary',
+  reportHeadline: 'Quarterly impact summary',
+  reportIntro: 'Here is how your recovery plans performed this quarter.',
+  reportPatients: 'Patients',
+  reportRemindersSent: 'Reminders delivered',
+  reportAdherence: 'Tasks confirmed',
+  reportHoursSaved: 'Estimated staff hours saved',
+  reportHoursAssumption:
+    'An estimate, not a measurement: {minutesPerReminder} minutes per delivered reminder and {minutesPerPatient} minutes per patient onboarded.',
+  reportDelivery: 'Delivery',
+  reportPush: 'Push notifications',
+  reportEmail: 'Email',
+  reportLanguages: 'Patient languages',
+  reportNoData: 'Not recorded',
+  reportInsights: 'What this means',
+  reportMissed: '{count} reminders passed without an answer.',
+  reportEstimateNote: 'Figures cover reminders scheduled between {from} and {to}.',
 };
 
 const KA: EmailCopy = {
@@ -117,6 +151,23 @@ const KA: EmailCopy = {
   reminderDue: 'დროა',
   reminderAt: 'დაგეგმილია',
   openPortal: 'გახსენით თქვენი პორტალი',
+  reportSubject: 'თქვენი კვარტალური შეჯამება',
+  reportHeadline: 'კვარტალური შედეგების შეჯამება',
+  reportIntro: 'ასე იმუშავა თქვენმა სარეაბილიტაციო გეგმებმა ამ კვარტალში.',
+  reportPatients: 'პაციენტები',
+  reportRemindersSent: 'მიწოდებული შეხსენებები',
+  reportAdherence: 'დადასტურებული დავალებები',
+  reportHoursSaved: 'დაზოგილი სამუშაო საათები (შეფასება)',
+  reportHoursAssumption:
+    'ეს შეფასებაა და არა გაზომვა: {minutesPerReminder} წუთი თითო მიწოდებულ შეხსენებაზე და {minutesPerPatient} წუთი თითო ახალ პაციენტზე.',
+  reportDelivery: 'მიწოდება',
+  reportPush: 'Push-შეტყობინებები',
+  reportEmail: 'ელფოსტა',
+  reportLanguages: 'პაციენტების ენები',
+  reportNoData: 'არ არის აღრიცხული',
+  reportInsights: 'რას ნიშნავს ეს',
+  reportMissed: '{count} შეხსენება უპასუხოდ დარჩა.',
+  reportEstimateNote: 'მონაცემები მოიცავს {from} — {to} პერიოდში დაგეგმილ შეხსენებებს.',
 };
 
 export function emailCopy(locale: AppLocale): EmailCopy {

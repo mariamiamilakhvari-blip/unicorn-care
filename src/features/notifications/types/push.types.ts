@@ -31,6 +31,10 @@ export type DispatchSummary = {
    * a digest that stops arriving is a scheduling bug, a reminder that stops is a dispatch bug.
    */
   emailedReminders: number;
+  /** Occurrences whose send threw. Retired as undelivered rather than left to block the run. */
+  failed: number;
+  /** Claimed rows the run ran out of time for, released back to `pending` for the next sweep. */
+  abandoned: number;
 };
 
 /** Client-side opt-in state machine for `use-push-subscription`. */

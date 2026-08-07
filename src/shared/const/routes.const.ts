@@ -15,6 +15,9 @@ export const SIGN_IN_ROUTE = '/sign-in';
 
 export const DASHBOARD_ROUTE = '/dashboard';
 
+/** The platform console. Admins land here instead of the clinic overview, which they cannot use. */
+export const ADMIN_ROUTE = '/dashboard/admin';
+
 /** The legal documents the registration consents point at. */
 export const TERMS_ROUTE = '/terms';
 

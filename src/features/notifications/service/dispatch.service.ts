@@ -31,6 +31,19 @@ const GRACE_HOURS = 6;
 const DISPATCH_LIMIT = 500;
 
 /**
+ * How long this run may spend sending before it stops and hands the rest back.
+ *
+ * The scheduler calls this over HTTP with a 60-second cap, and every occurrence now costs a push
+ * *and* an email — hundreds of sequential round trips that a slow provider can stretch past that
+ * window. Being killed mid-run is the bad outcome: the rows already claimed stay in `sending`
+ * until the stale-claim window expires, so nobody is reminded of anything for fifteen minutes.
+ *
+ * Forty-five seconds leaves the caller room to read the response, and the remainder is released
+ * immediately for the next run five minutes later.
+ */
+const RUN_BUDGET_MS = 45_000;
+
+/**
  * Dispatch is a pure read: `title`/`body` were rendered in the patient's locale at generation
  * time (PRD 04 §"Payload shape"), so nothing clinical is composed here.
  */
@@ -104,24 +117,88 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
   */
   const sendReminderEmail = createReminderEmailSender();
 
+  const deadline = now.getTime() + RUN_BUDGET_MS;
+  let processed = 0;
+  let failed = 0;
+  let abandoned = 0;
+
   for (const occurrence of due) {
-    const result = await sendToPatientService(occurrence.patientId.toString(), toPayload(occurrence));
+    /*
+      Stop before the caller does. The scheduler gives this request a fixed window, and a run that
+      is killed mid-flight leaves its remaining rows stuck in `sending` until the stale-claim
+      window expires — fifteen minutes in which nobody is reminded of anything. Stopping under our
+      own power lets the untouched rows go straight back to `pending` below.
+    */
+    if (clock.now().getTime() > deadline) {
+      abandoned = due.length - processed;
+      console.warn('[dispatch] run budget reached', { processed, abandoned });
+      break;
+    }
 
     /*
-      Email rides the same claim as the push, so it inherits exactly-once: this row is already out
-      of `pending` and no other run can reach it. Sent after the push because push is the faster
-      channel and a patient may have both — the ordering decides which one arrives first, and the
-      one that can wake a phone should.
+      One occurrence's failure is one occurrence's failure. Before this, a throw anywhere in the
+      body abandoned every remaining row in the run — still claimed, so not retried for fifteen
+      minutes — which turns one patient's dead push endpoint into an outage for everyone behind
+      them in the queue.
     */
-    if (await sendReminderEmail(occurrence)) emailedReminders += 1;
+    try {
+      const result = await sendToPatientService(
+        occurrence.patientId.toString(),
+        toPayload(occurrence)
+      );
 
-    await reminderOccurrenceRepository.updateStatus(occurrence._id.toString(), {
-      status: 'sent',
-      sentAt: now,
-    });
-    if (wasDelivered(result)) sent += 1;
-    else undelivered += 1;
+      /*
+        Email rides the same claim as the push, so it inherits exactly-once: this row is already
+        out of `pending` and no other run can reach it. Sent after the push because push is the
+        faster channel and a patient may have both — the ordering decides which one arrives first,
+        and the one that can wake a phone should.
+      */
+      const emailDelivered = await sendReminderEmail(occurrence);
+      if (emailDelivered) emailedReminders += 1;
+
+      const pushDelivered = wasDelivered(result);
+
+      /*
+        Both outcomes are written with the status, because this is the only moment either is known.
+        `status: 'sent'` means the sweep handled the row and nothing more — a report that read
+        deliverability off it would call a dead endpoint and a bounced inbox a success.
+      */
+      await reminderOccurrenceRepository.updateStatus(occurrence._id.toString(), {
+        status: 'sent',
+        sentAt: now,
+        pushDelivered,
+        emailDelivered,
+      });
+      if (pushDelivered) sent += 1;
+      else undelivered += 1;
+    } catch (caught) {
+      failed += 1;
+      console.error('[dispatch] occurrence failed', occurrence._id.toString(), caught);
+
+      /*
+        Retired anyway. Leaving it claimed strands it for the stale window and leaving it pending
+        re-runs a send that may already have gone out — and the dose time is passing either way.
+        `pushDelivered: false` records that nothing is known to have landed, which is the honest
+        answer and the one the adherence and analytics views should show.
+      */
+      try {
+        await reminderOccurrenceRepository.updateStatus(occurrence._id.toString(), {
+          status: 'sent',
+          sentAt: now,
+          pushDelivered: false,
+          emailDelivered: false,
+        });
+      } catch (retireFailed) {
+        // The database is the thing that is failing. The stale-claim sweeper is the backstop.
+        console.error('[dispatch] could not retire', occurrence._id.toString(), retireFailed);
+      }
+    }
+
+    processed += 1;
   }
+
+  // Anything claimed and not reached goes back now rather than sitting out the stale window.
+  if (abandoned > 0) await reminderOccurrenceRepository.releaseClaim(claimId);
 
   // Anything still pending past the grace window is beyond useful — the dose time has gone.
   const missed = await reminderOccurrenceRepository.markMissedBefore(
@@ -136,7 +213,17 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
   const emailed = 'sent' in digests.data ? digests.data.sent : 0;
 
   return {
-    data: { processed: due.length, sent, undelivered, missed, extendedPlans, emailed, emailedReminders },
+    data: {
+      processed,
+      sent,
+      undelivered,
+      missed,
+      extendedPlans,
+      emailed,
+      emailedReminders,
+      failed,
+      abandoned,
+    },
     status: 200,
   };
 }

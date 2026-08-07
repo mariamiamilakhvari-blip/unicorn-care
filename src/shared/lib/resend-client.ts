@@ -12,6 +12,18 @@ export type EmailSendResult =
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 
 /**
+ * How long one send may take before it is abandoned.
+ *
+ * Node's `fetch` has no default timeout: a connection the provider never answers hangs until the
+ * process dies. Inside the reminder sweep that is not one slow email, it is every later patient in
+ * the run losing their reminder — the loop is sequential, so one stalled request blocks all of it.
+ *
+ * Ten seconds is far longer than a healthy send (~300ms) and short enough that a run of hundreds
+ * cannot be stalled past the caller's own deadline by a handful of bad ones.
+ */
+const SEND_TIMEOUT_MS = 10_000;
+
+/**
  * Transactional email through Resend's REST API.
  *
  * Deliberately no SDK: one POST is the whole contract, and a dependency that ships its own fetch
@@ -43,6 +55,8 @@ class ResendClient {
     try {
       const response = await fetch(RESEND_ENDPOINT, {
         method: 'POST',
+        // Aborts the request rather than the process waiting on a socket nobody will answer.
+        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         headers: {
           Authorization: `Bearer ${this.apiKey()}`,
           'Content-Type': 'application/json',

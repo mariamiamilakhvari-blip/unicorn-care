@@ -33,6 +33,21 @@ const ReminderOccurrenceSchema = new Schema(
     claimId: { type: String, required: false, default: null },
     claimedAt: { type: Date, required: false, default: null },
     sentAt: { type: Date, required: false, default: null },
+    /*
+      What each channel actually managed, recorded at dispatch.
+
+      `status: 'sent'` says the sweep handled the row, not that anything reached the patient — it
+      is set even when every push endpoint was gone and the email bounced, so the row is not
+      retried forever. Reporting deliverability off it would show ~100% regardless of reality,
+      which is why these two exist.
+
+      `null` means the row was dispatched before this was recorded. It is not `false`: the
+      difference between "we tried and nothing landed" and "we never looked" is the difference
+      between a delivery problem and no data, and a report must not present the second as the
+      first.
+    */
+    pushDelivered: { type: Boolean, required: false, default: null },
+    emailDelivered: { type: Boolean, required: false, default: null },
     completedAt: { type: Date, required: false, default: null },
   },
   { timestamps: true }

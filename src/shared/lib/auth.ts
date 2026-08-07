@@ -24,6 +24,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await userRepository.findByEmail(credentials.email as string);
         if (!user) return null;
+        /*
+          A deactivated account is refused here and again on every token refresh below. Both are
+          needed: this stops a new sign-in, the refresh kills a session that was already open —
+          otherwise deactivating someone would take until their JWT expired to mean anything.
+
+          Refused the same way a wrong password is, with no distinguishing message: telling an
+          unauthenticated caller that an address exists but is disabled is an account oracle.
+        */
+        if (user.isActive === false) return null;
 
         const passwordHash = hashPassword(credentials.password as string);
         if (user.passwordHash !== passwordHash) return null;
@@ -42,6 +51,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   callbacks: {
     async signIn({ user, account }) {
+      // Applies to both providers: an account switched off must not get in through either door.
+      if (user.email) {
+        const existing = await userRepository.findByEmail(user.email);
+        if (existing?.isActive === false) return false;
+      }
+
       if (account?.provider !== 'google' || !user.email || !user.name) {
         return true;
       }
@@ -70,7 +85,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (token.email) {
         const dbUser = await userRepository.findByEmail(token.email as string);
-        if (dbUser) {
+        if (dbUser?.isActive === false) {
+          /*
+            Dropped to the lowest privileges rather than left as they were. The token cannot be
+            revoked from here — NextAuth has no such hook on a JWT strategy — so the next best
+            thing is a token that opens nothing: `user` fails the admin guard and a null clinic
+            fails the tenancy guard.
+          */
+          token.role = 'user';
+          token.clinicId = null;
+        } else if (dbUser) {
           token.id = dbUser._id.toString();
           token.name = dbUser.name;
           token.avatar = dbUser.avatar ?? (token.avatar as string | null | undefined);
