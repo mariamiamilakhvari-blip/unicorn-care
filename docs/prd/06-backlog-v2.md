@@ -8,6 +8,7 @@ These features are in the original product brief but were deferred by the chosen
 | Doctor and clinic rating | Not built |
 | **Complication vs norm** | **Built** — `src/features/recovery-guide/`, see §2 |
 | Patient-reported recovery timeline | Not built |
+| Email deliverability: validation, bounce tracking, suppression | Not built — see §4 |
 
 ---
 
@@ -120,3 +121,60 @@ patient consent, and clinic-side access logging. Do not ship photo upload withou
 
 **Clinic view.** Pain and swelling as a sparkline over `dayIndex`, with the checkup dates marked —
 the shape of the curve is the clinically useful signal.
+
+---
+
+## 4. Email deliverability: validation, bounce tracking, suppression
+
+**Why it moved up the list.** Reminder email went from one digest per patient per day to one per
+dose (`src/features/notifications/service/reminder-email.service.ts`). A patient on four
+medications receives five-plus messages a day instead of one, so every bad address in a clinic's
+records is now retried five times as often.
+
+Volume is the lesser half. Patient email addresses are typed by clinic staff and **never
+verified** — nothing today checks that an address is deliverable, or notices when it stops being
+deliverable. Hard bounces are what damages a sending domain's reputation, and a domain that ends
+up filtered takes every *good* address down with it: the failure mode is not "one patient misses a
+reminder", it is "no patient receives anything and nobody is told".
+
+**Three pieces, in the order they are worth building.**
+
+### 4.1 Validation at entry
+
+Syntax and domain plausibility on the patient form, at the moment a clinic types the address —
+where it is cheap to correct. `ClinicProfileSchema.email` already does this shape of check for the
+clinic's own contact address and is the pattern to follow.
+
+Worth adding beyond syntax: a typo hint for the common domains (`gmail.co`, `gmial.com`,
+`yaho.com`). Suggest, never rewrite — silently correcting a clinic's data entry is how a reminder
+ends up at a stranger's inbox with a patient's medication in the subject line.
+
+### 4.2 Bounce tracking
+
+Resend posts delivery events to a webhook — `email.bounced`, `email.complained`, `email.delivered`.
+There is no receiver today, so a bounce is invisible to the platform and to the clinic.
+
+- Verify the webhook signature. `src/app/api/webhooks/dodo/route.ts` is the existing pattern for a
+  signed provider webhook and should be followed rather than reinvented.
+- Record the event against the patient: kind, timestamp, provider message.
+- **Surface it to the clinic.** A bounce the platform knows about and the clinic does not is worse
+  than no tracking, because it looks like the reminders are working.
+
+### 4.3 Suppression
+
+Stop sending to an address that has hard-bounced, and stop counting those sends as delivered.
+
+- Hard bounce → suppress immediately; the address does not exist.
+- Soft bounce → retry, suppress after a threshold; a full mailbox recovers, a dead domain does not.
+- Spam complaint → suppress immediately and never resume without a fresh explicit opt-in.
+- Suppression must be **visible and reversible by the clinic**, since the fix (ask the patient for
+  a correct address) lives with the clinic and not with us.
+
+**Interaction with push.** A suppressed email address must not silently disable the whole
+reminder. Push is a separate channel with its own delivery record, and `undelivered` in
+`DispatchSummary` already exists for exactly this: a reminder that reached nobody should be
+countable as such, per channel.
+
+**Operational, no code required, do this first.** Watch bounce and complaint rate in the Resend
+dashboard. Above ~2% bounce or ~0.1% complaint, deliverability degrades regardless of what the
+application does, and the work above becomes urgent rather than scheduled.
