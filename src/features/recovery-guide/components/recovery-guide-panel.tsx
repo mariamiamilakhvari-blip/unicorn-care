@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, CircleCheck, PhoneCall, Siren } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { useRecoveryGuide } from '@/features/recovery-guide/hooks/use-recovery-guide';
@@ -27,7 +27,10 @@ const SEVERITY_CLASS: Record<WarningSeverity, string> = {
 export function RecoveryGuidePanel() {
   const t = useTranslations('recoveryGuide');
   const tCommon = useTranslations('common');
-  const { guide, isLoading, isReporting, reportedAt, error, report } = useRecoveryGuide();
+  const locale = useLocale();
+  const { guide, absence, isLoading, isReporting, reportedAt, error, report } = useRecoveryGuide();
+  /** Two languages, so "the one they are not reading" is the other one. */
+  const otherLocale = locale === 'ka' ? 'en' : 'ka';
   const [note, setNote] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -144,7 +147,22 @@ export function RecoveryGuidePanel() {
           </section>
         )}
 
-        {!guide && <p className="text-sm text-muted-foreground">{t('noGuide')}</p>}
+        {/*
+          Two different facts, said differently. A patient whose clinic wrote this guidance in
+          Georgian last week must not be told nobody has written it — they would stop looking, and
+          the useful next step (ask the clinic, or read it in the other language) never occurs to
+          them. `otherLocale` is derivable because the product has exactly two languages; a third
+          would make this a value the API has to send.
+        */}
+        {!guide && absence === 'untranslated' && (
+          <p className="text-sm text-muted-foreground">
+            {t('notTranslated', { language: t(`language.${otherLocale}`) })}
+          </p>
+        )}
+
+        {!guide && absence !== 'untranslated' && (
+          <p className="text-sm text-muted-foreground">{t('noGuide')}</p>
+        )}
 
         <section className="flex flex-col gap-2">
           {reportedAt ? (

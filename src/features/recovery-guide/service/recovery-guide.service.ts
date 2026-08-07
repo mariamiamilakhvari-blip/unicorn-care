@@ -90,6 +90,11 @@ export async function upsertGuideService(
  * honest: the care plan builder resolves through here too, and a cross-language fallback would
  * load Georgian text into an English form and invite someone to save it as a translation.
  *
+ * The two ways of having nothing are reported apart. `NOT_FOUND` means no guide exists for this
+ * procedure in any language; `NOT_TRANSLATED` means one does, in the language the reader did not
+ * pick. The portal says which, because "your clinic has not written this yet" is a false
+ * statement to show someone whose clinic wrote it in Georgian last week.
+ *
  * It does not translate either, for the reason that outlives any fallback rule: this is
  * clinic-authored clinical reference material read unsupervised by a post-operative patient, and
  * a machine translation of "call the clinic if your temperature exceeds 38" that lands on the
@@ -105,6 +110,26 @@ export async function resolveGuideService(
 
   const fallback = await recoveryGuideRepository.findDefault(manipulationType, locale);
   if (fallback) return { data: toView(fallback, true), status: 200 };
+
+  /*
+    Nothing to serve — but "nobody has written this" and "it exists, just not in your language"
+    are different facts, and telling a patient the first when the second is true is simply wrong.
+    So the other language is checked to find out *which* it is.
+
+    This looks past the requested language and still never serves what it finds: the lookup
+    decides a message, never a payload. The rule that a reader sees their own language or nothing
+    is unchanged.
+  */
+  const otherLocale: AppLocale = locale === 'ka' ? 'en' : 'ka';
+  const ownOther = await recoveryGuideRepository.findForClinic(
+    clinicId,
+    manipulationType,
+    otherLocale
+  );
+  if (ownOther?.isPublished) return { data: { error: 'NOT_TRANSLATED' }, status: 404 };
+
+  const defaultOther = await recoveryGuideRepository.findDefault(manipulationType, otherLocale);
+  if (defaultOther) return { data: { error: 'NOT_TRANSLATED' }, status: 404 };
 
   return { data: { error: 'NOT_FOUND' }, status: 404 };
 }

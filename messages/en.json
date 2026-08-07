@@ -363,6 +363,11 @@
     "sendToClinic": "Send to clinic",
     "reportSent": "Sent. Your clinic will review it.",
     "noGuide": "Your clinic has not added guidance for this procedure yet.",
+    "notTranslated": "Your clinic has written guidance for this procedure, but has not published it in English yet. It is available in {language} — ask your clinic if you need it.",
+    "language": {
+      "ka": "Georgian",
+      "en": "English"
+    },
     "procedureType": "Procedure type",
     "itemTitle": "Title",
     "fromDay": "From day",

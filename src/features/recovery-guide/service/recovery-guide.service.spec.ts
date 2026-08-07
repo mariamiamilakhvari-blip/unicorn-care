@@ -71,7 +71,7 @@ describe('resolveGuideService', () => {
     honest — the care plan builder resolves through here, and a cross-language answer would load
     Georgian into an English form.
   */
-  it("does not fall back to the clinic's other language", async () => {
+  it("does not serve the clinic's other language, and says why", async () => {
     // English asked for; the clinic has only ever written Georgian.
     repo.findForClinic.mockImplementation(async (_clinic, _type, wanted) =>
       wanted === 'ka' ? (guide('ka', 'შესიება') as never) : null
@@ -80,23 +80,45 @@ describe('resolveGuideService', () => {
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
     expect(result.status).toBe(404);
+    // Not NOT_FOUND: a guide exists, and telling the patient nobody wrote one would be false.
+    expect(result.data).toEqual({ error: 'NOT_TRANSLATED' });
   });
 
-  it('does not fall back to the platform default in the other language', async () => {
+  it('does not serve the platform default in the other language either', async () => {
     repo.findDefault.mockImplementation(async (_type, wanted) =>
       wanted === 'ka' ? (guide('ka', 'შესიება') as never) : null
     );
 
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
-    expect(result.status).toBe(404);
+    expect(result.data).toEqual({ error: 'NOT_TRANSLATED' });
   });
 
-  it('never looks past the requested language at all', async () => {
-    await resolveGuideService(CLINIC_ID, TYPE, 'en');
+  it('reports an unpublished draft in the other language as missing, not untranslated', async () => {
+    // A draft is not something the patient could be given in any language, so promising them a
+    // translation exists would send them to the clinic asking for a document nobody can hand over.
+    repo.findForClinic.mockImplementation(async (_clinic, _type, wanted) =>
+      wanted === 'ka' ? (guide('ka', 'Draft', false) as never) : null
+    );
 
-    for (const call of repo.findForClinic.mock.calls) expect(call[2]).toBe('en');
-    for (const call of repo.findDefault.mock.calls) expect(call[1]).toBe('en');
+    const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
+
+    expect(result.data).toEqual({ error: 'NOT_FOUND' });
+  });
+
+  it('never serves content from a language other than the one requested', async () => {
+    repo.findForClinic.mockImplementation(async (_clinic, _type, wanted) =>
+      wanted === 'ka' ? (guide('ka', 'შესიება') as never) : null
+    );
+    repo.findDefault.mockImplementation(async (_type, wanted) =>
+      wanted === 'ka' ? (guide('ka', 'platform') as never) : null
+    );
+
+    const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
+
+    // The other language is looked at to choose a message, never to produce a payload.
+    expect(result.status).toBe(404);
+    expect(result.data).not.toHaveProperty('expected');
   });
 
   it('never serves an unpublished clinic guide — a draft is not reference material', async () => {
@@ -108,7 +130,7 @@ describe('resolveGuideService', () => {
     expect((result.data as RecoveryGuideView).expected[0].title).toBe('Published');
   });
 
-  it('404s when nothing is published in the requested language', async () => {
+  it('reports NOT_FOUND when no guide exists in any language', async () => {
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
     expect(result.status).toBe(404);
@@ -123,5 +145,6 @@ describe('resolveGuideService', () => {
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'ka');
 
     expect(result.status).toBe(404);
+    expect(result.data).toEqual({ error: 'NOT_TRANSLATED' });
   });
 });
