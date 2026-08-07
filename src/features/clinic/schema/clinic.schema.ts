@@ -12,6 +12,16 @@ const ClinicSchema = new Schema(
     addressLine: { type: String, required: false, default: '' },
     phone: { type: String, required: false, default: '' },
     /*
+      The clinic's contact address — where the platform writes to the practice, as distinct from
+      `User.email`, which is a person's sign-in credential and is not safe to edit from a profile
+      form. The BAA undertakes to send breach notices "to the contact address the clinic holds on
+      its account", and until this existed there was no such address to send them to.
+
+      Optional, like the rest of the profile: it is needed to reach a clinic, not to open an
+      account, and a required field here would strand every clinic created before it shipped.
+    */
+    email: { type: String, required: false, default: '' },
+    /*
       Tax ID / VAT / business registration number, held as free text on purpose. Every country
       formats this differently — DE123456789, 12-3456789, 204567891 — and a clinic that cannot
       enter its own real number is a clinic that cannot be invoiced. Optional: it is needed at

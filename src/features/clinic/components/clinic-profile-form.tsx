@@ -44,6 +44,7 @@ export function ClinicProfileForm({
       city: clinic.city,
       addressLine: clinic.addressLine,
       phone: clinic.phone,
+      email: clinic.email,
       taxId: clinic.taxId,
       locale: clinic.locale,
       // An existing invalid value cannot be shown in the picker, so fall back to the default and
@@ -59,6 +60,7 @@ export function ClinicProfileForm({
           control={form.control}
           nameField="name"
           phoneField="phone"
+          emailField="email"
           cityField="city"
           countryField="country"
           addressField="addressLine"

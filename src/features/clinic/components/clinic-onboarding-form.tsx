@@ -39,6 +39,7 @@ export function ClinicOnboardingForm() {
       city: '',
       addressLine: '',
       phone: '',
+      email: '',
       taxId: '',
       consents: {
         terms: false,
@@ -70,6 +71,7 @@ export function ClinicOnboardingForm() {
               control={form.control}
               nameField="name"
               phoneField="phone"
+              emailField="email"
               cityField="city"
               countryField="country"
               addressField="addressLine"

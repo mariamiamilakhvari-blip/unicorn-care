@@ -20,6 +20,7 @@ vi.mock('@/features/auth/repository/user.repository', () => ({
 
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { ClinicProfile } from '@/features/clinic/types/clinic.types';
 import { BAA_VERSION, CONSENT_VERSION } from '@/shared/const/consent.const';
 
 import {
@@ -45,6 +46,7 @@ const registerInput = {
     city: 'Tbilisi',
     addressLine: '12 Rustaveli',
     phone: '+995555000111',
+    email: 'hello@clinic.ge',
     taxId: '204567891',
     locale: 'ka' as const,
     timezone: 'Asia/Tbilisi',
@@ -70,6 +72,7 @@ const fakeClinic = {
   city: 'Tbilisi',
   addressLine: '12 Rustaveli',
   phone: '+995555000111',
+  email: 'hello@clinic.ge',
   taxId: '204567891',
   logoUrl: '',
   locale: 'ka',
@@ -256,12 +259,25 @@ describe('getClinicService', () => {
       city: 'Tbilisi',
       addressLine: '12 Rustaveli',
       phone: '+995555000111',
+      email: 'hello@clinic.ge',
       taxId: '204567891',
       logoUrl: '',
       locale: 'ka',
       timezone: 'Asia/Tbilisi',
       isActive: true,
     });
+  });
+
+  it('returns an empty contact address for a clinic that predates the field', async () => {
+    // The column is optional and was added after clinics existed, so the document may simply not
+    // carry it. The wire shape promises a string either way — the form binds to it directly.
+    const withoutEmail = { ...fakeClinic };
+    delete (withoutEmail as Partial<typeof fakeClinic>).email;
+    mockClinicRepo.findById.mockResolvedValueOnce(withoutEmail as never);
+
+    const result = await getClinicService(CLINIC_ID);
+
+    expect((result.data as ClinicProfile).email).toBe('');
   });
 });
 

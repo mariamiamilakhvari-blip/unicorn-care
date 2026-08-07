@@ -45,6 +45,7 @@ function toClinicProfile(clinic: ClinicDocument): ClinicProfile {
     city: clinic.city ?? '',
     addressLine: clinic.addressLine ?? '',
     phone: clinic.phone ?? '',
+    email: clinic.email ?? '',
     taxId: clinic.taxId ?? '',
     logoUrl: clinic.logoUrl ?? '',
     locale: clinic.locale,

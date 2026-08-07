@@ -3,13 +3,14 @@
 import { useTranslations } from 'next-intl';
 import { Control, FieldValues, Path } from 'react-hook-form';
 
+import { CodedFormMessage } from '@/shared/components/coded-form-message';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -19,8 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { TAX_ID_MESSAGE_KEYS, TaxIdIssue } from '@/shared/const/tax-id.const';
+import { TAX_ID_MESSAGE_KEYS } from '@/shared/const/tax-id.const';
 import { COMMON_TIMEZONES } from '@/shared/const/timezone.const';
+
+/** The email rule raises one code; the tax ID rule's map is data and lives in its const file. */
+const EMAIL_MESSAGE_KEYS = { INVALID_EMAIL: 'emailInvalid' };
 
 /**
  * The clinic half of both registration forms. Field names are passed in because the two forms
@@ -36,6 +40,12 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
   */
   nameField?: Path<T>;
   phoneField: Path<T>;
+  /*
+    Optional for the same reason `nameField` is: the registration form asks for the owner's login
+    email in its own credentials row, and a second email box directly beneath it would read as a
+    confirmation field. Settings and onboarding pass it and get the clinic's contact address.
+  */
+  emailField?: Path<T>;
   cityField: Path<T>;
   countryField: Path<T>;
   addressField: Path<T>;
@@ -44,33 +54,11 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
   localeField: Path<T>;
 };
 
-/**
- * The tax ID rule raises a bare code — `INVALID_TAX_ID_GE` and friends — which is fine on the wire
- * and useless to a clinic owner reading a form. `FormMessage` always prefers `error.message` over
- * its children, so translating it means rendering the paragraph here — reusing `formMessageId` so
- * the input's `aria-describedby` still resolves. Anything that is not one of the codes (a length
- * error, say) falls through unchanged.
- */
-function TaxIdMessage() {
-  const t = useTranslations('clinic');
-  const { error, formMessageId } = useFormField();
-
-  if (!error) return null;
-
-  const code = String(error.message ?? '');
-  const messageKey = TAX_ID_MESSAGE_KEYS[code as TaxIdIssue];
-
-  return (
-    <p id={formMessageId} className="text-sm font-medium text-destructive">
-      {messageKey ? t(messageKey) : code}
-    </p>
-  );
-}
-
 export function ClinicProfileFields<T extends FieldValues>({
   control,
   nameField,
   phoneField,
+  emailField,
   cityField,
   countryField,
   addressField,
@@ -93,6 +81,26 @@ export function ClinicProfileFields<T extends FieldValues>({
                 <Input {...field} />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+      {/*
+        Directly under the clinic name, above the address block: it is how the practice is
+        reached, which belongs with what the practice is called rather than with where it is.
+      */}
+      {emailField && (
+        <FormField
+          control={control}
+          name={emailField}
+          render={({ field }) => (
+            <FormItem className="sm:col-span-2">
+              <FormLabel>{t('email')}</FormLabel>
+              <FormControl>
+                <Input type="email" autoComplete="email" {...field} />
+              </FormControl>
+              <FormDescription>{t('emailHelp')}</FormDescription>
+              <CodedFormMessage namespace="clinic" keys={EMAIL_MESSAGE_KEYS} />
             </FormItem>
           )}
         />
@@ -162,7 +170,7 @@ export function ClinicProfileFields<T extends FieldValues>({
             <FormControl>
               <Input placeholder={t('taxIdPlaceholder')} autoComplete="off" {...field} />
             </FormControl>
-            <TaxIdMessage />
+            <CodedFormMessage namespace="clinic" keys={TAX_ID_MESSAGE_KEYS} />
           </FormItem>
         )}
       />

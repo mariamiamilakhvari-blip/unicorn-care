@@ -21,6 +21,19 @@ const ClinicProfileBase = z.object({
   addressLine: z.string().max(200).default(''),
   phone: z.string().max(40).default(''),
   /*
+    The clinic's contact address, not the owner's login. Optional — a clinic must be able to save
+    the rest of this form without one — so the empty string has to pass, which `z.email()` alone
+    would reject. Trimmed first: a pasted address with a trailing space is a valid address.
+  */
+  email: z
+    .string()
+    .trim()
+    .max(120)
+    .refine(value => value === '' || z.string().email().safeParse(value).success, {
+      message: 'INVALID_EMAIL',
+    })
+    .default(''),
+  /*
     Sanitised, not merely trimmed: spaces and hyphens are how a registration number is *printed*,
     so they are stripped before anything looks at it. The shape rule itself is country-dependent
     and lives in `withTaxIdRule` below — it needs `country`, which a field-level check cannot see.

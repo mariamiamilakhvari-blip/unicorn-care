@@ -268,3 +268,63 @@ describe('the BAA rule', () => {
     });
   });
 });
+
+/**
+ * The clinic's contact address. Distinct from `User.email`, which is a sign-in credential and is
+ * not editable from this form — so the cases that matter are that it round-trips, that an empty
+ * value is allowed, and that a typo is caught before it becomes an address nothing can reach.
+ */
+describe('ClinicProfileSchema.email', () => {
+  const parseEmail = (email: string) => ClinicProfileSchema.safeParse({ ...base, email });
+
+  it.each([
+    ['a plain address', 'hello@clinic.ge'],
+    ['a subdomain', 'contact@mail.clinic.co.uk'],
+    ['a plus tag', 'reception+billing@clinic.ge'],
+  ])('accepts %s', (_label, value) => {
+    const result = parseEmail(value);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.email).toBe(value);
+  });
+
+  it('accepts an empty value — a clinic must be able to save the rest of the form without one', () => {
+    expect(parseEmail('').success).toBe(true);
+  });
+
+  it('defaults to an empty string when the field is absent entirely', () => {
+    const result = ClinicProfileSchema.safeParse(base);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.email).toBe('');
+  });
+
+  it('trims a pasted address rather than rejecting it for its whitespace', () => {
+    const result = parseEmail('  hello@clinic.ge  ');
+    expect(result.success && result.data.email).toBe('hello@clinic.ge');
+  });
+
+  it.each([
+    ['no @', 'hello.clinic.ge'],
+    ['no domain', 'hello@'],
+    ['no local part', '@clinic.ge'],
+    ['an embedded space', 'hello world@clinic.ge'],
+  ])('rejects an address with %s', (_label, value) => {
+    const result = parseEmail(value);
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.issues[0].message).toBe('INVALID_EMAIL');
+  });
+
+  it('reports the failure under the field, so the form shows it beneath the input', () => {
+    const result = parseEmail('nope');
+    expect(!result.success && result.error.issues[0].path).toEqual(['email']);
+  });
+
+  it('is savable on its own through the settings PATCH', () => {
+    const result = UpdateClinicSchema.safeParse({ email: 'hello@clinic.ge' });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.email).toBe('hello@clinic.ge');
+  });
+
+  it('blocks a settings PATCH carrying a malformed address', () => {
+    expect(UpdateClinicSchema.safeParse({ email: 'nope' }).success).toBe(false);
+  });
+});
