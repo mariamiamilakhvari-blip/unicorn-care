@@ -78,46 +78,33 @@ export async function upsertGuideService(
  * rather than inventing reassurance.
  */
 /**
- * The guide a patient reads, resolved for the language they are reading the portal in.
+ * The guide for one procedure type in one language.
  *
- * Four lookups, in descending order of how well they answer the question asked:
- *   1. this clinic's guide in the requested language — what the patient should see;
- *   2. the platform default in that language;
- *   3. this clinic's guide in the other language;
- *   4. the platform default in the other language.
+ * Two lookups, and only two: this clinic's own guide, then the platform default. Both in the
+ * language that was asked for.
  *
- * Steps 3 and 4 exist because a clinic that has only written Georgian has no English text, and
- * the alternative to showing the Georgian is showing nothing — a patient looking for "when do I
- * call someone" gets more from a language they may not read than from an empty panel.
+ * It never crosses languages. A patient who has chosen English is shown English or nothing —
+ * guidance in a language they did not choose is not guidance they can act on, and content they
+ * cannot read sitting under a "when to contact the clinic" heading is worse than an honest empty
+ * state, which is what the portal renders instead. The same rule keeps the clinic's own editor
+ * honest: the care plan builder resolves through here too, and a cross-language fallback would
+ * load Georgian text into an English form and invite someone to save it as a translation.
  *
- * What this deliberately does not do is translate. The guide is clinic-authored clinical
- * reference material read unsupervised by a post-operative patient; a machine translation of
- * "call the clinic if your temperature exceeds 38" that lands on the wrong number or the wrong
- * verb is a safety failure, not a rough edge. The returned view carries the locale the content is
- * actually in, so the portal can tell the patient which language they are looking at.
+ * It does not translate either, for the reason that outlives any fallback rule: this is
+ * clinic-authored clinical reference material read unsupervised by a post-operative patient, and
+ * a machine translation of "call the clinic if your temperature exceeds 38" that lands on the
+ * wrong number or the wrong verb is a safety failure rather than a rough edge.
  */
 export async function resolveGuideService(
   clinicId: string,
   manipulationType: string,
   locale: AppLocale
 ): Promise<ServiceResult<RecoveryGuideView>> {
-  const otherLocale: AppLocale = locale === 'ka' ? 'en' : 'ka';
-
   const own = await recoveryGuideRepository.findForClinic(clinicId, manipulationType, locale);
   if (own && own.isPublished) return { data: toView(own, false), status: 200 };
 
   const fallback = await recoveryGuideRepository.findDefault(manipulationType, locale);
   if (fallback) return { data: toView(fallback, true), status: 200 };
-
-  const ownOther = await recoveryGuideRepository.findForClinic(
-    clinicId,
-    manipulationType,
-    otherLocale
-  );
-  if (ownOther && ownOther.isPublished) return { data: toView(ownOther, false), status: 200 };
-
-  const fallbackOther = await recoveryGuideRepository.findDefault(manipulationType, otherLocale);
-  if (fallbackOther) return { data: toView(fallbackOther, true), status: 200 };
 
   return { data: { error: 'NOT_FOUND' }, status: 404 };
 }

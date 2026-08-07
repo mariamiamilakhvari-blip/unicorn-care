@@ -387,12 +387,7 @@
     },
     "saveGuide": "Save guide",
     "sharedAcrossPatients": "Written per procedure type — every patient with this procedure sees it.",
-    "usingDefault": "Showing the default guide. Saving creates your clinic’s own version.",
-    "otherLanguage": "Your clinic has not published this guidance in your language, so it is shown in {language}.",
-    "language": {
-      "ka": "Georgian",
-      "en": "English"
-    }
+    "usingDefault": "Showing the default guide. Saving creates your clinic’s own version."
   },
   "pricing": {
     "title": "Pricing",

@@ -1,7 +1,7 @@
 'use client';
 
-import { AlertTriangle, CircleCheck, Languages, PhoneCall, Siren } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { AlertTriangle, CircleCheck, PhoneCall, Siren } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { useRecoveryGuide } from '@/features/recovery-guide/hooks/use-recovery-guide';
@@ -27,7 +27,6 @@ const SEVERITY_CLASS: Record<WarningSeverity, string> = {
 export function RecoveryGuidePanel() {
   const t = useTranslations('recoveryGuide');
   const tCommon = useTranslations('common');
-  const locale = useLocale();
   const { guide, isLoading, isReporting, reportedAt, error, report } = useRecoveryGuide();
   const [note, setNote] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -61,18 +60,6 @@ export function RecoveryGuidePanel() {
           <Siren className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
           {t('emergencyBanner')}
         </p>
-
-        {/*
-          The clinic has not published this guide in the language the patient is reading. The
-          content is shown anyway — an empty panel helps nobody — but it is never translated, so
-          the patient is told which language they are looking at rather than left to work it out.
-        */}
-        {guide && guide.locale !== locale && (
-          <p className="flex items-start gap-2 rounded-md border border-border p-3 text-xs text-muted-foreground">
-            <Languages className="mt-0.5 size-4 shrink-0" aria-hidden />
-            {t('otherLanguage', { language: t(`language.${guide.locale}`) })}
-          </p>
-        )}
 
         {guide && guide.expected.length > 0 && (
           <section className="flex flex-col gap-2">

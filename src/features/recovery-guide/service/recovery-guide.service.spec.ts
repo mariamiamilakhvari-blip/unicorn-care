@@ -63,36 +63,40 @@ describe('resolveGuideService', () => {
     expect((result.data as RecoveryGuideView).locale).toBe('en');
   });
 
-  it("falls back to the clinic's other language rather than showing an empty panel", async () => {
+  /*
+    The rule that matters most here, and the one most likely to be "helpfully" undone later: a
+    reader is shown their own language or nothing. Content in a language they did not choose is
+    not guidance they can act on, and under a "when to contact the clinic" heading it is worse
+    than the honest empty state the portal renders instead. It also keeps the clinic's own editor
+    honest — the care plan builder resolves through here, and a cross-language answer would load
+    Georgian into an English form.
+  */
+  it("does not fall back to the clinic's other language", async () => {
     // English asked for; the clinic has only ever written Georgian.
-    repo.findForClinic.mockResolvedValueOnce(null).mockResolvedValueOnce(guide('ka', 'შესიება') as never);
+    repo.findForClinic.mockImplementation(async (_clinic, _type, wanted) =>
+      wanted === 'ka' ? (guide('ka', 'შესიება') as never) : null
+    );
 
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
-    expect(result.status).toBe(200);
-    // The view reports the language it is actually in, so the portal can say so.
-    expect((result.data as RecoveryGuideView).locale).toBe('ka');
-    expect((result.data as RecoveryGuideView).expected[0].title).toBe('შესიება');
+    expect(result.status).toBe(404);
   });
 
-  it("prefers the clinic's other language over the platform default in that language", async () => {
-    repo.findForClinic.mockResolvedValueOnce(null).mockResolvedValueOnce(guide('ka', 'clinic') as never);
-    repo.findDefault.mockResolvedValueOnce(null).mockResolvedValueOnce(guide('ka', 'platform') as never);
+  it('does not fall back to the platform default in the other language', async () => {
+    repo.findDefault.mockImplementation(async (_type, wanted) =>
+      wanted === 'ka' ? (guide('ka', 'შესიება') as never) : null
+    );
 
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
-    expect((result.data as RecoveryGuideView).isDefault).toBe(false);
-    expect((result.data as RecoveryGuideView).expected[0].title).toBe('clinic');
+    expect(result.status).toBe(404);
   });
 
-  it('falls back to the platform default in the other language as a last resort', async () => {
-    repo.findDefault.mockResolvedValueOnce(null).mockResolvedValueOnce(guide('ka', 'შესიება') as never);
+  it('never looks past the requested language at all', async () => {
+    await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
-    const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
-
-    expect(result.status).toBe(200);
-    expect((result.data as RecoveryGuideView).locale).toBe('ka');
-    expect((result.data as RecoveryGuideView).isDefault).toBe(true);
+    for (const call of repo.findForClinic.mock.calls) expect(call[2]).toBe('en');
+    for (const call of repo.findDefault.mock.calls) expect(call[1]).toBe('en');
   });
 
   it('never serves an unpublished clinic guide — a draft is not reference material', async () => {
@@ -104,18 +108,20 @@ describe('resolveGuideService', () => {
     expect((result.data as RecoveryGuideView).expected[0].title).toBe('Published');
   });
 
-  it('404s only when no guide exists in either language', async () => {
+  it('404s when nothing is published in the requested language', async () => {
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
     expect(result.status).toBe(404);
     expect(result.data).toEqual({ error: 'NOT_FOUND' });
   });
 
-  it('works in the same way for a Georgian reader with only English content', async () => {
-    repo.findForClinic.mockResolvedValueOnce(null).mockResolvedValueOnce(guide('en', 'Swelling') as never);
+  it('applies the same rule to a Georgian reader with only English content', async () => {
+    repo.findForClinic.mockImplementation(async (_clinic, _type, wanted) =>
+      wanted === 'en' ? (guide('en', 'Swelling') as never) : null
+    );
 
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'ka');
 
-    expect((result.data as RecoveryGuideView).locale).toBe('en');
+    expect(result.status).toBe(404);
   });
 });
