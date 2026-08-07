@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { ClinicSignUpSchema } from '@/features/clinic/validations/clinic-signup.validation';
+import {
+  ClinicOnlySchema,
+  ClinicSignUpSchema,
+} from '@/features/clinic/validations/clinic-signup.validation';
 import {
   ClinicProfileSchema,
+  CreateClinicForUserSchema,
+  RegisterClinicSchema,
   UpdateClinicSchema,
 } from '@/features/clinic/validations/clinic.validation';
 
@@ -14,6 +19,18 @@ const base = {
   phone: '+995555000111',
   locale: 'ka' as const,
   timezone: 'Asia/Tbilisi',
+};
+
+/** Every mandatory box ticked. `baa` is left off so each case states its own answer. */
+const consents = {
+  terms: true,
+  privacy: true,
+  patientConsents: true,
+  accuracy: true,
+  credentials: true,
+  processingPurpose: true,
+  remindersNotMedicalAdvice: true,
+  regulatoryCompliance: true,
 };
 
 const parseTaxId = (taxId: string, country = 'Georgia') =>
@@ -113,16 +130,7 @@ describe('the tax ID rule across every schema that carries the field', () => {
     clinicPhone: '+995555000111',
     locale: 'ka' as const,
     timezone: 'Asia/Tbilisi',
-    consents: {
-      terms: true,
-      privacy: true,
-      patientConsents: true,
-      accuracy: true,
-      credentials: true,
-      processingPurpose: true,
-      remindersNotMedicalAdvice: true,
-      regulatoryCompliance: true,
-    },
+    consents: { ...consents },
   };
 
   it('blocks registration with a Georgian tax ID of the wrong length', () => {
@@ -150,5 +158,113 @@ describe('the tax ID rule across every schema that carries the field', () => {
   it('raises the error once, not once per schema in the chain', () => {
     const result = ClinicSignUpSchema.safeParse({ ...signUp, taxId: '20456789' });
     expect(!result.success && result.error.issues).toHaveLength(1);
+  });
+});
+
+/**
+ * The Business Associate Agreement. HIPAA binds US Covered Entities, so the box is mandatory
+ * there and offered everywhere else — which means the interesting cases are not "is it ticked"
+ * but "does the country make it matter", on each of the four bodies that can create a clinic.
+ */
+describe('the BAA rule', () => {
+  const usProfile = { ...base, country: 'United States', taxId: '123456789' };
+
+  const signUpIn = (country: string, baa: boolean) => ({
+    email: 'owner@clinic.com',
+    password: 'supersecret',
+    clinicName: 'Unicorn Clinic',
+    country,
+    city: 'Austin',
+    addressLine: '12 Congress Ave',
+    clinicPhone: '+15125550111',
+    taxId: '123456789',
+    locale: 'en' as const,
+    timezone: 'America/Chicago',
+    consents: { ...consents, baa },
+  });
+
+  const baaError = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
+    result.success ? null : result.error?.issues[0].message;
+
+  describe('at registration', () => {
+    it('blocks a US clinic that has not accepted it', () => {
+      const result = ClinicSignUpSchema.safeParse(signUpIn('United States', false));
+      expect(result.success).toBe(false);
+      expect(baaError(result)).toBe('BAA_REQUIRED');
+    });
+
+    it('admits a US clinic that has', () => {
+      expect(ClinicSignUpSchema.safeParse(signUpIn('United States', true)).success).toBe(true);
+    });
+
+    it('admits a Georgian clinic that has not — it is not a party to a BAA', () => {
+      const result = ClinicSignUpSchema.safeParse({
+        ...signUpIn('Georgia', false),
+        taxId: '204567891',
+      });
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.consents.baa).toBe(false);
+    });
+
+    it('records a Georgian clinic that accepted it anyway', () => {
+      const result = ClinicSignUpSchema.safeParse({
+        ...signUpIn('Georgia', true),
+        taxId: '204567891',
+      });
+      expect(result.success && result.data.consents.baa).toBe(true);
+    });
+
+    it('reports the failure under the checkbox, not at the top of the form', () => {
+      const result = ClinicSignUpSchema.safeParse(signUpIn('United States', false));
+      expect(!result.success && result.error.issues[0].path).toEqual(['consents', 'baa']);
+    });
+  });
+
+  describe('on the API bodies', () => {
+    it('blocks the register endpoint for a US clinic without it', () => {
+      const result = RegisterClinicSchema.safeParse({
+        owner: { name: 'Pat Owner', email: 'owner@clinic.com', password: 'supersecret' },
+        clinic: usProfile,
+        consents: { ...consents, baa: false },
+      });
+      expect(result.success).toBe(false);
+      expect(baaError(result)).toBe('BAA_REQUIRED');
+    });
+
+    it('admits the register endpoint once it is accepted', () => {
+      const result = RegisterClinicSchema.safeParse({
+        owner: { name: 'Pat Owner', email: 'owner@clinic.com', password: 'supersecret' },
+        clinic: usProfile,
+        consents: { ...consents, baa: true },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('blocks the repair path for a US clinic without it', () => {
+      const result = CreateClinicForUserSchema.safeParse({
+        ...usProfile,
+        consents: { ...consents, baa: false },
+      });
+      expect(baaError(result)).toBe('BAA_REQUIRED');
+    });
+
+    it('blocks the onboarding form for a US clinic without it', () => {
+      const result = ClinicOnlySchema.safeParse({
+        ...usProfile,
+        consents: { ...consents, baa: false },
+      });
+      expect(baaError(result)).toBe('BAA_REQUIRED');
+    });
+
+    it('defaults an omitted checkbox to a recorded false rather than an absence', () => {
+      const result = ClinicOnlySchema.safeParse({ ...base, consents: { ...consents } });
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.consents.baa).toBe(false);
+    });
+
+    it('raises the error once, not once per rule wrapped around the schema', () => {
+      const result = ClinicSignUpSchema.safeParse(signUpIn('United States', false));
+      expect(!result.success && result.error.issues).toHaveLength(1);
+    });
   });
 });

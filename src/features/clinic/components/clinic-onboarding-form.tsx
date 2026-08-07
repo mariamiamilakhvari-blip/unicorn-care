@@ -22,7 +22,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { Form } from '@/shared/components/ui/form';
-import { PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
+import { BAA_ROUTE, PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
 
 /** Shown to a signed-in account that has no clinic yet — the repair path, not a second signup. */
 export function ClinicOnboardingForm() {
@@ -49,6 +49,7 @@ export function ClinicOnboardingForm() {
         processingPurpose: false,
         remindersNotMedicalAdvice: false,
         regulatoryCompliance: false,
+        baa: false,
       },
       locale: 'ka',
       timezone: 'Asia/Tbilisi',
@@ -87,7 +88,7 @@ export function ClinicOnboardingForm() {
               namespace="consent.clinic"
               heading={tConsent('clinicHeading')}
               fields={CLINIC_CONSENT_KEYS.map(key => `consents.${key}` as const)}
-              links={{ terms: TERMS_ROUTE, privacy: PRIVACY_ROUTE }}
+              links={{ terms: TERMS_ROUTE, privacy: PRIVACY_ROUTE, baa: BAA_ROUTE }}
             />
 
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}

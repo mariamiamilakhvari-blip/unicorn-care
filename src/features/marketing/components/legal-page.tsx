@@ -2,7 +2,7 @@ import { useLocale } from 'next-intl';
 
 import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
-import { LEGAL_LAST_UPDATED, LegalSlug, legalDocument } from '@/shared/const/legal.const';
+import { LegalSlug, legalDocument } from '@/shared/const/legal.const';
 import { AppLocale } from '@/shared/types/roles';
 
 /**
@@ -31,7 +31,7 @@ export function LegalPage({ slug }: { slug: LegalSlug }) {
           </h1>
 
           <p className="mt-3 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            {updatedLabel} {LEGAL_LAST_UPDATED}
+            {updatedLabel} {document.lastUpdated}
           </p>
 
           <p className="mt-8 text-base leading-relaxed text-muted-foreground">{document.intro}</p>

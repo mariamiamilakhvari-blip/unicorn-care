@@ -20,6 +20,9 @@ export const TERMS_ROUTE = '/terms';
 
 export const PRIVACY_ROUTE = '/privacy';
 
+/** The HIPAA Business Associate Agreement, linked from the consent block and the footer. */
+export const BAA_ROUTE = '/baa';
+
 /** Where a freshly registered clinic lands: it has a trial but has not chosen a plan yet. */
 export const PRICING_ROUTE = '/pricing';
 

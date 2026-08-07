@@ -4,6 +4,7 @@ import {
   ClinicConsentSchema,
   ClinicOwnerSchema,
   ClinicProfileSchema,
+  withBaaRule,
   withTaxIdRule,
 } from '@/features/clinic/validations/clinic.validation';
 
@@ -18,34 +19,40 @@ import {
   the API still requires it — it is just no longer a question the clinic has to answer twice.
 */
 /*
-  Wrapped in `withTaxIdRule` because the rule lives on the object, not the field: it compares the
-  tax ID against the country. Borrowing `ClinicProfileSchema.shape.taxId` copies the field but not
-  the rule, so the form would accept a number the register endpoint then rejects.
+  Wrapped in both country-aware rules because they live on the object, not the field: one compares
+  the tax ID against the country, the other the BAA checkbox against it. Borrowing
+  `ClinicProfileSchema.shape.taxId` copies the field but not the rule, so without these the form
+  would accept what the register endpoint then rejects.
 */
-export const ClinicSignUpSchema = withTaxIdRule(
-  ClinicOwnerSchema.omit({ name: true }).extend({
-    clinicName: ClinicProfileSchema.shape.name,
-    country: ClinicProfileSchema.shape.country,
-    city: ClinicProfileSchema.shape.city,
-    addressLine: ClinicProfileSchema.shape.addressLine,
-    clinicPhone: ClinicProfileSchema.shape.phone,
-    taxId: ClinicProfileSchema.shape.taxId,
-    locale: ClinicProfileSchema.shape.locale,
-    timezone: ClinicProfileSchema.shape.timezone,
-    // Nested rather than flattened like the other clinic fields: these keys are shared verbatim
-    // with the onboarding form and the API body, and flattening would fork them into three lists.
-    consents: ClinicConsentSchema,
-  })
+export const ClinicSignUpSchema = withBaaRule(
+  withTaxIdRule(
+    ClinicOwnerSchema.omit({ name: true }).extend({
+      clinicName: ClinicProfileSchema.shape.name,
+      country: ClinicProfileSchema.shape.country,
+      city: ClinicProfileSchema.shape.city,
+      addressLine: ClinicProfileSchema.shape.addressLine,
+      clinicPhone: ClinicProfileSchema.shape.phone,
+      taxId: ClinicProfileSchema.shape.taxId,
+      locale: ClinicProfileSchema.shape.locale,
+      timezone: ClinicProfileSchema.shape.timezone,
+      // Nested rather than flattened like the other clinic fields: these keys are shared verbatim
+      // with the onboarding form and the API body, and flattening would fork them into three lists.
+      consents: ClinicConsentSchema,
+    })
+  )
 );
 
 export type ClinicSignUpType = z.infer<typeof ClinicSignUpSchema>;
 export type ClinicSignUpFormType = z.input<typeof ClinicSignUpSchema>;
 
 /*
-  The repair path: the account exists already, so only the clinic half is collected. Not wrapped —
-  `.extend()` carries the profile schema's own tax ID rule over, and wrapping again would show the
-  clinic the same error twice.
+  The repair path: the account exists already, so only the clinic half is collected. The tax ID
+  rule is not re-applied — `.extend()` carries the profile schema's own across, and wrapping again
+  would show the clinic the same error twice. The BAA rule is new here, because it reads the
+  `consents` this schema is adding.
 */
-export const ClinicOnlySchema = ClinicProfileSchema.extend({ consents: ClinicConsentSchema });
+export const ClinicOnlySchema = withBaaRule(
+  ClinicProfileSchema.extend({ consents: ClinicConsentSchema })
+);
 export type ClinicOnlyType = z.infer<typeof ClinicOnlySchema>;
 export type ClinicOnlyFormType = z.input<typeof ClinicOnlySchema>;

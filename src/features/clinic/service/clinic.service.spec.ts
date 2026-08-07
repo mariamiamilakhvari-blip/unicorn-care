@@ -20,6 +20,7 @@ vi.mock('@/features/auth/repository/user.repository', () => ({
 
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { BAA_VERSION, CONSENT_VERSION } from '@/shared/const/consent.const';
 
 import {
   createStaffService,
@@ -33,6 +34,8 @@ const mockUserRepo = vi.mocked(userRepository);
 
 const USER_ID = '507f1f77bcf86cd799439011';
 const CLINIC_ID = '507f1f77bcf86cd799439022';
+/** Every register call carries the caller's address; the BAA record is stamped with it. */
+const IP = '203.0.113.9';
 
 const registerInput = {
   owner: { name: 'Nino Owner', email: 'nino@clinic.ge', password: 'password123' },
@@ -55,6 +58,7 @@ const registerInput = {
     processingPurpose: true,
     remindersNotMedicalAdvice: true,
     regulatoryCompliance: true,
+    baa: false,
   },
 };
 
@@ -78,7 +82,7 @@ describe('registerClinicService', () => {
 
   it('returns 409 when the owner email is already taken', async () => {
     mockUserRepo.findByEmail.mockResolvedValueOnce({ _id: USER_ID } as never);
-    const result = await registerClinicService(registerInput);
+    const result = await registerClinicService(registerInput, IP);
     expect(result.status).toBe(409);
     expect(result.data).toEqual({ error: 'EMAIL_TAKEN' });
     expect(mockUserRepo.create).not.toHaveBeenCalled();
@@ -90,7 +94,7 @@ describe('registerClinicService', () => {
     mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
     mockUserRepo.updateById.mockResolvedValueOnce(true);
 
-    const result = await registerClinicService(registerInput);
+    const result = await registerClinicService(registerInput, IP);
 
     expect(result.status).toBe(201);
     expect(result.data).toEqual({ userId: USER_ID, clinicId: CLINIC_ID });
@@ -109,7 +113,7 @@ describe('registerClinicService', () => {
     mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
     mockUserRepo.updateById.mockResolvedValueOnce(true);
 
-    await registerClinicService(registerInput);
+    await registerClinicService(registerInput, IP);
 
     const payload = mockUserRepo.create.mock.calls[0][0];
     expect(payload.passwordHash).not.toBe('password123');
@@ -122,7 +126,7 @@ describe('registerClinicService', () => {
     mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
     mockUserRepo.updateById.mockResolvedValueOnce(true);
 
-    await registerClinicService(registerInput);
+    await registerClinicService(registerInput, IP);
 
     const payload = mockClinicRepo.create.mock.calls[0][0];
     expect(payload.slug).toMatch(/^unicorn-clinic-[0-9a-f]{8}$/);
@@ -134,12 +138,64 @@ describe('registerClinicService', () => {
     mockClinicRepo.create.mockResolvedValue(CLINIC_ID);
     mockUserRepo.updateById.mockResolvedValue(true);
 
-    await registerClinicService(registerInput);
-    await registerClinicService(registerInput);
+    await registerClinicService(registerInput, IP);
+    await registerClinicService(registerInput, IP);
 
     const first = mockClinicRepo.create.mock.calls[0][0].slug;
     const second = mockClinicRepo.create.mock.calls[1][0].slug;
     expect(first).not.toBe(second);
+  });
+
+  /**
+   * The BAA record is evidence of an executed contract, so what matters is that the service
+   * writes it from its own clock, its own version constant and the request's address — never from
+   * anything the body could have claimed.
+   */
+  describe('the BAA record', () => {
+    const registerWith = async (baa: boolean, country = 'Georgia') => {
+      mockUserRepo.findByEmail.mockResolvedValueOnce(null);
+      mockUserRepo.create.mockResolvedValueOnce(USER_ID);
+      mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
+      mockUserRepo.updateById.mockResolvedValueOnce(true);
+
+      await registerClinicService(
+        {
+          ...registerInput,
+          clinic: { ...registerInput.clinic, country },
+          consents: { ...registerInput.consents, baa },
+        },
+        IP
+      );
+
+      return mockClinicRepo.create.mock.calls[0][0];
+    };
+
+    it('stamps an acceptance with the version, the clock and the caller address', async () => {
+      const payload = await registerWith(true, 'United States');
+
+      expect(payload.baa?.accepted).toBe(true);
+      expect(payload.baa?.version).toBe(BAA_VERSION);
+      expect(payload.baa?.ip).toBe(IP);
+      expect(payload.baa?.acceptedAt).toBeInstanceOf(Date);
+    });
+
+    it('records a refusal as a refusal, with nothing stamped on it', async () => {
+      const payload = await registerWith(false);
+
+      expect(payload.baa?.accepted).toBe(false);
+      expect(payload.baa?.version).toBe('');
+      expect(payload.baa?.acceptedAt).toBeNull();
+      // No acceptance means no address to attach one to. Keeping the IP here would record where
+      // someone was when they declined, which is a thing to hold and not a thing to prove.
+      expect(payload.baa?.ip).toBe('');
+    });
+
+    it('keeps the BAA version apart from the consent version', async () => {
+      const payload = await registerWith(true, 'United States');
+
+      expect(payload.consent?.version).toBe(CONSENT_VERSION);
+      expect(payload.baa?.version).toBe(BAA_VERSION);
+    });
   });
 
   it('compensating delete: removes the owner when clinic creation throws', async () => {
@@ -147,7 +203,7 @@ describe('registerClinicService', () => {
     mockUserRepo.create.mockResolvedValueOnce(USER_ID);
     mockClinicRepo.create.mockRejectedValueOnce(new Error('duplicate slug'));
 
-    const result = await registerClinicService(registerInput);
+    const result = await registerClinicService(registerInput, IP);
 
     expect(result.status).toBe(500);
     expect(result.data).toEqual({ error: 'CLINIC_CREATE_FAILED' });
@@ -160,7 +216,7 @@ describe('registerClinicService', () => {
     mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
     mockUserRepo.updateById.mockResolvedValueOnce(false);
 
-    const result = await registerClinicService(registerInput);
+    const result = await registerClinicService(registerInput, IP);
 
     expect(result.status).toBe(500);
     expect(mockClinicRepo.deleteById).toHaveBeenCalledWith(CLINIC_ID);
@@ -173,7 +229,7 @@ describe('registerClinicService', () => {
     mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
     mockUserRepo.updateById.mockRejectedValueOnce(new Error('connection lost'));
 
-    const result = await registerClinicService(registerInput);
+    const result = await registerClinicService(registerInput, IP);
 
     expect(result.status).toBe(500);
     expect(mockUserRepo.deleteById).toHaveBeenCalledWith(USER_ID);

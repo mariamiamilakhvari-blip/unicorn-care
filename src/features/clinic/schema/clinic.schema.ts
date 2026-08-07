@@ -32,6 +32,24 @@ const ClinicSchema = new Schema(
       version: { type: String, required: false, default: '' },
       acceptedAt: { type: Date, required: false, default: null },
     },
+    /*
+      The HIPAA Business Associate Agreement, recorded separately from the consent block above.
+
+      `accepted` is stored here where the other consents' booleans are not, and the difference is
+      deliberate: those are all mandatory, so a row of `true` says nothing, while this one is only
+      required of US clinics. Whether it was given is therefore real information.
+
+      The IP is supporting evidence for an executed contract, taken from the request headers
+      server-side. It is not proof of identity — a header can be forged — and nothing authorises
+      off it; it exists so an acceptance has a provenance beyond a bare timestamp. Optional
+      throughout so clinics created before this shipped still load.
+    */
+    baa: {
+      accepted: { type: Boolean, required: false, default: false },
+      version: { type: String, required: false, default: '' },
+      acceptedAt: { type: Date, required: false, default: null },
+      ip: { type: String, required: false, default: '' },
+    },
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     isActive: { type: Boolean, default: true, required: true },
 

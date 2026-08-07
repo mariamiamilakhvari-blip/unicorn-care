@@ -1,5 +1,5 @@
 /**
- * Values both legal documents need.
+ * Values the legal documents share.
  *
  * A leaf on purpose: this file imports nothing. They used to live in `legal.const.ts`, which
  * imports the document bodies, while the privacy body imports the contact address back out of it
@@ -9,7 +9,14 @@
  * every document removes the cycle rather than relying on evaluation order.
  */
 
-/** Displayed on both pages. Move it whenever the substance of either document changes. */
+/**
+ * The date the Terms of Service and Privacy Policy were last revised. They were written together
+ * and have moved together since, so they share one value.
+ *
+ * *Not* the date every legal page shows — each document carries its own `lastUpdated`, and the
+ * BAA takes its date from `BAA_VERSION` instead. Move this when the substance of the Terms or the
+ * Privacy Policy changes, and only those two follow.
+ */
 export const LEGAL_LAST_UPDATED = '2026-07-30';
 
 /** Where a data subject or a clinic writes to. Change this and both pages follow. */

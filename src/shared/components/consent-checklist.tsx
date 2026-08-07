@@ -37,9 +37,14 @@ type ConsentChecklistProps<T extends FieldValues> = {
 };
 
 /**
- * The schema raises the bare code `CONSENT_REQUIRED`, and `FormMessage` prefers `error.message`
- * over its children, so translating it means rendering the paragraph here. `formMessageId` is
- * reused so the checkbox's `aria-describedby` still resolves.
+ * The schema raises a bare code, and `FormMessage` prefers `error.message` over its children, so
+ * translating it means rendering the paragraph here. `formMessageId` is reused so the checkbox's
+ * `aria-describedby` still resolves.
+ *
+ * `BAA_REQUIRED` gets its own line rather than the generic one. Every other box on the form is
+ * mandatory for everyone, so "you must tick this to continue" is the whole story; the BAA is
+ * mandatory only for US clinics, and a clinic that sees the same sentence there has no way to
+ * tell why this box became required when it changed its country.
  */
 function ConsentMessage() {
   const t = useTranslations('consent');
@@ -49,7 +54,7 @@ function ConsentMessage() {
 
   return (
     <p id={formMessageId} className="text-sm font-medium text-destructive">
-      {t('required')}
+      {error.message === 'BAA_REQUIRED' ? t('baaRequired') : t('required')}
     </p>
   );
 }

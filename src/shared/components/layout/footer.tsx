@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
+import { BAA_ROUTE, PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
 
 /**
  * The legal links live here as well as in the consent checkboxes. A visitor who has not reached
@@ -22,6 +22,12 @@ export const Footer = () => {
           className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           Privacy
+        </Link>
+        <Link
+          href={BAA_ROUTE}
+          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          BAA
         </Link>
       </nav>
     </footer>

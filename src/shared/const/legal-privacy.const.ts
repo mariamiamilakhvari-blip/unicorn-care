@@ -1,11 +1,12 @@
 /** The Privacy Policy, in both locales. Split from `legal.const.ts` to keep each file readable. */
-import { LEGAL_CONTACT_EMAIL } from '@/shared/const/legal-contact.const';
+import { LEGAL_CONTACT_EMAIL, LEGAL_LAST_UPDATED } from '@/shared/const/legal-contact.const';
 import { LegalDocument } from '@/shared/const/legal.types';
 import { AppLocale } from '@/shared/types/roles';
 
 export const LEGAL_PRIVACY: Record<AppLocale, LegalDocument> = {
   en: {
     title: 'Privacy Policy',
+    lastUpdated: LEGAL_LAST_UPDATED,
     intro:
       'This policy explains what Unicorn Care stores, why, and who else touches it. It covers both ' +
       'the clinic staff who hold accounts and the patients whose recovery a clinic manages here.',
@@ -86,6 +87,7 @@ export const LEGAL_PRIVACY: Record<AppLocale, LegalDocument> = {
   },
   ka: {
     title: 'კონფიდენციალურობის პოლიტიკა',
+    lastUpdated: LEGAL_LAST_UPDATED,
     intro:
       'ეს პოლიტიკა განმარტავს, რას ინახავს Unicorn Care, რატომ და ვის აქვს მასზე წვდომა. ის ' +
       'ეხება როგორც კლინიკის თანამშრომლებს, რომლებსაც ანგარიშები აქვთ, ისე პაციენტებს, რომელთა ' +

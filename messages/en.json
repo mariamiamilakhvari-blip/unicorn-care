@@ -120,6 +120,7 @@
     "clinicHeading": "Consents and confirmations",
     "patientHeading": "Patient consent confirmations",
     "required": "You must tick this box to continue.",
+    "baaRequired": "Clinics in the United States must accept the Business Associate Agreement to register.",
     "clinic": {
       "terms": "I have read and agree to the <link>Terms of Service</link>.",
       "privacy": "I have read and understand the <link>Privacy Policy</link>.",
@@ -128,7 +129,8 @@
       "credentials": "I understand that I am responsible for maintaining the confidentiality of my account credentials.",
       "processingPurpose": "I understand that this platform stores and processes patient information solely for post-operative care management and reminder services.",
       "remindersNotMedicalAdvice": "I understand that reminder emails are intended only to support post-operative care and do not replace professional medical advice or emergency medical services.",
-      "regulatoryCompliance": "I understand that my clinic is responsible for complying with all applicable privacy and healthcare regulations (including GDPR/HIPAA/local laws) in our jurisdiction."
+      "regulatoryCompliance": "I understand that my clinic is responsible for complying with all applicable privacy and healthcare regulations (including GDPR/HIPAA/local laws) in our jurisdiction.",
+      "baa": "I have read and agree to the <link>Business Associate Agreement (BAA)</link> for HIPAA compliance. Required for clinics in the United States."
     },
     "patient": {
       "personalData": "I confirm that the patient has given explicit consent to the processing of their personal data for post-operative care.",

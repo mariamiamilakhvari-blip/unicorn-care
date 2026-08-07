@@ -1,10 +1,12 @@
 /** The Terms of Service, in both locales. Split from `legal.const.ts` to keep each file readable. */
+import { LEGAL_LAST_UPDATED } from '@/shared/const/legal-contact.const';
 import { LegalDocument } from '@/shared/const/legal.types';
 import { AppLocale } from '@/shared/types/roles';
 
 export const TERMS: Record<AppLocale, LegalDocument> = {
   en: {
     title: 'Terms of Service',
+    lastUpdated: LEGAL_LAST_UPDATED,
     intro:
       'These terms govern a clinic’s use of Unicorn Care, a platform for managing post-operative ' +
       'care plans and sending reminders to patients. By creating a clinic account you accept them.',
@@ -73,6 +75,7 @@ export const TERMS: Record<AppLocale, LegalDocument> = {
   },
   ka: {
     title: 'მომსახურების პირობები',
+    lastUpdated: LEGAL_LAST_UPDATED,
     intro:
       'ეს პირობები არეგულირებს კლინიკის მიერ Unicorn Care-ის გამოყენებას — პლატფორმისა, რომელიც ' +
       'ემსახურება ოპერაციის შემდგომი მოვლის გეგმების მართვას და პაციენტებისთვის შეხსენებების ' +

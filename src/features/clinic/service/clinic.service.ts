@@ -16,10 +16,11 @@ import {
   RegisterClinicType,
   UpdateClinicType,
 } from '@/features/clinic/validations/clinic.validation';
-import { CONSENT_VERSION } from '@/shared/const/consent.const';
+import { BAA_VERSION, CONSENT_VERSION } from '@/shared/const/consent.const';
 import { TRIAL_DAYS } from '@/shared/const/plan.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
+import { requiresBaa } from '@/shared/utils/baa';
 import { hashPassword } from '@/shared/utils/password';
 
 const SLUG_SUFFIX_BYTES = 4;
@@ -66,6 +67,31 @@ function recordConsent() {
 }
 
 /**
+ * The Business Associate Agreement record written beside a new clinic.
+ *
+ * Unlike the block above, the boolean *is* stored. The other consents are all mandatory, so their
+ * value carries no information; this one is required of US clinics and optional everywhere else,
+ * which makes "did they accept" a real question with a real answer.
+ *
+ * Version, clock and IP are all taken here rather than from the request body. A client-supplied
+ * timestamp is not evidence, and a client-supplied version would let a caller claim it accepted
+ * wording that was never shown to it. The IP comes from the request headers via the route; it is
+ * supporting provenance for an executed contract, not an identity, and nothing authorises off it.
+ *
+ * `acceptedAt` and `ip` stay empty when the box was not ticked — there is no acceptance to stamp.
+ */
+function recordBaa(accepted: boolean, ip: string) {
+  return {
+    baa: {
+      accepted,
+      version: accepted ? BAA_VERSION : '',
+      acceptedAt: accepted ? clock.now() : null,
+      ip: accepted ? ip : '',
+    },
+  };
+}
+
+/**
  * Every clinic begins on the free trial. Set at creation rather than lazily on first read, so the
  * end date is anchored to sign-up and cannot drift by being recomputed later.
  */
@@ -84,7 +110,8 @@ function startTrial() {
  * row is deleted again so a retry with the same email is not blocked by a half-built account.
  */
 export async function registerClinicService(
-  input: RegisterClinicType
+  input: RegisterClinicType,
+  ip: string
 ): Promise<ServiceResult<RegisterClinicResult>> {
   const existing = await userRepository.findByEmail(input.owner.email);
   if (existing) return { data: { error: 'EMAIL_TAKEN' }, status: 409 };
@@ -107,6 +134,7 @@ export async function registerClinicService(
       isActive: true,
       ...startTrial(),
       ...recordConsent(),
+      ...recordBaa(input.consents.baa, ip),
     });
 
     const linked = await userRepository.updateById(userId, {
@@ -133,7 +161,8 @@ export async function registerClinicService(
  */
 export async function createClinicForUserService(
   userId: string,
-  input: CreateClinicForUserType
+  input: CreateClinicForUserType,
+  ip: string
 ): Promise<ServiceResult<ClinicProfile>> {
   const user = await userRepository.findById(userId);
   if (!user) return { data: { error: 'NOT_FOUND' }, status: 404 };
@@ -147,8 +176,17 @@ export async function createClinicForUserService(
     future caller skips validation.
   */
   const { consents, ...profile } = input;
-  if (Object.values(consents).some(given => given !== true)) {
+  const { baa, ...mandatory } = consents;
+  if (Object.values(mandatory).some(given => given !== true)) {
     return { data: { error: 'CONSENT_REQUIRED' }, status: 400 };
+  }
+  /*
+    The BAA is checked apart from the rest because it is the one consent that is not mandatory
+    everywhere. Folding it into the loop above would reject every non-US clinic that legitimately
+    left it unticked; leaving it out entirely would let a US clinic through without one.
+  */
+  if (requiresBaa(profile.country) && baa !== true) {
+    return { data: { error: 'BAA_REQUIRED' }, status: 400 };
   }
   const clinicId = await clinicRepository.create({
     ...profile,
@@ -158,6 +196,7 @@ export async function createClinicForUserService(
     isActive: true,
     ...startTrial(),
     ...recordConsent(),
+    ...recordBaa(baa, ip),
   });
 
   const linked = await userRepository.updateById(userId, {

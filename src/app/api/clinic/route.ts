@@ -14,6 +14,7 @@ import {
 import { auth } from '@/shared/lib/auth';
 import { clinicGuard } from '@/shared/lib/clinic-guard';
 import { validateBody } from '@/shared/middleware/validate-body';
+import { clientIp } from '@/shared/utils/client-ip';
 
 type SessionUser = { id?: string };
 
@@ -31,7 +32,11 @@ export async function POST(req: NextRequest) {
     const validated = await validateBody(req, CreateClinicForUserSchema);
     if (validated instanceof NextResponse) return validated;
 
-    const { data, status } = await createClinicForUserService(user.id, validated.data);
+    const { data, status } = await createClinicForUserService(
+      user.id,
+      validated.data,
+      clientIp(req.headers)
+    );
     return NextResponse.json(data, { status });
   } catch {
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
