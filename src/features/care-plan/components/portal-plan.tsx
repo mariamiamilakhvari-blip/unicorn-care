@@ -4,7 +4,6 @@ import { CalendarCheck } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
 
-import { AssistantPanel } from '@/features/assistant/components/assistant-panel';
 import { OccurrenceCard } from '@/features/care-plan/components/occurrence-card';
 import { usePortalPlan } from '@/features/care-plan/hooks/use-portal-plan';
 import { PortalDay } from '@/features/care-plan/types/portal.types';
@@ -93,12 +92,9 @@ export function PortalPlan() {
 
       {upcoming.length > 0 && <UpcomingDays days={upcoming} label={t('upcoming')} />}
 
-      {/* Above the assistant: a patient worried about a symptom must reach clinic-authored
-          guidance and the "contact your clinic" path before they reach a chat box. */}
+      {/* A patient worried about a symptom reaches clinic-authored guidance and the
+          "contact your clinic" path — the only route the portal offers for a medical question. */}
       <RecoveryGuidePanel />
-
-      {/* Last on the page on purpose: the prescribed plan is the primary content, not the chat. */}
-      <AssistantPanel />
     </div>
   );
 }

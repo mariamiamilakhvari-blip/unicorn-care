@@ -42,7 +42,6 @@ const STANDARD_FEATURES: PlanFeature[] = [
   { key: 'procedureRecords', status: 'available' },
   { key: 'complicationsGuide', status: 'available' },
   { key: 'checkupReminders', status: 'available' },
-  { key: 'careAssistant', status: 'available' },
 ];
 
 export const PLANS: Plan[] = [

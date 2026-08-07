@@ -334,14 +334,6 @@
     "subtitle": "Your clinic at a glance.",
     "recentPatients": "Recent patients"
   },
-  "assistant": {
-    "title": "Care assistant",
-    "placeholder": "Ask about your plan",
-    "send": "Send",
-    "thinking": "Thinking…",
-    "emptyHint": "Ask about your medicines, rehab tasks, or your next checkup.",
-    "disclaimer": "This assistant explains the plan your clinic prescribed. It cannot judge symptoms or diagnose anything. Contact your clinic with any medical concern, and seek emergency care if something is severe or sudden."
-  },
   "recoveryGuide": {
     "title": "Complications and what is normal",
     "authoringHelp": "Content you write here is shown to your patients in their portal. Nothing is generated automatically.",
@@ -432,7 +424,6 @@
       "procedureRecords": "Procedure + medication records",
       "complicationsGuide": "Complications guide per patient",
       "checkupReminders": "Checkup date reminders",
-      "careAssistant": "Post-op care assistant",
       "unlimitedPatients": "Unlimited patients",
       "customGuidePerProcedure": "Custom complications guide per procedure type",
       "noCreditCard": "No credit card required"

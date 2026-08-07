@@ -23,8 +23,8 @@ export const TERMS: Record<AppLocale, LegalDocument> = {
       {
         heading: 'Not medical advice, not an emergency service',
         paragraphs: [
-          'Reminders and any assistant responses support a plan the clinic authored. They are not ' +
-            'professional medical advice and they do not replace consultation with a clinician.',
+          'Reminders support a plan the clinic authored. They are not professional medical ' +
+            'advice and they do not replace consultation with a clinician.',
           'The service is not monitored in real time and must never be relied on in an emergency. ' +
             'A patient who needs urgent care must contact emergency services or their clinic.',
         ],
@@ -94,8 +94,8 @@ export const TERMS: Record<AppLocale, LegalDocument> = {
       {
         heading: 'არ არის სამედიცინო რჩევა და არც გადაუდებელი დახმარება',
         paragraphs: [
-          'შეხსენებები და ასისტენტის პასუხები მხარს უჭერს კლინიკის მიერ შედგენილ გეგმას. ისინი არ ' +
-            'არის პროფესიული სამედიცინო რჩევა და არ ცვლის ექიმთან კონსულტაციას.',
+          'შეხსენებები მხარს უჭერს კლინიკის მიერ შედგენილ გეგმას. ისინი არ არის პროფესიული ' +
+            'სამედიცინო რჩევა და არ ცვლის ექიმთან კონსულტაციას.',
           'სერვისი რეალურ დროში არ კონტროლდება და მასზე დაყრდნობა გადაუდებელ სიტუაციაში ' +
             'დაუშვებელია. პაციენტმა, რომელსაც სასწრაფო დახმარება სჭირდება, უნდა დაუკავშირდეს ' +
             'გადაუდებელ სამსახურს ან თავის კლინიკას.',

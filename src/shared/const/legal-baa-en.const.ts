@@ -24,9 +24,9 @@ export const LEGAL_BAA_EN: LegalDocument = {
         'Unicorn Care is a post-operative assistance tool. It does not diagnose, does not treat, ' +
           'does not triage and does not monitor anyone. It is not a diagnostic device, not a ' +
           'clinical decision support system, and not a medical device of any class.',
-        'Nothing the platform sends — a reminder, an adherence figure, an assistant reply — is ' +
-          'medical advice or a substitute for consultation with a clinician. Every clinical ' +
-          'judgement remains the clinic’s.',
+        'Nothing the platform sends — a reminder, an adherence figure — is medical advice or a ' +
+          'substitute for consultation with a clinician. Every clinical judgement remains the ' +
+          'clinic’s.',
         'The platform is not monitored in real time and must never be relied on in an emergency. ' +
           'A patient experiencing a medical emergency must call 911 (or the local emergency ' +
           'number) or go to the nearest emergency department. Messages sent through this ' +

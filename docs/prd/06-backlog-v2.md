@@ -56,8 +56,9 @@ Shipped as `src/features/recovery-guide/`. Notes on what the implementation sett
   (`clinicId: null`); otherwise 404 and the portal shows nothing. It never invents reassurance.
 - **Editing a clinic's copy never mutates the platform default**, so one clinic cannot change what
   another clinic's patients read.
-- **The patient panel sits above the AI assistant** in the portal — a worried patient reaches
-  clinic-authored guidance and the "contact your clinic" path before they reach a chat box.
+- **The patient panel is the last thing in the portal** — a worried patient reaches clinic-authored
+  guidance and the "contact your clinic" path, which is the only route the portal offers for a
+  medical question. (It used to sit above an AI care assistant; that assistant has been removed.)
 - **The emergency banner is standing and non-dismissible.**
 - Symptom reports are a **queue, not triage**: no scoring, no ranking, no auto-escalation. Stored
   `severity` is only the label of the warning item the patient tapped.

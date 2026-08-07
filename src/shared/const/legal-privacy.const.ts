@@ -49,8 +49,6 @@ export const LEGAL_PRIVACY: Record<AppLocale, LegalDocument> = {
           'MongoDB Atlas hosts the database. Vercel hosts and runs the application. Resend delivers ' +
             'patient email. Our payment provider handles checkout and invoicing — card details ' +
             'reach them directly and never touch our servers.',
-          'The optional post-operative assistant sends the question asked and the relevant plan ' +
-            'context to an external model provider to produce an answer.',
         ],
       },
       {
@@ -133,8 +131,6 @@ export const LEGAL_PRIVACY: Record<AppLocale, LegalDocument> = {
           'MongoDB Atlas მასპინძლობს ბაზას. Vercel მასპინძლობს და ამუშავებს აპლიკაციას. Resend ' +
             'აწვდის პაციენტის ელფოსტას. გადახდის პროვაიდერი უზრუნველყოფს ანგარიშსწორებას და ' +
             'ინვოისებს — ბარათის მონაცემები პირდაპირ მას მიდის და ჩვენს სერვერს არ ეხება.',
-          'არასავალდებულო პოსტოპერაციული ასისტენტი გზავნის დასმულ შეკითხვას და გეგმის შესაბამის ' +
-            'კონტექსტს გარე მოდელის პროვაიდერთან პასუხის მისაღებად.',
         ],
       },
       {
