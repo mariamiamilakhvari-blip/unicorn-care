@@ -48,7 +48,7 @@ export const Header = () => {
     */
     <header className="flex flex-wrap items-center justify-between gap-y-3 px-4 py-5 sm:flex-nowrap sm:px-10 border-b border-border">
       <Link href="/" className="flex shrink-0 items-center gap-2.5 sm:mr-auto">
-        <BrandMark size={32} />
+        <BrandMark className="h-8" />
         <span className="text-sm font-semibold tracking-tight text-foreground">
           {APP_NAME}
         </span>

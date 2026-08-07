@@ -20,7 +20,7 @@ export function PortalShell({ title, children }: PortalShellProps) {
       <ServiceWorkerRegister />
       <header className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <BrandMark size={40} />
+          <BrandMark className="h-10" />
           <div className="flex flex-col gap-1">
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               {APP_NAME}
