@@ -1,4 +1,6 @@
-import mongoose, { Schema, InferSchemaType } from 'mongoose';
+import mongoose, { InferSchemaType, Schema } from 'mongoose';
+
+import { SUPPRESSION_REASONS } from '@/shared/const/email-delivery.const';
 
 const PatientSchema = new Schema(
   {
@@ -29,6 +31,26 @@ const PatientSchema = new Schema(
       version: { type: String, required: false, default: '' },
       confirmedAt: { type: Date, required: false, default: null },
     },
+    /*
+      Email deliverability state for this patient's address.
+
+      Held on the patient rather than in a lookup table because every send already loads this
+      record, so the pre-send check costs nothing — and because the address itself lives here, so
+      the two cannot drift apart when a clinic corrects a typo.
+
+      `emailSuppressedAt` being null is the normal state. Suppression stops email only: push is a
+      separate channel with its own delivery record, and a patient with a dead inbox must still
+      get the notification that can wake their phone.
+    */
+    emailSuppressedAt: { type: Date, required: false, default: null },
+    emailSuppressionReason: {
+      type: String,
+      enum: SUPPRESSION_REASONS,
+      required: false,
+      default: '',
+    },
+    /* Consecutive soft bounces. Any delivery resets it, so this measures a run, not a lifetime. */
+    emailSoftBounces: { type: Number, required: false, default: 0 },
     isArchived: { type: Boolean, default: false, required: true },
   },
   { timestamps: true }

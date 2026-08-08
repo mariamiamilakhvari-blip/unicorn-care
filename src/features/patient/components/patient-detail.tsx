@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 import { CarePlanBuilder } from '@/features/care-plan/components/care-plan-builder';
+import { EmailDeliveryCard } from '@/features/notifications/components/email-delivery-card';
 import { AccessLinkDialog } from '@/features/patient/components/access-link-dialog';
 import { ProcedureForm } from '@/features/procedure/components/procedure-form';
 import { ProcedureRow } from '@/features/procedure/components/procedure-row';
@@ -79,6 +80,14 @@ export function PatientDetail({ patientId, patientName, patientLocale }: Patient
         <h1 className="font-heading text-2xl font-semibold">{patientName}</h1>
         <AccessLinkDialog patientId={patientId} />
       </div>
+
+      {/*
+        Directly under the patient's name, above their procedures. A dead email address stops
+        every reminder this patient would receive by mail, and only the clinic can fix it — so it
+        goes where the clinic looks first, not at the bottom of a page they may not scroll.
+        The card renders nothing at all when there is nothing wrong.
+      */}
+      <EmailDeliveryCard patientId={patientId} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">

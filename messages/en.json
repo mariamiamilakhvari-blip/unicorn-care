@@ -184,7 +184,8 @@
         "body": "Please check the details and try again."
       },
       "action": "View plans"
-    }
+    },
+    "emailSuggestion": "Did you mean"
   },
   "procedure": {
     "title": "Procedure",
@@ -515,6 +516,28 @@
       "ANALYTICS_FAILED": "The figures could not be assembled.",
       "VALIDATION_ERROR": "That timeframe is not valid.",
       "ERROR": "Something went wrong."
+    }
+  },
+  "emailDelivery": {
+    "title": "Email delivery problem",
+    "suppressedSince": "Sending to {email} stopped on {date}.",
+    "pushUnaffected": "Push notifications are unaffected and still being sent.",
+    "clear": "Resume sending",
+    "clearHelp": "Correct the address above first if it was wrong. Resuming without fixing it will bounce again.",
+    "reason": {
+      "hard_bounce": "That address does not exist.",
+      "complaint": "The patient marked these emails as spam.",
+      "soft_bounce": "That address kept rejecting messages.",
+      "unknown": "Email to this patient is paused."
+    },
+    "kind": {
+      "bounced": "Bounced",
+      "complained": "Marked as spam",
+      "delivered": "Delivered"
+    },
+    "bounce": {
+      "hard": "permanent",
+      "soft": "temporary"
     }
   }
 }

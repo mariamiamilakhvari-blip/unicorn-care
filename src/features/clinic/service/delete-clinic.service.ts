@@ -3,6 +3,7 @@ import { carePlanRepository } from '@/features/care-plan/repository/care-plan.re
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { DeleteClinicResult } from '@/features/clinic/types/clinic.types';
+import { emailEventRepository } from '@/features/notifications/repository/email-event.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
@@ -60,6 +61,12 @@ export async function deleteClinicService(
   const procedures = await procedureRepository.deleteAllByClinic(clinicId);
   const patients = await patientRepository.deleteAllByClinic(clinicId);
   const recoveryGuides = await recoveryGuideRepository.deleteAllByClinic(clinicId);
+  /*
+    Delivery events name a patient and their email address, so they are patient data and go with
+    the rest. Leaving them would keep a record of who a deleted clinic's patients were, and of
+    addresses that were never ours to retain past the account.
+  */
+  await emailEventRepository.deleteAllByClinic(clinicId);
   const staff = await userRepository.deleteAllByClinic(clinicId);
 
   await clinicRepository.deleteById(clinicId);

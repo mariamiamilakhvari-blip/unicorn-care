@@ -46,6 +46,29 @@ export const patientRepository = {
       .exec();
   },
 
+  /**
+   * Looks a patient up by email address, unscoped by clinic.
+   *
+   * The one query here that crosses the tenancy boundary, and it has to: a provider webhook
+   * carries an address and nothing else — no clinic, no patient id — so there is no tenant to
+   * scope by until the row is found. Only the webhook path calls it, and it reads rather than
+   * exposes: the caller records an event against whatever clinic owns the row.
+   */
+  async findByEmail(email: string): Promise<PatientDocument | null> {
+    await mongo.connect();
+    return PatientModel.findOne({ email }).lean<PatientDocument>().exec();
+  },
+
+  /**
+   * Writes email deliverability state. Separate from `updateById` because that one is
+   * clinic-scoped and this is called from the webhook, which has no clinic in hand.
+   */
+  async updateDeliveryState(id: string, data: Partial<PatientDocument>): Promise<boolean> {
+    await mongo.connect();
+    const result = await PatientModel.updateOne({ _id: id }, { $set: data });
+    return result.matchedCount > 0;
+  },
+
   async updateById(id: string, clinicId: string, data: Partial<PatientDocument>): Promise<boolean> {
     await mongo.connect();
     const result = await PatientModel.updateOne({ _id: id, clinicId }, { $set: data });

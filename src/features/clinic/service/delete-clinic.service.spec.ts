@@ -15,6 +15,10 @@ vi.mock('@/features/care-plan/repository/care-plan.repository', () => ({
 vi.mock('@/features/care-plan/repository/reminder-occurrence.repository', () => ({
   reminderOccurrenceRepository: { deleteAllByClinic: vi.fn() },
 }));
+vi.mock('@/features/notifications/repository/email-event.repository', () => ({
+  emailEventRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+
 vi.mock('@/features/recovery-guide/repository/recovery-guide.repository', () => ({
   recoveryGuideRepository: { deleteAllByClinic: vi.fn() },
 }));

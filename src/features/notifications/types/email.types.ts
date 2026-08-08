@@ -120,3 +120,28 @@ export type BuiltEmail = {
   html: string;
   text: string;
 };
+
+/** One provider event as the clinic reads it. */
+export type EmailEventView = {
+  id: string;
+  kind: string;
+  bounceType: string;
+  message: string;
+  email: string;
+  occurredAt: string;
+};
+
+/**
+ * A patient's email standing.
+ *
+ * The events travel with the state because the state alone is not actionable: "suppressed" is not
+ * something a clinic can fix, whereas "mailbox does not exist, reported 3 August" is a phone call.
+ */
+export type EmailDeliveryView = {
+  email: string;
+  isSuppressed: boolean;
+  reason: string;
+  suppressedAt: string | null;
+  softBounces: number;
+  events: EmailEventView[];
+};

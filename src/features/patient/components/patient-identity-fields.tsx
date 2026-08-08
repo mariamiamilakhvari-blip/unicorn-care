@@ -5,6 +5,7 @@ import { Control } from 'react-hook-form';
 import { CreatePatientFormType } from '@/features/patient/validations/patient.validation';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -18,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { suggestEmailCorrection } from '@/shared/utils/email-domain';
 
 const SEX_KEYS = ['female', 'male', 'other'] as const;
 
@@ -73,15 +75,36 @@ export function PatientIdentityFields({ control }: { control: Control<CreatePati
       <FormField
         control={control}
         name="email"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('email')}</FormLabel>
-            <FormControl>
-              <Input type="email" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        render={({ field }) => {
+          /*
+            A suggestion, never a correction. Rewriting what a clinic typed into a patient record
+            is how a reminder carrying someone's medication reaches a stranger's inbox — and the
+            clinic would never learn it had happened. Applying it is one deliberate click.
+          */
+          const suggestion = suggestEmailCorrection(String(field.value ?? ''));
+
+          return (
+            <FormItem>
+              <FormLabel>{t('email')}</FormLabel>
+              <FormControl>
+                <Input type="email" {...field} />
+              </FormControl>
+              {suggestion && (
+                <FormDescription>
+                  {t('emailSuggestion')}{' '}
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(suggestion)}
+                    className="font-medium underline underline-offset-4"
+                  >
+                    {suggestion}
+                  </button>
+                </FormDescription>
+              )}
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
       <FormField
         control={control}

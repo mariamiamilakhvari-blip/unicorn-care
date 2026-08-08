@@ -4,6 +4,7 @@ import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
 import { buildDailyEmail } from '@/features/notifications/service/daily-email.service';
+import { isEmailSuppressed } from '@/features/notifications/service/email-delivery.service';
 import { toDailyInput, toWelcomeInput } from '@/features/notifications/service/email-input.service';
 import { buildReminderEmail } from '@/features/notifications/service/reminder-email.service';
 import { buildWelcomeEmail } from '@/features/notifications/service/welcome-email.service';
@@ -36,6 +37,17 @@ export async function sendWelcomeEmailService(
   try {
     const input = await toWelcomeInput(plan, clinic);
     if (!input || !input.patient.email) return false;
+
+    /*
+      Checked here too, not only on the reminder path. A plan activated for a patient whose
+      address already hard-bounced would otherwise send the largest email the product has to an
+      address known to be dead, which is precisely the send that damages the sending domain.
+    */
+    const patient = await patientRepository.findById(
+      plan.patientId.toString(),
+      plan.clinicId.toString()
+    );
+    if (patient && isEmailSuppressed(patient)) return false;
 
     const email = buildWelcomeEmail(input);
     const result = await resendClient.send({
@@ -98,6 +110,12 @@ export function createReminderEmailSender() {
       }
       const patient = patients.get(patientId) ?? null;
       if (!patient || !patient.email || patient.isArchived) return false;
+      /*
+        Email only. The push for this occurrence has already gone out and is unaffected — a
+        patient whose inbox is dead must still get the notification that can wake their phone,
+        which is why suppression is a per-channel fact and not a per-patient one.
+      */
+      if (isEmailSuppressed(patient)) return false;
 
       const email = buildReminderEmail({
         patient: {
@@ -172,7 +190,7 @@ export async function sendDailyDigestsService(): Promise<ServiceResult<EmailSend
     }
 
     const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
-    if (!patient || !patient.email || patient.isArchived) {
+    if (!patient || !patient.email || patient.isArchived || isEmailSuppressed(patient)) {
       skipped += 1;
       continue;
     }
