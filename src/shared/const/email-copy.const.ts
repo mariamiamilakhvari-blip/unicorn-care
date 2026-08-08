@@ -58,6 +58,15 @@ export type EmailCopy = {
   reportInsights: string;
   reportMissed: string;
   reportEstimateNote: string;
+  /* The clinic-facing alert when a patient files a symptom report. */
+  symptomSubject: string;
+  symptomHeadline: string;
+  symptomIntro: string;
+  symptomPatient: string;
+  symptomFlagged: string;
+  symptomOpenQueue: string;
+  symptomDetailWithheld: string;
+  symptomNotMonitored: string;
 };
 
 const EN: EmailCopy = {
@@ -113,6 +122,18 @@ const EN: EmailCopy = {
   reportInsights: 'What this means',
   reportMissed: '{count} reminders passed without an answer.',
   reportEstimateNote: 'Figures cover reminders scheduled between {from} and {to}.',
+  symptomSubject: 'A patient reported a symptom',
+  symptomHeadline: 'Symptom report awaiting review',
+  symptomIntro: 'One of your patients has reported a symptom through their recovery portal.',
+  symptomPatient: 'Patient',
+  symptomFlagged: 'They selected',
+  symptomOpenQueue: 'Open the review queue',
+  symptomDetailWithheld:
+    'What they wrote is not included in this email. Open the dashboard to read it.',
+  symptomNotMonitored:
+    'This is a notification, not monitoring. Unicorn Care does not watch for or assess ' +
+    'symptoms, and nobody is alerted outside this message. A patient in danger must call ' +
+    'emergency services.',
 };
 
 const KA: EmailCopy = {
@@ -168,6 +189,18 @@ const KA: EmailCopy = {
   reportInsights: 'რას ნიშნავს ეს',
   reportMissed: '{count} შეხსენება უპასუხოდ დარჩა.',
   reportEstimateNote: 'მონაცემები მოიცავს {from} — {to} პერიოდში დაგეგმილ შეხსენებებს.',
+  symptomSubject: 'პაციენტმა სიმპტომი დააფიქსირა',
+  symptomHeadline: 'სიმპტომის შეტყობინება ელოდება განხილვას',
+  symptomIntro: 'თქვენმა ერთ-ერთმა პაციენტმა პორტალიდან დააფიქსირა სიმპტომი.',
+  symptomPatient: 'პაციენტი',
+  symptomFlagged: 'მან აირჩია',
+  symptomOpenQueue: 'გახსენით განსახილველი სია',
+  symptomDetailWithheld:
+    'რაც მან დაწერა, ამ წერილში არ არის. დეტალების სანახავად გახსენით დაფა.',
+  symptomNotMonitored:
+    'ეს არის შეტყობინება და არა მონიტორინგი. Unicorn Care არ აკვირდება და არ აფასებს ' +
+    'სიმპტომებს, და ამ წერილის გარდა არავის ეცნობება. საფრთხის შემთხვევაში პაციენტმა ' +
+    'უნდა დარეკოს გადაუდებელი დახმარების სამსახურში.',
 };
 
 export function emailCopy(locale: AppLocale): EmailCopy {

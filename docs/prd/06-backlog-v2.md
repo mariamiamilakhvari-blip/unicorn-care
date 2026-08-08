@@ -63,8 +63,11 @@ Shipped as `src/features/recovery-guide/`. Notes on what the implementation sett
 - **The emergency banner is standing and non-dismissible.**
 - Symptom reports are a **queue, not triage**: no scoring, no ranking, no auto-escalation. Stored
   `severity` is only the label of the warning item the patient tapped.
-- Still outstanding: seeding platform-default guides per `PROCEDURE_TYPES`, and notifying the
-  clinic when a report arrives (today it appears in the dashboard queue only).
+- **The clinic is now told when a report arrives** — `symptom-alert.service.ts` emails the
+  practice's contact address. A notification and not monitoring: it carries the patient's name and
+  the guide label they tapped, never the free text they wrote, and says in as many words that
+  nothing escalates if it goes unread. Filing the report never depends on the email succeeding.
+- Still outstanding: seeding platform-default guides per `PROCEDURE_TYPES`.
 
 ### Original spec
 

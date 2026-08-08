@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 
+import { sendSymptomAlertService } from '@/features/notifications/service/symptom-alert.service';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { symptomReportRepository } from '@/features/recovery-guide/repository/symptom-report.repository';
 import { SymptomReportDocument } from '@/features/recovery-guide/schema/symptom-report.schema';
@@ -56,6 +57,17 @@ export async function createSymptomReportService(
   const reports = await symptomReportRepository.findByPatient(patientId);
   const created = reports.find(report => report._id.toString() === id);
   if (!created) return { data: { error: 'NOT_FOUND' }, status: 404 };
+
+  /*
+    Told, not triaged. The row is already filed and visible in the dashboard queue; this only
+    stops it waiting there until somebody happens to look.
+
+    Awaited rather than left dangling — a floating promise in a serverless function can be killed
+    when the response returns — but its result is ignored on purpose. Filing the report is what
+    must not fail: a report stored and unannounced is recoverable by opening the dashboard, while
+    one rejected because a mail provider was down is a patient told their message did not send.
+  */
+  await sendSymptomAlertService(patientId, clinicId, input.warningTitle, input.severity);
 
   return { data: toView(created), status: 201 };
 }
