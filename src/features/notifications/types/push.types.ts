@@ -21,6 +21,8 @@ export type DispatchSummary = {
   undelivered: number;
   /** Occurrences aged past the grace window and flipped to `missed`. */
   missed: number;
+  /** Plans whose rehabilitation window closed on this run and were retired to `completed`. */
+  completedPlans: number;
   /** Active care plans whose occurrence horizon was rolled forward. */
   extendedPlans: number;
   /** Daily patient emails sent by this sweep. */

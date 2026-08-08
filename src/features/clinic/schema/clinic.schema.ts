@@ -81,6 +81,19 @@ const ClinicSchema = new Schema(
     },
     planRenewsAt: { type: Date, required: false, default: null },
 
+    /*
+      Denormalised rating standing, recomputed from the ratings themselves on every submission —
+      never incremented. A running average drifts the first time a write is lost or replayed and
+      nothing would ever notice, whereas a clinic has tens of ratings, so recomputing is free.
+
+      These are the raw averages. The threshold below which they must not be *shown* lives in
+      `MIN_RATINGS_FOR_AVERAGE`, and is applied when the summary is built: storing a suppressed
+      average would mean losing the real one the moment the fifth rating arrived.
+    */
+    ratingCount: { type: Number, required: true, default: 0 },
+    avgDoctorScore: { type: Number, required: true, default: 0 },
+    avgClinicScore: { type: Number, required: true, default: 0 },
+
     /* Set from verified Dodo webhooks only — never from anything the browser sends. */
     dodoCustomerId: { type: String, required: false, default: null },
     dodoSubscriptionId: { type: String, required: false, default: null },

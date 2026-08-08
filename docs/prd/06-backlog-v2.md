@@ -5,14 +5,41 @@ These features are in the original product brief but were deferred by the chosen
 
 | Feature | Status |
 |---|---|
-| Doctor and clinic rating | Not built |
+| **Doctor and clinic rating** | **Built** — `src/features/rating/`, see §1 |
 | **Complication vs norm** | **Built** — `src/features/recovery-guide/`, see §2 |
 | Patient-reported recovery timeline | Not built |
 | **Email deliverability** | **Built** — typo hints, signed Resend webhook, suppression; see §4 |
 
 ---
 
-## 1. Doctor and clinic rating
+## 1. Doctor and clinic rating — BUILT
+
+Shipped as `src/features/rating/`. Notes on what the implementation settled on:
+
+- **No `rating_request` occurrence.** The spec routed the ask through the dispatcher as a new
+  occurrence kind, which would have meant a push and an email. The card simply appears in the
+  portal once a plan completes and waits for a patient who chooses to open it — the difference
+  between asking and chasing. Nothing clinical depends on a rating, so nothing chases one.
+- **`status: 'completed'` had to be built first.** It was in the care-plan status enum from the
+  start and nothing ever set it, so every finished plan stayed `active` forever. The sweep now
+  calls `carePlanRepository.completeFinishedPlans(now)` and reports `completedPlans`, and it runs
+  *before* the extension step — extending a plan that has already ended is precisely the work the
+  churn guards exist to refuse.
+- **The 24-hour window is stored, not computed.** `editableUntil` is written at submission and
+  never extended on revision; otherwise each edit buys another day and the window never closes.
+- **Aggregates are recomputed, never incremented.** A running average drifts the first time a
+  write is lost or replayed and nothing would notice. A clinic has tens of ratings.
+- **The threshold suppresses display, not storage.** `Clinic.avgDoctorScore` always holds the real
+  average; `MIN_RATINGS_FOR_AVERAGE` (5) decides whether the summary shows it. Storing a
+  suppressed value would lose the real one the moment the fifth rating arrived.
+- **The clinic has exactly one write against a rating**: `POST /api/ratings/[id]/response`. There
+  is no route that edits or deletes a patient's words, and the tests assert the response path
+  writes no score or comment field.
+- **Ratings are purged with the clinic** in `delete-clinic.service.ts` — they name the patient who
+  wrote them and the doctor they are about.
+- Reserved and unused: `isPublic`. Nothing publishes a rating yet.
+
+### Original spec
 
 **Trigger.** When a care plan's `rehabEndsAt` passes and `status` becomes `completed`, the
 dispatcher creates a final occurrence of a new kind `rating_request`. The patient portal then

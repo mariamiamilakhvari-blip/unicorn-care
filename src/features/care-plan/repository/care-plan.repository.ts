@@ -81,6 +81,31 @@ export const carePlanRepository = {
     return result.modifiedCount > 0;
   },
 
+  /**
+   * Retires plans whose rehabilitation window has closed.
+   *
+   * `completed` has been in the schema since the beginning and nothing ever set it, so every plan
+   * ever activated stayed `active` for good. That left finished plans being swept for extension
+   * and dispatch forever, and gave the rating flow no moment to fire on.
+   */
+  async completeFinishedPlans(now: Date): Promise<number> {
+    await mongo.connect();
+    const result = await CarePlanModel.updateMany(
+      { status: 'active', rehabEndsAt: { $lte: now } },
+      { $set: { status: 'completed' } }
+    );
+    return result.modifiedCount;
+  },
+
+  /** Plans a patient may now rate: finished, and belonging to them. */
+  async findCompletedByPatient(patientId: string): Promise<CarePlanDocument[]> {
+    await mongo.connect();
+    return CarePlanModel.find({ patientId, status: 'completed' })
+      .sort({ rehabEndsAt: -1 })
+      .lean<CarePlanDocument[]>()
+      .exec();
+  },
+
   async findActivePlansNeedingExtension(beforeDate: Date): Promise<CarePlanDocument[]> {
     await mongo.connect();
     return CarePlanModel.find({ status: 'active', rehabEndsAt: { $gt: beforeDate } })

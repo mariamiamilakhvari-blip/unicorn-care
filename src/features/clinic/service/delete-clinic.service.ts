@@ -6,6 +6,7 @@ import { DeleteClinicResult } from '@/features/clinic/types/clinic.types';
 import { emailEventRepository } from '@/features/notifications/repository/email-event.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
+import { ratingRepository } from '@/features/rating/repository/rating.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
 import { dodoClient } from '@/shared/lib/dodo-client';
 import { ServiceResult } from '@/shared/types/common';
@@ -67,6 +68,12 @@ export async function deleteClinicService(
     addresses that were never ours to retain past the account.
   */
   await emailEventRepository.deleteAllByClinic(clinicId);
+  /*
+    Ratings name the patient who wrote them and the doctor they are about, so they go too. There
+    is no argument for keeping a deleted clinic's reviews: nothing left will ever display them,
+    and the patients who wrote them no longer have an account here either.
+  */
+  await ratingRepository.deleteAllByClinic(clinicId);
   const staff = await userRepository.deleteAllByClinic(clinicId);
 
   await clinicRepository.deleteById(clinicId);

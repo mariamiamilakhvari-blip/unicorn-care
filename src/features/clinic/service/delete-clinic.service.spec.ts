@@ -22,6 +22,9 @@ vi.mock('@/features/notifications/repository/email-event.repository', () => ({
 vi.mock('@/features/recovery-guide/repository/recovery-guide.repository', () => ({
   recoveryGuideRepository: { deleteAllByClinic: vi.fn() },
 }));
+vi.mock('@/features/rating/repository/rating.repository', () => ({
+  ratingRepository: { deleteAllByClinic: vi.fn() },
+}));
 vi.mock('@/features/auth/repository/user.repository', () => ({
   userRepository: { deleteAllByClinic: vi.fn() },
 }));

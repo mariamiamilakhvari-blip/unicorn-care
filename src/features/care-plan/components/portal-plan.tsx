@@ -8,6 +8,7 @@ import { OccurrenceCard } from '@/features/care-plan/components/occurrence-card'
 import { usePortalPlan } from '@/features/care-plan/hooks/use-portal-plan';
 import { PortalDay } from '@/features/care-plan/types/portal.types';
 import { PushOptIn } from '@/features/notifications/components/push-opt-in';
+import { PortalRatingCard } from '@/features/rating/components/portal-rating-card';
 import { RecoveryGuidePanel } from '@/features/recovery-guide/components/recovery-guide-panel';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -95,6 +96,10 @@ export function PortalPlan() {
       {/* A patient worried about a symptom reaches clinic-authored guidance and the
           "contact your clinic" path — the only route the portal offers for a medical question. */}
       <RecoveryGuidePanel />
+
+      {/* Renders nothing until a plan has actually finished, so it never competes with today's
+          doses. Last on the page for the same reason. */}
+      <PortalRatingCard />
     </div>
   );
 }

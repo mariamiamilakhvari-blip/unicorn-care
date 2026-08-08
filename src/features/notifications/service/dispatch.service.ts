@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
@@ -205,6 +206,14 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
     new Date(now.getTime() - GRACE_HOURS * MS_PER_HOUR)
   );
 
+  /*
+    Retire finished plans before extending. A plan whose window has closed is not a candidate for
+    anything the sweep does afterwards, and until this existed nothing ever set `completed` — so
+    every plan ever activated stayed active for good, was swept forever, and the rating flow had
+    no moment to fire on.
+  */
+  const completedPlans = await carePlanRepository.completeFinishedPlans(now);
+
   const extendedPlans = await extendActivePlansService(now);
 
   // Each plan is claimed for its own clinic-local date, so running this on every five-minute sweep
@@ -218,6 +227,7 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
       sent,
       undelivered,
       missed,
+      completedPlans,
       extendedPlans,
       emailed,
       emailedReminders,

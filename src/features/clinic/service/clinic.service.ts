@@ -93,6 +93,16 @@ function recordBaa(accepted: boolean, ip: string) {
 }
 
 /**
+ * A clinic starts with no ratings, written explicitly rather than left to the schema default so
+ * the aggregate fields exist on the document from the first read. `avgDoctorScore: 0` is not a
+ * score of zero — `MIN_RATINGS_FOR_AVERAGE` keeps any average hidden until there are enough
+ * ratings for one to mean anything.
+ */
+function blankRatings() {
+  return { ratingCount: 0, avgDoctorScore: 0, avgClinicScore: 0 };
+}
+
+/**
  * Every clinic begins on the free trial. Set at creation rather than lazily on first read, so the
  * end date is anchored to sign-up and cannot drift by being recomputed later.
  */
@@ -134,6 +144,7 @@ export async function registerClinicService(
       ownerId: new Types.ObjectId(userId),
       isActive: true,
       ...startTrial(),
+      ...blankRatings(),
       ...recordConsent(),
       ...recordBaa(input.consents.baa, ip),
     });
@@ -196,6 +207,7 @@ export async function createClinicForUserService(
     ownerId: new Types.ObjectId(userId),
     isActive: true,
     ...startTrial(),
+    ...blankRatings(),
     ...recordConsent(),
     ...recordBaa(baa, ip),
   });

@@ -28,11 +28,16 @@ vi.mock('@/features/care-plan/service/dispatch-extension.service', () => ({
   extendActivePlansService: vi.fn(),
 }));
 
+vi.mock('@/features/care-plan/repository/care-plan.repository', () => ({
+  carePlanRepository: { completeFinishedPlans: vi.fn() },
+}));
+
 vi.mock('@/features/notifications/service/email-dispatch.service', () => ({
   sendDailyDigestsService: vi.fn(),
   createReminderEmailSender: vi.fn(),
 }));
 
+import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
@@ -50,6 +55,7 @@ const occurrenceRepo = vi.mocked(reminderOccurrenceRepository);
 const subscriptionRepo = vi.mocked(pushSubscriptionRepository);
 const pushClient = vi.mocked(webPushClient);
 const extendPlans = vi.mocked(extendActivePlansService);
+const plans = vi.mocked(carePlanRepository);
 const sendDigests = vi.mocked(sendDailyDigestsService);
 const makeReminderSender = vi.mocked(createReminderEmailSender);
 
@@ -122,6 +128,7 @@ describe('dispatchDueRemindersService', () => {
     subscriptionRepo.incrementFailure.mockResolvedValue(true);
     subscriptionRepo.markSuccess.mockResolvedValue(true);
     extendPlans.mockResolvedValue(0);
+    plans.completeFinishedPlans.mockResolvedValue(0);
     sendDigests.mockResolvedValue({ data: { considered: 0, sent: 0, failed: 0, skipped: 0 }, status: 200 });
     sendReminderEmail = vi.fn().mockResolvedValue(true);
     makeReminderSender.mockReturnValue(sendReminderEmail);
@@ -295,12 +302,32 @@ describe('dispatchDueRemindersService', () => {
 
   it('rolls the generation horizon forward at the end of the sweep', async () => {
     extendPlans.mockResolvedValue(3);
+    plans.completeFinishedPlans.mockResolvedValue(0);
 
     const result = await dispatchDueRemindersService();
 
     expect(extendPlans).toHaveBeenCalledWith(NOW);
     expect(result).toMatchObject({ status: 200 });
     expect(result.data).toMatchObject({ extendedPlans: 3 });
+  });
+
+  /**
+   * `completed` existed in the plan status enum from the start and nothing ever set it, so every
+   * finished plan stayed `active` forever. The sweep is where it gets set, and it has to happen
+   * before the extension step: extending a plan that has already ended is exactly the work the
+   * churn guards refuse, and doing it in the other order asks them to refuse it every five
+   * minutes rather than not asking at all.
+   */
+  it('retires plans that have reached their end date, before extending anything', async () => {
+    plans.completeFinishedPlans.mockResolvedValue(2);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(plans.completeFinishedPlans).toHaveBeenCalledWith(NOW);
+    expect(result.data).toMatchObject({ completedPlans: 2 });
+    expect(plans.completeFinishedPlans.mock.invocationCallOrder[0]).toBeLessThan(
+      extendPlans.mock.invocationCallOrder[0]
+    );
   });
 });
 
@@ -320,6 +347,7 @@ describe('dispatchDueRemindersService — timed reminder emails', () => {
     occurrenceRepo.markMissedBefore.mockResolvedValue(0);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
     extendPlans.mockResolvedValue(0);
+    plans.completeFinishedPlans.mockResolvedValue(0);
     sendDigests.mockResolvedValue({
       data: { considered: 0, sent: 0, failed: 0, skipped: 0 },
       status: 200,
@@ -404,6 +432,7 @@ describe('dispatchDueRemindersService — resilience', () => {
     occurrenceRepo.markMissedBefore.mockResolvedValue(0);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
     extendPlans.mockResolvedValue(0);
+    plans.completeFinishedPlans.mockResolvedValue(0);
     sendDigests.mockResolvedValue({
       data: { considered: 0, sent: 0, failed: 0, skipped: 0 },
       status: 200,

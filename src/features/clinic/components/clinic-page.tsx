@@ -14,6 +14,7 @@ import {
   CreateStaffType,
 } from '@/features/clinic/validations/clinic.validation';
 import { DoctorList } from '@/features/procedure/components/doctor-list';
+import { ClinicRatingsPanel } from '@/features/rating/components/clinic-ratings-panel';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import {
@@ -74,6 +75,9 @@ export function ClinicPage() {
 
       {/* Derived from procedures — appears without anyone maintaining it. */}
       <DoctorList />
+
+      {/* Beside the doctors, because that is what the scores are about. */}
+      <ClinicRatingsPanel />
 
       <Card>
         <CardHeader>
