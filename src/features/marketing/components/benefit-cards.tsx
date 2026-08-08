@@ -26,10 +26,16 @@ const BENEFIT_STAGGER = ['animate-rise-1', 'animate-rise-2', 'animate-rise-3'] a
 export const BenefitCards = () => {
   const t = useTranslations('marketing');
 
+  /*
+    The top padding is the gap between the hero and the payoff. The hero closes with `pb-16` alone,
+    which left the cards reading as part of the headline block rather than as the answer to it —
+    the claim lands harder after a beat. Scaled up on wider screens the same way the hero's own top
+    padding is, so the page keeps one rhythm rather than two.
+  */
   return (
     <section
       aria-label={t('benefitsEyebrow')}
-      className="mx-auto w-full max-w-5xl px-6 pb-20 sm:px-10"
+      className="mx-auto w-full max-w-5xl px-6 pb-20 pt-10 sm:px-10 sm:pt-16"
     >
       <ul className="grid gap-4 sm:grid-cols-3">
         {HOME_BENEFITS.map((benefit, index) => {

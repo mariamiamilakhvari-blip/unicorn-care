@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import { AudienceSection } from '@/features/marketing/components/audience-section';
 import { BenefitCards } from '@/features/marketing/components/benefit-cards';
 import { FaqSection } from '@/features/marketing/components/faq-section';
-import { FeatureDeck } from '@/features/marketing/components/feature-deck';
 import { StructuredData } from '@/features/marketing/components/structured-data';
 import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
@@ -57,10 +56,9 @@ export const HomePage = () => {
           </div>
         </section>
 
-        {/* The payoff, before the deck explains the mechanics behind it. */}
+        {/* The payoff: what the product does for a clinic, before the audience and the FAQ. */}
         <BenefitCards />
 
-        <FeatureDeck />
 
         {/* Below the feature deck: the body copy a search engine can actually read and rank. */}
         <AudienceSection locale={locale} />

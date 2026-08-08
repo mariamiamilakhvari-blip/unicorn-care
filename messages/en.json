@@ -320,25 +320,7 @@
       }
     },
     "ctaPrimary": "Set up your clinic",
-    "ctaSecondary": "Sign in",
-    "featuresEyebrow": "What's included",
-    "features": {
-      "carePlan": {
-        "label": "Care plan",
-        "title": "Doses, tasks, checkups",
-        "description": "Build the whole post-op plan once: medications with dosing times, rehab tasks at light, moderate or intense levels, and the dates of every follow-up checkup."
-      },
-      "reminders": {
-        "label": "Reminders",
-        "title": "A notification, not a leaflet",
-        "description": "Every item on the plan becomes a dated reminder and reaches the patient as an email."
-      },
-      "adherence": {
-        "label": "Adherence",
-        "title": "Support for the patient",
-        "description": "The patient receives reminders on schedule and works through the plan. If their condition gets worse, they contact the clinic."
-      }
-    }
+    "ctaSecondary": "Sign in"
   },
   "dashboard": {
     "overview": "Overview",
