@@ -5,7 +5,11 @@ name: Dispatch reminders
 # This workflow is the real scheduler; the daily Vercel cron in vercel.json is a safety net.
 #
 # Setup: add two repository secrets under Settings → Secrets and variables → Actions
-#   APP_URL      https://your-deployment.vercel.app   (no trailing slash)
+#   APP_URL      the canonical host, no trailing slash — the one that answers *without* a
+#                redirect. An apex domain that 308s to www cannot work: curl drops the
+#                Authorization header across a host change, so the request arrives unauthenticated
+#                whether or not the redirect is followed. Check with:
+#                  curl -o /dev/null -w '%{http_code}\n' https://YOUR-HOST/api/health
 #   CRON_SECRET  the same value as the CRON_SECRET environment variable on Vercel
 #
 # Note: GitHub's scheduler is best-effort and can lag under load, and it disables scheduled
@@ -48,7 +52,26 @@ jobs:
           echo "status: ${status}"
           echo "body:   ${body}"
 
+          # A redirect is the failure mode that cost the most time to find, so it is named rather
+          # than left as a bare status. `APP_URL` must be the host Vercel actually serves — the
+          # apex 308s to www, and curl drops the Authorization header across a host change, so
+          # neither following the redirect nor ignoring it can ever reach the endpoint.
+          case "$status" in
+            30*)
+              echo "APP_URL redirects (${status}). Set it to the canonical host — the one that"
+              echo "answers without a redirect, e.g. https://www.example.com and not the apex."
+              exit 1
+              ;;
+            401)
+              echo "Rejected as unauthorised. The CRON_SECRET repository secret does not match the"
+              echo "CRON_SECRET environment variable on the deployment APP_URL points at."
+              exit 1
+              ;;
+          esac
+
           if [ "$status" != "200" ]; then
             echo "Reminder sweep failed."
             exit 1
           fi
+
+          echo "Sweep completed."
