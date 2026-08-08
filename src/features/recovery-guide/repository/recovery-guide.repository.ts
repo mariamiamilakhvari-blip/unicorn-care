@@ -20,7 +20,13 @@ export type RecoveryGuideInput = {
   manipulationType: string;
   locale: AppLocale;
   expected: Array<{ title: string; description: string; fromDay: number; toDay: number }>;
-  warning: Array<{ title: string; description: string; severity: WarningSeverity }>;
+  warning: Array<{
+    title: string;
+    description: string;
+    severity: WarningSeverity;
+    fromDay: number;
+    toDay: number;
+  }>;
   updatedByUserId: Types.ObjectId | null;
   isPublished: boolean;
 };
@@ -66,6 +72,24 @@ export const recoveryGuideRepository = {
     return RecoveryGuideModel.findOne({ clinicId: null, manipulationType, locale })
       .lean<RecoveryGuideDocument>()
       .exec();
+  },
+
+  /**
+   * Inserts a platform default if that slot is empty, and otherwise leaves it entirely alone.
+   *
+   * Every field goes in `$setOnInsert`, which is the whole point: seeding runs more than once —
+   * on deploy, by hand, after a new procedure type is added — and by then a clinician may have
+   * corrected the draft or published it. A `$set` would silently overwrite reviewed clinical
+   * content with the generic text it replaced, and unpublish it. Returns true only on insert.
+   */
+  async upsertDefault(data: RecoveryGuideInput): Promise<boolean> {
+    await mongo.connect();
+    const result = await RecoveryGuideModel.updateOne(
+      { clinicId: null, manipulationType: data.manipulationType, locale: data.locale },
+      { $setOnInsert: data },
+      { upsert: true }
+    );
+    return result.upsertedCount > 0;
   },
 
   async updateById(

@@ -94,7 +94,23 @@ Shipped as `src/features/recovery-guide/`. Notes on what the implementation sett
   practice's contact address. A notification and not monitoring: it carries the patient's name and
   the guide label they tapped, never the free text they wrote, and says in as many words that
   nothing escalates if it goes unread. Filing the report never depends on the email succeeding.
-- Still outstanding: seeding platform-default guides per `PROCEDURE_TYPES`.
+- **Platform defaults are now seeded** — `recovery-guide-seed.service.ts`, run from
+  `POST /api/admin/recovery-guides/seed` behind `adminGuard`. Before this the second rung of the
+  resolution order did not exist in production (0 platform defaults, 7 clinic-authored guides
+  across 4 clinics), so any patient whose clinic had not written a guide for their procedure
+  opened the portal to a blank panel.
+  - **Two families, not eighteen guides.** `surgical` and `nonSurgical`. Recovery differs far more
+    between surgery and an injectable than between two operations, and writing eighteen bespoke
+    guides would mean eighteen sets of procedure-specific clinical claims nobody here is
+    qualified to make. `other` maps to `surgical` — the unknown case gets the more cautious text.
+  - **Seeded `isPublished: false`.** Generic drafts are not clinical advice until a clinician has
+    read them. They exist so a reviewer has something to correct rather than an empty editor.
+  - **Idempotent and unable to overwrite.** `upsertDefault` puts every field in `$setOnInsert`, so
+    re-running fills gaps only. A slot a clinician has edited or published is never touched.
+  - **ka/en stay parallel** — same item count, order, severities and day windows, enforced by
+    `recovery-guide-seed.const.spec.ts`. A translation gap that gave one language fewer warnings
+    would be a clinical difference, and an invisible one.
+  - Outstanding: a clinician still has to review and publish. Nothing reaches a patient until then.
 
 ### Original spec
 
