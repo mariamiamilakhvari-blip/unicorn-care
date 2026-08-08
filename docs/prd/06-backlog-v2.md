@@ -8,7 +8,7 @@ These features are in the original product brief but were deferred by the chosen
 | Doctor and clinic rating | Not built |
 | **Complication vs norm** | **Built** — `src/features/recovery-guide/`, see §2 |
 | Patient-reported recovery timeline | Not built |
-| Email deliverability: validation, bounce tracking, suppression | Not built — see §4 |
+| **Email deliverability** | **Built** — typo hints, signed Resend webhook, suppression; see §4 |
 
 ---
 
