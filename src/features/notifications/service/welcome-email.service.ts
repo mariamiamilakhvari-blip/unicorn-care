@@ -1,5 +1,6 @@
 import {
   badge,
+  button,
   escapeHtml,
   list,
   muted,
@@ -19,6 +20,8 @@ import {
 } from '@/features/notifications/types/email.types';
 import { emailCopy, EmailCopy } from '@/shared/const/email-copy.const';
 import { PROCEDURE_TYPES } from '@/shared/const/procedure.const';
+import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
+import { SITE_URL } from '@/shared/const/seo.const';
 
 /**
  * The whole plan in one email, sent when the clinic activates it.
@@ -40,12 +43,28 @@ export function buildWelcomeEmail(input: WelcomeEmailInput): BuiltEmail {
     expectedSection(input.guide, copy),
     warningSection(input.guide, copy),
     checkupSection(input, copy, zone),
+    /*
+      Last, after the plan itself. The email is the plan in full — the portal is where the patient
+      goes to *act* on it, tick things off and read the recovery guide, so the invitation belongs
+      after they know what they are being invited to.
+
+      No token in the link, matching every other patient email: a portal credential in an inbox
+      outlives the message, and an old email in a compromised account would be a live door into
+      that patient's record. A patient on the device that redeemed their magic link lands straight
+      in; anyone else reaches the expired-link page, which points them back to their clinic.
+    */
+    section('', copy.openPortal, button(copy.openPortal, `${SITE_URL}${PATIENT_PORTAL_ROUTE}`)),
   ].join('');
 
   return {
     subject: `${copy.welcomeSubject} — ${input.clinic.name}`,
     html: shell(copy.welcomeSubject, sections, input.clinic, copy),
-    text: toPlainText(copy.welcomeSubject, plainLines(input, copy, zone), input.clinic, copy),
+    text: toPlainText(
+      copy.welcomeSubject,
+      [...plainLines(input, copy, zone), '', copy.openPortal, `${SITE_URL}${PATIENT_PORTAL_ROUTE}`],
+      input.clinic,
+      copy
+    ),
   };
 }
 

@@ -136,3 +136,51 @@ describe('buildWelcomeEmail', () => {
     expect(text).not.toContain('<');
   });
 });
+
+/**
+ * The email is the plan; the portal is where the patient acts on it. Without a way through, a
+ * patient who has lost their original magic link has read-only paper and no route back.
+ */
+describe('the portal call to action', () => {
+  it('carries a button through to the portal', () => {
+    const email = buildWelcomeEmail(input());
+
+    expect(email.html).toContain('/p"');
+    expect(email.html).toContain('Open your portal');
+  });
+
+  it('repeats the link in the plain-text alternative', () => {
+    // A text-only client renders no button at all, and would otherwise get no way through.
+    const email = buildWelcomeEmail(input());
+
+    expect(email.text).toContain('/p');
+  });
+
+  it('never carries a portal token', () => {
+    /*
+      A credential in an inbox outlives the message. An old email in a compromised account would
+      be a live door into that patient's record, so the link is the bare portal path and the
+      cookie on the patient's own device is what lets them in.
+    */
+    const email = buildWelcomeEmail(input());
+
+    expect(email.html).not.toMatch(/\/p\/[A-Za-z0-9_-]{10,}/);
+  });
+
+  it('places the invitation after the plan, not before it', () => {
+    const email = buildWelcomeEmail(input());
+
+    // The patient should know what they are being invited to before being invited.
+    expect(email.html.indexOf('Open your portal')).toBeGreaterThan(email.html.indexOf('Hello'));
+  });
+
+  it('writes the call to action in the patient language', () => {
+    const email = buildWelcomeEmail(
+      input({
+        patient: { firstName: 'ლიკა', lastName: 'გ', email: 'p@example.com', locale: 'ka' },
+      })
+    );
+
+    expect(email.html).toContain('გახსენით თქვენი პორტალი');
+  });
+});

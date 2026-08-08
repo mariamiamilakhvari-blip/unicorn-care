@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Resolver, useForm } from 'react-hook-form';
 
 
 
@@ -15,6 +15,11 @@ import { useCarePlan } from '@/features/care-plan/hooks/use-care-plan';
 import { CarePlanFormType } from '@/features/care-plan/types/care-plan-form.types';
 import { toCarePlanFormValues } from '@/features/care-plan/types/care-plan-mapper';
 import { CarePlanFormSchema } from '@/features/care-plan/validations/care-plan-form.validation';
+import {
+  isUntouchedCheckupRow,
+  isUntouchedMedicationRow,
+  isUntouchedRehabRow,
+} from '@/features/care-plan/validations/care-plan.validation';
 import { CarePlanGuideSection } from '@/features/recovery-guide/components/care-plan-guide-section';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -47,10 +52,36 @@ export function CarePlanBuilder({
   const tCommon = useTranslations('common');
   const { plan, isLoading, isPending, error, savedAt, save, activate } = useCarePlan(procedureId);
 
+  /*
+    Blank blocks are filtered out before the schema sees them, in all three sections.
+
+    Each "add" button appends an empty block, and all three sections are optional — a clinician
+    who adds one and changes their mind was left with a plan that could not be saved and a column
+    of red `Required` labels that explained nothing. The predicates come from the API schema, so
+    the form and the endpoint cannot disagree about what counts as blank.
+
+    Filtering here rather than inside the form schema keeps the resolver typed against the form's
+    own shape: `z.preprocess` widens its input to `unknown` and breaks that contract.
+
+    Only entirely untouched rows go. A row with a name and no dates is interrupted work, not a
+    mistake to erase, and it still fails — the clinician finishes it or deletes it.
+  */
+  const resolver: Resolver<CarePlanFormType> = (values, context, options) =>
+    zodResolver(CarePlanFormSchema)(
+      {
+        ...values,
+        medications: values.medications.filter(row => !isUntouchedMedicationRow(row)),
+        rehabTasks: values.rehabTasks.filter(row => !isUntouchedRehabRow(row)),
+        checkups: values.checkups.filter(row => !isUntouchedCheckupRow(row)),
+      },
+      context,
+      options
+    );
+
   // Without a resolver nothing was checked until the server rejected the whole payload, and the
   // only feedback was a bare VALIDATION_ERROR with no indication of which field was wrong.
   const form = useForm<CarePlanFormType>({
-    resolver: zodResolver(CarePlanFormSchema),
+    resolver,
     mode: 'onBlur',
     defaultValues: {
       startsAt: '',

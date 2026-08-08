@@ -75,6 +75,49 @@ const CheckupSchema = z.object({
 });
 
 /**
+ * Drops rows a clinician opened and never filled in.
+ *
+ * Each of the three sections appends a blank block when its "add" button is pressed, and all
+ * three are optional — plenty of plans are medication and a checkup, or rehab alone. A clinician
+ * who adds a block and changes their mind was left with a plan that could not be saved and a
+ * column of red `Required` labels explaining nothing about what to do.
+ *
+ * Only *entirely* untouched rows are dropped. A row with a name but no dates is a clinician who
+ * started describing real work and was interrupted; silently discarding it would delete clinical
+ * intent and the plan would activate missing something somebody meant to prescribe. Those still
+ * fail validation, which is the honest outcome — the fix is to finish the row or delete it.
+ */
+type TypedRow = Record<string, unknown>;
+
+/** True when every field a clinician would have typed into is still blank. */
+const allBlank =
+  (fields: string[]) =>
+    (row: TypedRow): boolean =>
+      fields.every(field => !String(row?.[field] ?? '').trim());
+
+/*
+  The fields listed per section are the ones a clinician types into. Anything defaulted by the
+  form — intensity, route, times of day, reminder offsets — is deliberately excluded: those carry
+  a value on an untouched row, so counting them would make every blank block look filled in.
+*/
+export const isUntouchedMedicationRow = allBlank([
+  'name',
+  'dosage',
+  'startsOn',
+  'endsOn',
+  'instructions',
+]);
+
+export const isUntouchedRehabRow = allBlank(['title', 'description', 'startsOn', 'endsOn']);
+
+export const isUntouchedCheckupRow = allBlank(['scheduledAt', 'title', 'location']);
+
+const dropUntouched =
+  (isBlank: (row: TypedRow) => boolean) =>
+    (value: unknown) =>
+      Array.isArray(value) ? value.filter(row => !isBlank(row as TypedRow)) : value;
+
+/**
  * `procedureId` / `patientId` are body fields; `clinicId` is deliberately absent — it always comes
  * from `clinicGuard` (PRD 02).
  */
@@ -83,9 +126,18 @@ const CarePlanBaseSchema = z.object({
   patientId: ObjectIdSchema,
   startsAt: DateSchema,
   rehabEndsAt: DateSchema,
-  medications: z.array(MedicationSchema).max(30).default([]),
-  rehabTasks: z.array(RehabTaskSchema).max(30).default([]),
-  checkups: z.array(CheckupSchema).max(30).default([]),
+  medications: z.preprocess(
+    dropUntouched(isUntouchedMedicationRow),
+    z.array(MedicationSchema).max(30).default([])
+  ),
+  rehabTasks: z.preprocess(
+    dropUntouched(isUntouchedRehabRow),
+    z.array(RehabTaskSchema).max(30).default([])
+  ),
+  checkups: z.preprocess(
+    dropUntouched(isUntouchedCheckupRow),
+    z.array(CheckupSchema).max(30).default([])
+  ),
 });
 
 const CarePlanContentSchema = CarePlanBaseSchema.omit({ procedureId: true, patientId: true });
