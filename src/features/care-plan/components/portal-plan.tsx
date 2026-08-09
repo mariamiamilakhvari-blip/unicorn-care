@@ -10,6 +10,7 @@ import { PortalDay } from '@/features/care-plan/types/portal.types';
 import { PushOptIn } from '@/features/notifications/components/push-opt-in';
 import { PortalRatingCard } from '@/features/rating/components/portal-rating-card';
 import { RecoveryGuidePanel } from '@/features/recovery-guide/components/recovery-guide-panel';
+import { RecoveryLogForm } from '@/features/recovery-log/components/recovery-log-form';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 
@@ -92,6 +93,9 @@ export function PortalPlan() {
       </section>
 
       {upcoming.length > 0 && <UpcomingDays days={upcoming} label={t('upcoming')} />}
+
+      {/* Renders nothing unless the plan asks for a check-in and today has none filed yet. */}
+      <RecoveryLogForm />
 
       {/* A patient worried about a symptom reaches clinic-authored guidance and the
           "contact your clinic" path — the only route the portal offers for a medical question. */}

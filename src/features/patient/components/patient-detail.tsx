@@ -10,6 +10,7 @@ import { ProcedureForm } from '@/features/procedure/components/procedure-form';
 import { ProcedureRow } from '@/features/procedure/components/procedure-row';
 import { useProcedures } from '@/features/procedure/hooks/use-procedures';
 import { CreateProcedureType } from '@/features/procedure/validations/procedure.validation';
+import { RecoveryTrendPanel } from '@/features/recovery-log/components/recovery-trend-panel';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { AppLocale } from '@/shared/types/roles';
@@ -161,6 +162,9 @@ export function PatientDetail({ patientId, patientName, patientLocale }: Patient
           </CardContent>
         </Card>
       )}
+
+      {/* The patient's own account of how recovery is going. Read-only, and never scored. */}
+      <RecoveryTrendPanel patientId={patientId} />
     </div>
   );
 }

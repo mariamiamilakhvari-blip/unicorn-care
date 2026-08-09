@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Clock, Pill, Activity, CalendarCheck, Info } from 'lucide-react';
+import { Check, Clock, Pill, Activity, CalendarCheck, Info, HeartPulse } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 
 import { IntensityChip } from '@/features/care-plan/components/intensity-chip';
@@ -20,6 +20,8 @@ const KIND_ICON: Record<PortalOccurrence['kind'], typeof Pill> = {
   checkup: CalendarCheck,
   // An expected-sign notice from the recovery guide — information, not a task.
   guide: Info,
+  // The one kind that asks the patient for something rather than telling them something.
+  recovery_log: HeartPulse,
 };
 
 export function OccurrenceCard({ occurrence, onComplete, isBusy }: OccurrenceCardProps) {

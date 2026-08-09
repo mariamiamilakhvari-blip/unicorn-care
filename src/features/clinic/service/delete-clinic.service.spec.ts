@@ -28,6 +28,9 @@ vi.mock('@/features/rating/repository/rating.repository', () => ({
 vi.mock('@/features/recovery-log/repository/patient-photo.repository', () => ({
   patientPhotoRepository: { findAllByClinic: vi.fn(), deleteAllByClinic: vi.fn() },
 }));
+vi.mock('@/features/recovery-log/repository/recovery-log.repository', () => ({
+  recoveryLogRepository: { deleteAllByClinic: vi.fn() },
+}));
 vi.mock('@/shared/lib/blob-client', () => ({ blobClient: { remove: vi.fn() } }));
 vi.mock('@/features/auth/repository/user.repository', () => ({
   userRepository: { deleteAllByClinic: vi.fn() },
@@ -42,6 +45,7 @@ import { patientRepository } from '@/features/patient/repository/patient.reposit
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
 import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
+import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { blobClient } from '@/shared/lib/blob-client';
 import { dodoClient } from '@/shared/lib/dodo-client';
 
@@ -55,6 +59,7 @@ const reminders = vi.mocked(reminderOccurrenceRepository);
 const guides = vi.mocked(recoveryGuideRepository);
 const users = vi.mocked(userRepository);
 const photos = vi.mocked(patientPhotoRepository);
+const logs = vi.mocked(recoveryLogRepository);
 const blob = vi.mocked(blobClient);
 const dodo = vi.mocked(dodoClient);
 
@@ -77,6 +82,7 @@ beforeEach(() => {
   for (const repo of [patients, procedures, plans, reminders, guides, users]) {
     repo.deleteAllByClinic.mockResolvedValue(0);
   }
+  logs.deleteAllByClinic.mockResolvedValue(0);
   photos.findAllByClinic.mockResolvedValue([]);
   photos.deleteAllByClinic.mockResolvedValue(0);
   blob.remove.mockResolvedValue(true);

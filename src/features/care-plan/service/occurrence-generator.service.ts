@@ -8,6 +8,7 @@ import {
   buildGuideOccurrences,
   RecoveryGuideForOccurrences,
 } from '@/features/care-plan/service/guide-occurrence.service';
+import { buildRecoveryLogOccurrences } from '@/features/care-plan/service/recovery-log-occurrence.service';
 import { OccurrenceDraft, OccurrenceTranslator } from '@/features/care-plan/types/care-plan.types';
 import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { clock } from '@/shared/lib/clock';
@@ -82,6 +83,7 @@ export function buildOccurrences(
     ...plan.rehabTasks.flatMap(item => rehabDrafts(context, item)),
     ...plan.checkups.flatMap(item => checkupDrafts(context, item)),
     ...buildGuideOccurrences(context, guide),
+    ...buildRecoveryLogOccurrences(context),
   ].sort((left, right) => left.dueAt.getTime() - right.dueAt.getTime());
 }
 

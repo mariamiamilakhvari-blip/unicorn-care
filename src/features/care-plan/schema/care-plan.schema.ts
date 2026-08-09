@@ -48,6 +48,16 @@ const CarePlanSchema = new Schema(
     clinicId: { type: Schema.Types.ObjectId, ref: 'Clinic', required: true, index: true },
     startsAt: { type: Date, required: true },
     rehabEndsAt: { type: Date, required: true },
+    /*
+      Whether this plan asks the patient how recovery is going, on the decreasing cadence in
+      `RECOVERY_LOG_CADENCE` (PRD 06 §3).
+
+      Off by default, and deliberately per plan rather than global. Turning it on adds a recurring
+      evening prompt to a patient's phone, which is a change to what the clinic asks of them —
+      not a platform setting to flip on everybody's behalf. A plan built before this existed
+      carries no field at all, reads as `false`, and is left exactly as the clinic designed it.
+    */
+    recoveryLogEnabled: { type: Boolean, required: false, default: false },
     status: {
       type: String,
       enum: ['draft', 'active', 'completed', 'cancelled'],

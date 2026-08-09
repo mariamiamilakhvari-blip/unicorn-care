@@ -17,6 +17,7 @@ export const OCCURRENCE_EN_COPY: Record<OccurrenceCopyKey, string> = {
   intense: 'Intense',
   startingSoon: 'Starts',
   expectedSign: 'This is expected',
+  recoveryCheckIn: 'How is your recovery going?',
 };
 
 export const defaultOccurrenceTranslator: OccurrenceTranslator = key => OCCURRENCE_EN_COPY[key];

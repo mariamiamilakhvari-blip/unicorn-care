@@ -23,7 +23,8 @@ export type OccurrenceCopyKey =
   | 'moderate'
   | 'intense'
   | 'startingSoon'
-  | 'expectedSign';
+  | 'expectedSign'
+  | 'recoveryCheckIn';
 
 export type OccurrenceTranslator = (key: OccurrenceCopyKey) => string;
 

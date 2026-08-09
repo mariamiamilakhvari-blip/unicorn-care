@@ -7,7 +7,7 @@ These features are in the original product brief but were deferred by the chosen
 |---|---|
 | **Doctor and clinic rating** | **Built** — `src/features/rating/`, see §1 |
 | **Complication vs norm** | **Built** — `src/features/recovery-guide/`, see §2 |
-| Patient-reported recovery timeline | Not built |
+| **Patient-reported recovery timeline** | **Built** — `src/features/recovery-log/`, see §3 |
 | **Email deliverability** | **Built** — typo hints, signed Resend webhook, suppression; see §4 |
 
 ---
@@ -139,7 +139,38 @@ A clinic guide overrides the default for that clinic.
 
 ---
 
-## 3. Patient-reported recovery timeline
+## 3. Patient-reported recovery timeline — BUILT
+
+Shipped as `src/features/recovery-log/`. What the implementation settled on:
+
+- **Opt-in per plan, off by default** (`CarePlan.recoveryLogEnabled`). The generator tests caught
+  this: wiring the prompts in unconditionally added 22 occurrences to every existing plan, which
+  on deploy would have started an evening notification for every active patient without anyone
+  deciding to. Turning it on changes what the clinic asks of a patient, so it is the clinic's
+  call, per plan.
+- **Cadence walks forward, it does not filter.** `day % everyDays` would fire twice at every band
+  boundary — day 28 satisfies both the 3-day and the 7-day rule. Day 0 is skipped: a patient still
+  on the ward is not reporting a trend.
+- **`dayIndex` is computed server-side and stored**, not derived at read time. It is the chart's
+  x-axis; deriving it later would silently move every historical point if a plan's start date were
+  corrected, and accepting it from the client would let a request file a point on a day that has
+  not happened.
+- **One entry per day, re-submission replaces.** Two rows for one day put a vertical line in the
+  chart. Photographs already attached are kept on a correction rather than dropped.
+- **Photographs are claimed, not trusted** — each id must exist and belong to the submitting
+  patient, or a guessed id would attach someone else's photograph to a log entry.
+- **Consent is captured at upload**, versioned against the wording shown, and refused before the
+  bytes are stored. See the photo infrastructure notes above.
+- **The chart is bare SVG.** Two polylines and a few checkup ticks do not justify a dependency,
+  and the shape of the curve is the whole clinical signal.
+- **Nothing is scored, flagged or escalated.** This is what a patient said about their own
+  recovery, not a measurement. An alert built on it would be noise a clinic learns to ignore —
+  the same reason the symptom-report queue is a queue and not triage.
+- Outstanding: no clinic-facing toggle for `recoveryLogEnabled` yet, so it is a database flag
+  until the care-plan builder exposes it. Photographs are stored and served but not yet rendered
+  in the clinic view.
+
+### Original spec
 
 **Purpose.** "How is recovery going, time by time" from the patient's side, so the clinic can see
 trajectory rather than a single checkup snapshot.

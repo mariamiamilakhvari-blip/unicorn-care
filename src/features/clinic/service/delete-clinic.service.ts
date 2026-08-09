@@ -9,6 +9,7 @@ import { procedureRepository } from '@/features/procedure/repository/procedure.r
 import { ratingRepository } from '@/features/rating/repository/rating.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
 import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
+import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { blobClient } from '@/shared/lib/blob-client';
 import { dodoClient } from '@/shared/lib/dodo-client';
 import { ServiceResult } from '@/shared/types/common';
@@ -81,6 +82,7 @@ export async function deleteClinicService(
     of the clinical record, but the bytes live in Blob and would survive the account outright —
     post-operative photographs of a patient's body, still stored, belonging to nothing.
   */
+  await recoveryLogRepository.deleteAllByClinic(clinicId);
   const photos = await patientPhotoRepository.findAllByClinic(clinicId);
   for (const photo of photos) await blobClient.remove(photo.pathname);
   await patientPhotoRepository.deleteAllByClinic(clinicId);
