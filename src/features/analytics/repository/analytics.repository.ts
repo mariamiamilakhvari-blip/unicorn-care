@@ -99,6 +99,48 @@ export const analyticsRepository = {
   },
 
   /**
+   * Reminders in the window that reached nobody — both channels tried, neither landed.
+   *
+   * Adherence is measured without these, because a patient is not non-adherent for missing a
+   * reminder they never received. They are counted rather than merely dropped: a denominator
+   * that quietly shrinks is its own kind of untruth, and a clinic reading an adherence figure
+   * should be able to see what it left out.
+   *
+   * `false` on both channels, never `null`. A `null` means the row predates delivery tracking,
+   * and "we never looked" is a different claim from "it did not arrive".
+   */
+  async countUndelivered(clinicId: string, from: Date, to: Date): Promise<number> {
+    await mongo.connect();
+    return ReminderOccurrenceModel.countDocuments({
+      clinicId: new mongoose.Types.ObjectId(clinicId),
+      dueAt: { $gte: from, $lte: to },
+      pushDelivered: false,
+      emailDelivered: false,
+    }).exec();
+  },
+
+  /**
+   * The same status buckets, counting only reminders that actually reached the patient.
+   *
+   * Separate from `countOccurrencesByStatus` rather than replacing it: that one answers "what did
+   * this clinic's plans ask of their patients", which is still true of a reminder nobody
+   * received, and the report shows both.
+   */
+  async countDeliveredByStatus(clinicId: string, from: Date, to: Date): Promise<CountBucket[]> {
+    await mongo.connect();
+    return ReminderOccurrenceModel.aggregate<CountBucket>([
+      {
+        $match: {
+          clinicId: new mongoose.Types.ObjectId(clinicId),
+          dueAt: { $gte: from, $lte: to },
+          $nor: [{ pushDelivered: false, emailDelivered: false }],
+        },
+      },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]).exec();
+  },
+
+  /**
    * Delivery outcomes per channel.
    *
    * `pushDelivered`/`emailDelivered` are `null` on rows dispatched before they were recorded, so

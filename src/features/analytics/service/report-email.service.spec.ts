@@ -35,6 +35,7 @@ function analytics(overrides: Partial<ClinicAnalytics> = {}): ClinicAnalytics {
       push: { delivered: 380, attempted: 480, rate: 380 / 480 },
       email: { delivered: 450, attempted: 480, rate: 450 / 480 },
     },
+    excludedUndelivered: 0,
     adherenceRate: 0.75,
     locales: [
       { locale: 'ka', count: 34, share: 34 / 42 },

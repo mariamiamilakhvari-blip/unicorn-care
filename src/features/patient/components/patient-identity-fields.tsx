@@ -82,6 +82,7 @@ export function PatientIdentityFields({ control }: { control: Control<CreatePati
             clinic would never learn it had happened. Applying it is one deliberate click.
           */
           const suggestion = suggestEmailCorrection(String(field.value ?? ''));
+          const isBlank = String(field.value ?? '').trim().length === 0;
 
           return (
             <FormItem>
@@ -89,6 +90,14 @@ export function PatientIdentityFields({ control }: { control: Control<CreatePati
               <FormControl>
                 <Input type="email" {...field} />
               </FormControl>
+              {/*
+                Said at the moment the field is empty, not discovered weeks later on a dashboard.
+                A patient with no address and no push subscription receives nothing at all, and
+                the plan still looks alive from the clinic's side — this is the cheapest point to
+                collect it, and the message says what the blank costs rather than that it is
+                merely optional.
+              */}
+              {isBlank && <FormDescription>{t('emailBlankWarning')}</FormDescription>}
               {suggestion && (
                 <FormDescription>
                   {t('emailSuggestion')}{' '}

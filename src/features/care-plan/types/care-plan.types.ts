@@ -57,6 +57,15 @@ export type AdherenceSummary = {
   patientId: string;
   totals: AdherenceTotals;
   lastSevenDays: AdherenceDayBucket[];
+  /**
+   * Reminders left out of the figures above because they reached nobody — both channels tried,
+   * neither landed.
+   *
+   * Counted rather than merely dropped. A patient is not non-adherent for missing a reminder they
+   * never received, but a denominator that quietly shrinks is its own kind of untruth, so the
+   * number says what it excluded and the clinic can see the gap.
+   */
+  excludedUndelivered: number;
 };
 
 /** JSON-safe care plan shape the API returns — `NextResponse.json` stringifies ids and dates. */

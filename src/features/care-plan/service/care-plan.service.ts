@@ -187,10 +187,10 @@ export async function getAdherenceService(
   }
 
   const plans = await carePlanRepository.findActiveByPatient(patientId, clinicId);
-  const totals = await sumTotals(plans, clinicId);
+  const { totals, excludedUndelivered } = await sumTotals(plans, clinicId);
   const lastSevenDays = await buildDayBuckets(patientId, clinic.timezone);
 
-  return { data: { patientId, totals, lastSevenDays }, status: 200 };
+  return { data: { patientId, totals, lastSevenDays, excludedUndelivered }, status: 200 };
 }
 
 /**

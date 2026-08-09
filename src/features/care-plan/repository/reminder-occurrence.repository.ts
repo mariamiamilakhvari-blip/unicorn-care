@@ -23,6 +23,19 @@ export type ReminderStatusPatch = Partial<
  * which the caller must take from `patientGuard` (a validated, revocable access token) and never
  * from a query param — that is the portal's tenancy boundary.
  */
+/**
+ * A reminder that reached nobody: both channels tried and neither landed.
+ *
+ * Explicitly `false` on both, never `null`. `null` means the row was dispatched before delivery
+ * was recorded at all, and "we never looked" is not the same claim as "it did not arrive" — a
+ * plan's whole pre-tracking history would otherwise vanish from its adherence figure.
+ *
+ * Matched per occurrence rather than per patient on purpose. Reachability is a fact about a
+ * patient *now*, while adherence is a record of what happened; a patient whose address bounced
+ * this week should not lose the three weeks of real behaviour that came before it.
+ */
+const UNDELIVERED_MATCH = { pushDelivered: false, emailDelivered: false };
+
 export const reminderOccurrenceRepository = {
   async insertMany(docs: ReminderOccurrenceInput[]): Promise<number> {
     await mongo.connect();
@@ -192,8 +205,24 @@ export const reminderOccurrenceRepository = {
           clinicId: new mongoose.Types.ObjectId(clinicId),
         },
       },
+      // Doses the patient was never told about are not evidence of what they did — see
+      // `UNDELIVERED_MATCH` for why this is per-occurrence and not per-patient.
+      { $match: { $nor: [UNDELIVERED_MATCH] } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]).exec();
+  },
+
+  /**
+   * How many of a plan's reminders reached nobody, so the figure they were removed from can say
+   * so rather than quietly shrinking.
+   */
+  async countUndeliveredForPlan(carePlanId: string, clinicId: string): Promise<number> {
+    await mongo.connect();
+    return ReminderOccurrenceModel.countDocuments({
+      carePlanId: new mongoose.Types.ObjectId(carePlanId),
+      clinicId: new mongoose.Types.ObjectId(clinicId),
+      ...UNDELIVERED_MATCH,
+    }).exec();
   },
   /** Purges every row this clinic owns. Only the account-deletion service calls this. */
   async deleteAllByClinic(clinicId: string): Promise<number> {

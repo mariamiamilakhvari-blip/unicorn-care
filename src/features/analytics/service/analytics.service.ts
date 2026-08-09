@@ -101,12 +101,22 @@ export async function getClinicAnalyticsService(
   const from = new Date(range.from);
   const to = new Date(range.to);
 
-  const [activePatients, newPatients, localeBuckets, statusBuckets, delivery] = await Promise.all([
+  const [
+    activePatients,
+    newPatients,
+    localeBuckets,
+    statusBuckets,
+    delivery,
+    deliveredBuckets,
+    excludedUndelivered,
+  ] = await Promise.all([
     analyticsRepository.countActivePatients(clinicId, to),
     analyticsRepository.countNewPatients(clinicId, from, to),
     analyticsRepository.countPatientsByLocale(clinicId, to),
     analyticsRepository.countOccurrencesByStatus(clinicId, from, to),
     analyticsRepository.countDeliveries(clinicId, from, to),
+    analyticsRepository.countDeliveredByStatus(clinicId, from, to),
+    analyticsRepository.countUndelivered(clinicId, from, to),
   ]);
 
   const done = bucketCount(statusBuckets, 'done');
@@ -118,12 +128,25 @@ export async function getClinicAnalyticsService(
   const total = done + skipped + missed + sent + pending;
 
   /*
-    Adherence is confirmed over everything the patient was actually asked. `sent` is excluded from
-    the denominator — a reminder that went out an hour ago and has not been answered yet is not a
-    patient ignoring their medication, and counting it as one would make every report look worse
-    the closer it was run to the end of the quarter.
+    Adherence is confirmed over what the patient was actually asked *and* actually received.
+
+    `sent` is out of the denominator: a reminder that went out an hour ago and has not been
+    answered yet is not a patient ignoring their medication, and counting it as one would make
+    every report look worse the closer it was run to the end of the quarter.
+
+    Reminders that reached nobody are out too. A patient marked non-adherent for missing a dose
+    nobody told them about is not a measurement of anything they did, and this figure is one a
+    clinic may show a patient.
+
+    The reminder totals above still count every reminder the plan asked for, delivered or not —
+    that remains true and is what the report means by "reminders". Only this ratio narrows, and
+    `excludedUndelivered` says by how much.
   */
-  const answerable = done + skipped + missed;
+  const answeredDelivered = bucketCount(deliveredBuckets, 'done');
+  const answerableDelivered =
+    answeredDelivered +
+    bucketCount(deliveredBuckets, 'skipped') +
+    bucketCount(deliveredBuckets, 'missed');
 
   const channels: ChannelDelivery = {
     push: toRate(delivery.pushDelivered, delivery.pushAttempted),
@@ -139,7 +162,8 @@ export async function getClinicAnalyticsService(
       newPatients,
       reminders: { total, dispatched: delivery.dispatched, done, skipped, missed, pending },
       delivery: channels,
-      adherenceRate: answerable === 0 ? null : done / answerable,
+      adherenceRate: answerableDelivered === 0 ? null : answeredDelivered / answerableDelivered,
+      excludedUndelivered,
       locales: toLocaleSplit(localeBuckets),
       hoursSaved: estimateHoursSaved(
         delivery.pushDelivered + delivery.emailDelivered,

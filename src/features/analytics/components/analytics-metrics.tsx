@@ -99,7 +99,16 @@ export function Metrics({ analytics }: { analytics: ClinicAnalytics }) {
         <Kpi
           label={t('adherence')}
           value={percent(analytics.adherenceRate, noData)}
-          hint={t('confirmedOf', { done: analytics.reminders.done, total: answered })}
+          /*
+            The exclusion travels with the number, like the hours-saved assumption below. A ratio
+            whose denominator silently dropped rows is not a figure anyone can check, and this one
+            may be shown to a patient.
+          */
+          hint={
+            analytics.excludedUndelivered > 0
+              ? t('adherenceExcludes', { count: analytics.excludedUndelivered })
+              : t('confirmedOf', { done: analytics.reminders.done, total: answered })
+          }
         />
         <Kpi
           label={t('hoursSaved')}

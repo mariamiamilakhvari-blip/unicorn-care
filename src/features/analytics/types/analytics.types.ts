@@ -65,6 +65,14 @@ export type ClinicAnalytics = {
   delivery: ChannelDelivery;
   /** Confirmed over everything the patient could have answered. `null` when nothing was due. */
   adherenceRate: number | null;
+  /**
+   * Reminders left out of `adherenceRate` because they reached nobody.
+   *
+   * The reminder totals above still count them — the plan did ask for them. Only the adherence
+   * ratio narrows, and this says by how much, so a clinic can see the gap rather than read a
+   * figure whose denominator quietly changed.
+   */
+  excludedUndelivered: number;
   locales: LocaleSplit[];
   hoursSaved: HoursSaved;
 };

@@ -188,7 +188,8 @@
     "emailSuggestion": "Did you mean",
     "unreachableTitle": "This patient cannot receive reminders",
     "unreachableNoContact": "There is no email address on file and no notifications have been enabled on their device, so nothing this plan sends will reach them. Add an email address to their record, or ask them to open their portal link and allow notifications.",
-    "unreachableSuppressed": "Email to this patient has been stopped after a bounce or complaint, and no notifications are enabled on their device, so nothing this plan sends will reach them. Check the address with the patient before clearing it."
+    "unreachableSuppressed": "Email to this patient has been stopped after a bounce or complaint, and no notifications are enabled on their device, so nothing this plan sends will reach them. Check the address with the patient before clearing it.",
+    "emailBlankWarning": "Without an email address this patient will receive no reminders unless they open their portal link and allow notifications."
   },
   "procedure": {
     "title": "Procedure",
@@ -514,7 +515,8 @@
       "ANALYTICS_FAILED": "The figures could not be assembled.",
       "VALIDATION_ERROR": "That timeframe is not valid.",
       "ERROR": "Something went wrong."
-    }
+    },
+    "adherenceExcludes": "excludes {count} reminders that reached nobody"
   },
   "emailDelivery": {
     "title": "Email delivery problem",

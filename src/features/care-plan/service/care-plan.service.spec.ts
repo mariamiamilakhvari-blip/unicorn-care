@@ -18,6 +18,7 @@ vi.mock('@/features/care-plan/repository/reminder-occurrence.repository', () => 
     findByPatientAndRange: vi.fn(),
     findByCarePlan: vi.fn(),
     countByStatusForPlan: vi.fn(),
+    countUndeliveredForPlan: vi.fn(),
   },
 }));
 

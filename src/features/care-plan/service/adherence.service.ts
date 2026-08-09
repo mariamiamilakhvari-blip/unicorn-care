@@ -21,8 +21,25 @@ function toDisplayStatus(status: ReminderStatus): ReminderDisplayStatus {
   return status === 'sending' ? 'pending' : status;
 }
 
-export async function sumTotals(plans: CarePlanDocument[], clinicId: string): Promise<AdherenceTotals> {
+/** True for a reminder both channels failed to deliver — see `undeliveredMatch` in the repository. */
+function reachedNobody(occurrence: { pushDelivered?: boolean | null; emailDelivered?: boolean | null }): boolean {
+  return occurrence.pushDelivered === false && occurrence.emailDelivered === false;
+}
+
+/**
+ * Counts by status, with the doses that reached nobody left out and counted separately.
+ *
+ * A patient marked non-adherent for missing a reminder they never received is not a measurement
+ * of anything they did — and it is the figure a clinic may show them. The excluded count travels
+ * with the totals so the number can say what it left out; silently shrinking a denominator would
+ * be a worse lie than the one it replaced.
+ */
+export async function sumTotals(
+  plans: CarePlanDocument[],
+  clinicId: string
+): Promise<{ totals: AdherenceTotals; excludedUndelivered: number }> {
   const totals: AdherenceTotals = { ...EMPTY_TOTALS };
+  let excludedUndelivered = 0;
 
   for (const plan of plans) {
     const counts = await reminderOccurrenceRepository.countByStatusForPlan(
@@ -32,9 +49,14 @@ export async function sumTotals(plans: CarePlanDocument[], clinicId: string): Pr
     counts.forEach(entry => {
       totals[toDisplayStatus(entry._id)] += entry.count;
     });
+
+    excludedUndelivered += await reminderOccurrenceRepository.countUndeliveredForPlan(
+      plan._id.toString(),
+      clinicId
+    );
   }
 
-  return totals;
+  return { totals, excludedUndelivered };
 }
 
 /**
@@ -58,7 +80,8 @@ export async function buildDayBuckets(patientId: string, timezone: string): Prom
   );
 
   const buckets = starts.map(start => emptyBucket(start));
-  occurrences.forEach(occurrence => {
+  // The strip has to agree with the totals above, or the week and the summary tell different stories.
+  occurrences.filter(occurrence => !reachedNobody(occurrence)).forEach(occurrence => {
     const index = bucketIndexFor(starts, occurrence.dueAt);
     if (index < 0) return;
     buckets[index][toDisplayStatus(occurrence.status)] += 1;

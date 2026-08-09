@@ -9,6 +9,8 @@ vi.mock('@/features/analytics/repository/analytics.repository', () => ({
     countPatientsByLocale: vi.fn(),
     countOccurrencesByStatus: vi.fn(),
     countDeliveries: vi.fn(),
+    countDeliveredByStatus: vi.fn(),
+    countUndelivered: vi.fn(),
   },
 }));
 
@@ -81,6 +83,12 @@ describe('getClinicAnalyticsService', () => {
     repo.countPatientsByLocale.mockResolvedValue([]);
     repo.countOccurrencesByStatus.mockResolvedValue([]);
     repo.countDeliveries.mockResolvedValue(noDeliveries);
+    /*
+      By default every reminder reached its patient, so the cases below can be about what they
+      are about. The exclusion has its own describe block at the end.
+    */
+    repo.countDeliveredByStatus.mockImplementation(() => repo.countOccurrencesByStatus());
+    repo.countUndelivered.mockResolvedValue(0);
   });
 
   it('404s for a clinic that does not exist', async () => {
@@ -218,5 +226,60 @@ describe('getClinicAnalyticsService', () => {
     ]);
 
     expect(data(await run()).reminders.pending).toBe(5);
+  });
+});
+
+/**
+ * A patient is not non-adherent for missing a reminder they never received, and this is a figure
+ * a clinic may show a patient. The reminder totals still count every reminder the plan asked for
+ * — only the ratio narrows, and the report says by how much.
+ */
+describe('getClinicAnalyticsService — adherence excludes reminders that reached nobody', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    clinics.findById.mockResolvedValue(clinic());
+    repo.countActivePatients.mockResolvedValue(0);
+    repo.countNewPatients.mockResolvedValue(0);
+    repo.countPatientsByLocale.mockResolvedValue([]);
+    repo.countDeliveries.mockResolvedValue(noDeliveries);
+    repo.countUndelivered.mockResolvedValue(0);
+  });
+
+  it('measures the ratio over delivered reminders only', async () => {
+    // Ten asked for, four of them delivered: 2 done, 2 missed.
+    repo.countOccurrencesByStatus.mockResolvedValue([
+      { _id: 'done', count: 2 },
+      { _id: 'missed', count: 8 },
+    ]);
+    repo.countDeliveredByStatus.mockResolvedValue([
+      { _id: 'done', count: 2 },
+      { _id: 'missed', count: 2 },
+    ]);
+    repo.countUndelivered.mockResolvedValue(6);
+
+    const result = data(await run());
+
+    expect(result.adherenceRate).toBe(0.5);
+    expect(result.excludedUndelivered).toBe(6);
+  });
+
+  it('still counts every reminder the plan asked for in the totals', async () => {
+    // The plan did ask for them, and that stays true whether or not anyone was told.
+    repo.countOccurrencesByStatus.mockResolvedValue([
+      { _id: 'done', count: 2 },
+      { _id: 'missed', count: 8 },
+    ]);
+    repo.countDeliveredByStatus.mockResolvedValue([{ _id: 'done', count: 2 }]);
+
+    expect(data(await run()).reminders.missed).toBe(8);
+  });
+
+  it('is null rather than zero when nothing delivered could be answered', async () => {
+    // Not "0% adherence" — a clinic whose reminders all failed has no adherence data at all.
+    repo.countOccurrencesByStatus.mockResolvedValue([{ _id: 'missed', count: 5 }]);
+    repo.countDeliveredByStatus.mockResolvedValue([]);
+    repo.countUndelivered.mockResolvedValue(5);
+
+    expect(data(await run()).adherenceRate).toBeNull();
   });
 });
