@@ -1,10 +1,11 @@
 import {
   badge,
-  button,
   escapeHtml,
   list,
   muted,
   paragraph,
+  portalCta,
+  portalCtaLines,
   section,
   shell,
   toPlainText,
@@ -20,8 +21,6 @@ import {
 } from '@/features/notifications/types/email.types';
 import { emailCopy, EmailCopy } from '@/shared/const/email-copy.const';
 import { PROCEDURE_TYPES } from '@/shared/const/procedure.const';
-import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
-import { SITE_URL } from '@/shared/const/seo.const';
 
 /**
  * The whole plan in one email, sent when the clinic activates it.
@@ -53,7 +52,7 @@ export function buildWelcomeEmail(input: WelcomeEmailInput): BuiltEmail {
       that patient's record. A patient on the device that redeemed their magic link lands straight
       in; anyone else reaches the expired-link page, which points them back to their clinic.
     */
-    section('', copy.openPortal, button(copy.openPortal, `${SITE_URL}${PATIENT_PORTAL_ROUTE}`)),
+    portalCta(copy),
   ].join('');
 
   return {
@@ -61,7 +60,7 @@ export function buildWelcomeEmail(input: WelcomeEmailInput): BuiltEmail {
     html: shell(copy.welcomeSubject, sections, input.clinic, copy),
     text: toPlainText(
       copy.welcomeSubject,
-      [...plainLines(input, copy, zone), '', copy.openPortal, `${SITE_URL}${PATIENT_PORTAL_ROUTE}`],
+      [...plainLines(input, copy, zone), ...portalCtaLines(copy)],
       input.clinic,
       copy
     ),

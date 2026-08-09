@@ -4,6 +4,8 @@ import {
   list,
   muted,
   paragraph,
+  portalCta,
+  portalCtaLines,
   section,
   shell,
   toPlainText,
@@ -39,12 +41,23 @@ export function buildDailyEmail(input: DailyEmailInput): BuiltEmail {
     checkupSection(input, copy, zone),
     expectedSection(input.guide, input.recoveryDay, copy),
     warningSection(input.guide, input.recoveryDay, copy),
+    /*
+      Last, after the day's content. This is the email a patient receives most often, and until
+      now it was the only patient-facing template with no way back into the portal — so the
+      message that arrives every day was the one that could not be acted on.
+    */
+    portalCta(copy),
   ].join('');
 
   return {
     subject: `${copy.dailySubject} — ${zonedDate(new Date(), zone)}`,
     html: shell(copy.dailySubject, sections, input.clinic, copy),
-    text: toPlainText(copy.dailySubject, plainLines(input, copy, zone), input.clinic, copy),
+    text: toPlainText(
+      copy.dailySubject,
+      [...plainLines(input, copy, zone), ...portalCtaLines(copy)],
+      input.clinic,
+      copy
+    ),
   };
 }
 

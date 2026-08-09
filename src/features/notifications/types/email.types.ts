@@ -105,7 +105,6 @@ export type ReminderEmailInput = {
   body: string;
   dueAt: Date;
   /** Portal URL for the CTA. No token: an email must never carry a portal credential. */
-  portalUrl: string;
 };
 
 export type EmailSendSummary = {

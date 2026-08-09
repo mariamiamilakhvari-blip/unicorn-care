@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { PORTAL_URL } from '@/features/notifications/service/email-layout.service';
 import { buildReminderEmail } from '@/features/notifications/service/reminder-email.service';
 import { ReminderEmailInput } from '@/features/notifications/types/email.types';
 
@@ -17,7 +18,6 @@ function input(overrides: Partial<ReminderEmailInput> = {}): ReminderEmailInput 
     body: 'with food',
     // 13:25 UTC is 17:25 in Tbilisi: a 17:30 dose with a 5-minute lead.
     dueAt: new Date('2026-08-08T13:25:00.000Z'),
-    portalUrl: 'https://unicorncare.space/p',
     ...overrides,
   };
 }
@@ -42,7 +42,9 @@ describe('buildReminderEmail', () => {
   it('carries a portal link and never a portal token', () => {
     const email = buildReminderEmail(input());
 
-    expect(email.html).toContain('https://unicorncare.space/p');
+    // Asserted against the shared constant, not a second copy of the host — the two drifted
+    // once already, and a test that pins the wrong host fails for the wrong reason.
+    expect(email.html).toContain(PORTAL_URL);
     // A magic-link path would be /p/<token>. An email must not carry a credential.
     expect(email.html).not.toMatch(/\/p\/[A-Za-z0-9_-]{10,}/);
   });

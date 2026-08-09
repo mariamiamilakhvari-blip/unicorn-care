@@ -1,8 +1,9 @@
 import {
-  button,
   escapeHtml,
   muted,
   paragraph,
+  portalCta,
+  portalCtaLines,
   section,
   shell,
   toPlainText,
@@ -42,12 +43,13 @@ export function buildReminderEmail(input: ReminderEmailInput): BuiltEmail {
         muted(`${copy.reminderAt} ${at}`),
       ].join('')
     ),
-    section('', copy.openPortal, button(copy.openPortal, input.portalUrl)),
+    portalCta(copy),
   ].join('');
 
-  const lines = [input.title, input.body, `${copy.reminderAt} ${at}`, '', input.portalUrl].filter(
-    Boolean
-  );
+  const lines = [
+    ...[input.title, input.body, `${copy.reminderAt} ${at}`].filter(Boolean),
+    ...portalCtaLines(copy),
+  ];
 
   return {
     subject: `${copy.reminderSubject}: ${input.title}`,

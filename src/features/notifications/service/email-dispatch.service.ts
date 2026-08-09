@@ -10,8 +10,6 @@ import { buildReminderEmail } from '@/features/notifications/service/reminder-em
 import { buildWelcomeEmail } from '@/features/notifications/service/welcome-email.service';
 import { EmailSendSummary } from '@/features/notifications/types/email.types';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
-import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
-import { SITE_URL } from '@/shared/const/seo.const';
 import { clock } from '@/shared/lib/clock';
 import { resendClient } from '@/shared/lib/resend-client';
 import { ServiceResult } from '@/shared/types/common';
@@ -136,7 +134,6 @@ export function createReminderEmailSender() {
         title: occurrence.title,
         body: occurrence.body ?? '',
         dueAt: occurrence.dueAt,
-        portalUrl: `${SITE_URL}${PATIENT_PORTAL_ROUTE}`,
       });
 
       const result = await resendClient.send({

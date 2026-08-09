@@ -1,5 +1,7 @@
 import { EmailClinic } from '@/features/notifications/types/email.types';
 import { EmailCopy } from '@/shared/const/email-copy.const';
+import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
+import { SITE_URL } from '@/shared/const/seo.const';
 
 /**
  * Shared shell and section helpers for patient emails.
@@ -190,4 +192,34 @@ export function toPlainText(
   ].filter(Boolean) as string[];
 
   return [headline, '', ...lines, '', clinic.name, ...contact].join('\n');
+}
+
+/**
+ * The one portal address every patient email points at.
+ *
+ * Built here rather than at each call site because three templates were computing it separately
+ * and a fourth — the daily summary — simply forgot, so the email a patient receives most often
+ * was the one with no way back into the portal.
+ *
+ * No token in the link, and that is deliberate. A portal credential in an inbox outlives the
+ * message, and an old email in a compromised account would be a live door into that patient's
+ * record. A patient on the device that redeemed their magic link lands straight in; anyone else
+ * reaches the expired-link page, which points them back to their clinic.
+ */
+export const PORTAL_URL = `${SITE_URL}${PATIENT_PORTAL_ROUTE}`;
+
+/**
+ * The "open your portal" call to action, as one section.
+ *
+ * Every patient-facing template ends with this. Sharing it is what stops the templates drifting:
+ * a new email gets the CTA by calling one function, rather than by whoever wrote it remembering
+ * that emails are supposed to have one.
+ */
+export function portalCta(copy: EmailCopy): string {
+  return section('', copy.openPortal, button(copy.openPortal, PORTAL_URL));
+}
+
+/** The same call to action for the plain-text alternative, which must not be left behind. */
+export function portalCtaLines(copy: EmailCopy): string[] {
+  return ['', copy.openPortal, PORTAL_URL];
 }
