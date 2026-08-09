@@ -9,16 +9,23 @@ import { emailCopy } from '@/shared/const/email-copy.const';
 const clinic = {
   name: 'Gold Esthetic',
   timezone: 'Asia/Tbilisi',
+  addressLine: '12 Rustaveli Ave, Tbilisi',
   phone: '+995 555 00 00 00',
   email: 'care@example.com',
   locale: 'ka' as const,
 };
 
-const patient = { firstName: 'Nino', locale: 'ka' as const };
+const patient = {
+  firstName: 'Nino',
+  lastName: 'Beridze',
+  email: 'nino@example.com',
+  locale: 'ka' as const,
+};
 
 const plan = {
   patient,
   clinic,
+  procedure: null,
   medications: [],
   rehabTasks: [],
   checkups: [],

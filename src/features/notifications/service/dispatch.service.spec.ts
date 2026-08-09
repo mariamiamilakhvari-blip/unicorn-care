@@ -180,11 +180,29 @@ describe('dispatchDueRemindersService', () => {
     expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(OCCURRENCE_ID, {
       status: 'sent',
       sentAt: NOW,
-      // Retired so the sweep cannot loop, and recorded as undelivered so a report says so.
+      // Retired so the sweep cannot loop, with each channel's real outcome recorded.
       pushDelivered: false,
       emailDelivered: true,
     });
-    expect(result.data).toMatchObject({ processed: 1, sent: 0, undelivered: 1 });
+    // The push endpoint was gone but the email arrived, so the patient was reminded.
+    expect(result.data).toMatchObject({ processed: 1, sent: 1, undelivered: 0, unreachable: 0 });
+  });
+
+  /**
+   * The genuinely unreachable case: no push subscription and no email either. The row is still
+   * retired so the sweep cannot loop on it forever, but it is counted apart from a delivery that
+   * was attempted and failed — this one is a missing contact detail, which only the clinic can
+   * fix, and no amount of retrying will help.
+   */
+  it('counts a reminder with no live channel at all as unreachable', async () => {
+    givenDue([buildOccurrence()]);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
+    sendReminderEmail = vi.fn().mockResolvedValue(false);
+    makeReminderSender.mockReturnValue(sendReminderEmail);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(result.data).toMatchObject({ processed: 1, sent: 0, undelivered: 1, unreachable: 1 });
   });
 
   it('counts the occurrence as sent when one endpoint is gone but another accepts', async () => {
@@ -216,7 +234,14 @@ describe('dispatchDueRemindersService', () => {
       pushDelivered: false,
       emailDelivered: true,
     });
-    expect(result.data).toMatchObject({ processed: 1, sent: 0, undelivered: 1 });
+    /*
+      Counted as sent, because it was: the email reached them. This assertion read
+      `sent: 0, undelivered: 1`, which encoded the counting bug rather than the test's intent —
+      the two channels are independent, and a patient with an address but no push permission is
+      the ordinary case, not a failure. The retirement this test is actually about is the
+      `updateStatus` call above.
+    */
+    expect(result.data).toMatchObject({ processed: 1, sent: 1, undelivered: 0 });
   });
 
   it('claims a row before sending it, so a competing run cannot pick up the same one', async () => {

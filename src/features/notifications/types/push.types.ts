@@ -19,6 +19,15 @@ export type DispatchSummary = {
    * endpoint gone. Surfaced so the clinic adherence view can show them as undelivered.
    */
   undelivered: number;
+  /**
+   * Occurrences whose patient has no live channel at all — no active push subscription and no
+   * usable email address.
+   *
+   * Distinct from `undelivered`, which also covers a send that was attempted and failed. This
+   * counts reminders that never had anywhere to go, which is not a delivery problem but a
+   * missing contact detail, and is fixed by the clinic rather than by retrying.
+   */
+  unreachable: number;
   /** Occurrences aged past the grace window and flipped to `missed`. */
   missed: number;
   /** Plans whose rehabilitation window closed on this run and were retired to `completed`. */

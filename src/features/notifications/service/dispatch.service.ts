@@ -110,6 +110,7 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
 
   let sent = 0;
   let undelivered = 0;
+  let unreachable = 0;
   let emailedReminders = 0;
 
   /*
@@ -170,8 +171,29 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
         pushDelivered,
         emailDelivered,
       });
-      if (pushDelivered) sent += 1;
-      else undelivered += 1;
+      /*
+        Either channel counts. This read `if (pushDelivered)` alone, which reported a reminder
+        that arrived by email as undelivered — the two channels are independent by design, and a
+        patient who has email but has never granted push notification permission is the ordinary
+        case rather than the exception.
+      */
+      if (pushDelivered || emailDelivered) {
+        sent += 1;
+      } else {
+        undelivered += 1;
+        unreachable += 1;
+        /*
+          Named, not just counted. A row marked `sent` with both channels dead is a reminder that
+          reached nobody, and the aggregate alone cannot say which patient it was — so the clinic
+          has no way to discover that someone in their care is receiving nothing at all. The
+          occurrence id is enough to trace it; the patient's name and address stay out of the log.
+        */
+        console.warn('[dispatch] reminder reached nobody', {
+          occurrenceId: occurrence._id.toString(),
+          patientId: occurrence.patientId.toString(),
+          kind: occurrence.kind,
+        });
+      }
     } catch (caught) {
       failed += 1;
       console.error('[dispatch] occurrence failed', occurrence._id.toString(), caught);
@@ -226,6 +248,7 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
       processed,
       sent,
       undelivered,
+      unreachable,
       missed,
       completedPlans,
       extendedPlans,
