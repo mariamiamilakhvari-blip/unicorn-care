@@ -165,6 +165,40 @@ frequency: daily for week 1, every 3 days for weeks 2–4, weekly after.
 private Vercel Blob storage, signed short-lived read URLs, no CDN caching, explicit per-upload
 patient consent, and clinic-side access logging. Do not ship photo upload without all five.
 
+**Photo infrastructure — BUILT** (`src/features/recovery-log/`, `src/shared/lib/blob-client.ts`).
+The five requirements, and what each turned into:
+
+- **Private storage** — `blobClient.uploadPrivate` writes `access: 'private'`. There is no
+  `access` parameter anywhere: `uploadPublic` and `uploadPrivate` are separate methods that each
+  refuse the other's path prefix. A boolean flag would make "publish a patient's post-operative
+  photograph" a one-character mistake at a call site, and that mistake has no remedy — a public
+  Blob URL is readable by anyone who ever held it, and deleting the blob does not un-share what
+  was already fetched.
+- **Signed short-lived reads → a proxy instead.** `GET /api/blobs/[id]` streams the bytes through
+  a guarded route. A presigned URL is a bearer credential: its use cannot be observed, it keeps
+  working after consent is withdrawn until it expires, and it cannot be revoked. Issuance can be
+  logged; use cannot — and "we issued a link" is not an access record, which requirement 5 asks
+  for. The proxy costs a few megabytes of transfer and buys an authorisation check on every read.
+- **No CDN caching** — `useCache: false` on the read, `Cache-Control: no-store, private` on the
+  response. A cached photograph outlives the authorisation that produced it, on a node no
+  revocation reaches.
+- **Per-upload consent** — `PatientPhoto.consent` stores version and timestamp per photograph.
+  Agreeing that the clinic may hold photographs is not agreeing to *this* photograph, and one
+  account-level flag cannot tell the two apart afterwards.
+- **Access logging** — `PhotoAccessEvent`, append-only, written before the bytes go out.
+  Refusals are logged as well as successes: a clinic user reaching into another clinic's patient
+  is the event most worth a record, and a log of successes alone would miss it.
+
+Other decisions:
+- Rows store `pathname`, never `url`. A private blob's URL is unusable unsigned, and a `url`
+  field invites somebody dropping it into an `<img src>`.
+- Refusals answer **404, not 403** — a 403 confirms the photograph exists, which tells someone
+  probing ids they have found a real patient.
+- Account deletion removes the bytes *and* the rows. Rows alone would leave photographs of a
+  patient's body in storage, owned by nothing.
+- Still to build: the upload path, the recovery-log schema itself, the cadence occurrences, and
+  the clinic-side sparkline.
+
 **Clinic view.** Pain and swelling as a sparkline over `dayIndex`, with the checkup dates marked —
 the shape of the curve is the clinically useful signal.
 

@@ -25,6 +25,10 @@ vi.mock('@/features/recovery-guide/repository/recovery-guide.repository', () => 
 vi.mock('@/features/rating/repository/rating.repository', () => ({
   ratingRepository: { deleteAllByClinic: vi.fn() },
 }));
+vi.mock('@/features/recovery-log/repository/patient-photo.repository', () => ({
+  patientPhotoRepository: { findAllByClinic: vi.fn(), deleteAllByClinic: vi.fn() },
+}));
+vi.mock('@/shared/lib/blob-client', () => ({ blobClient: { remove: vi.fn() } }));
 vi.mock('@/features/auth/repository/user.repository', () => ({
   userRepository: { deleteAllByClinic: vi.fn() },
 }));
@@ -37,6 +41,8 @@ import { clinicRepository } from '@/features/clinic/repository/clinic.repository
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
+import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
+import { blobClient } from '@/shared/lib/blob-client';
 import { dodoClient } from '@/shared/lib/dodo-client';
 
 import { deleteClinicService } from './delete-clinic.service';
@@ -48,6 +54,8 @@ const plans = vi.mocked(carePlanRepository);
 const reminders = vi.mocked(reminderOccurrenceRepository);
 const guides = vi.mocked(recoveryGuideRepository);
 const users = vi.mocked(userRepository);
+const photos = vi.mocked(patientPhotoRepository);
+const blob = vi.mocked(blobClient);
 const dodo = vi.mocked(dodoClient);
 
 const CLINIC_ID = '507f1f77bcf86cd799439011';
@@ -69,9 +77,30 @@ beforeEach(() => {
   for (const repo of [patients, procedures, plans, reminders, guides, users]) {
     repo.deleteAllByClinic.mockResolvedValue(0);
   }
+  photos.findAllByClinic.mockResolvedValue([]);
+  photos.deleteAllByClinic.mockResolvedValue(0);
+  blob.remove.mockResolvedValue(true);
 });
 
 describe('deleteClinicService', () => {
+  /**
+   * Photographs exist twice: a row, and the bytes in Blob. Deleting only the row would leave
+   * post-operative photographs of a patient's body in storage, belonging to an account that no
+   * longer exists and reachable by nothing that could ever delete them.
+   */
+  it('removes the stored photograph bytes, not only the rows', async () => {
+    photos.findAllByClinic.mockResolvedValue([
+      { pathname: 'patients/c1/p1/day3.jpg' },
+      { pathname: 'patients/c1/p1/day7.jpg' },
+    ] as never);
+
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(blob.remove).toHaveBeenCalledWith('patients/c1/p1/day3.jpg');
+    expect(blob.remove).toHaveBeenCalledWith('patients/c1/p1/day7.jpg');
+    expect(photos.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+  });
+
   it('cancels the subscription and purges every collection the clinic owns', async () => {
     const { status, data } = await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
 

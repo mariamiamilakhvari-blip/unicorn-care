@@ -58,7 +58,12 @@ export async function uploadAdminFileService(
     return { data: { error: 'UNSUPPORTED_TYPE' }, status: 415 };
   }
 
-  const stored = await blobClient.upload(file.name, file);
+  /*
+    Public bucket, deliberately. These are console assets, not clinical records — and
+    `uploadPublic` refuses anything under the private patient prefix, so a patient photograph
+    cannot be given a permanent public URL by being posted to the wrong endpoint.
+  */
+  const stored = await blobClient.uploadPublic(file.name, file);
   if (!stored.ok) {
     return { data: { error: stored.message }, status: 502 };
   }

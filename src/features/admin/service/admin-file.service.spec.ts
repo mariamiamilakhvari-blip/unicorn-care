@@ -11,7 +11,7 @@ vi.mock('@/features/file/repository/file.repository', () => ({
 }));
 
 vi.mock('@/shared/lib/blob-client', () => ({
-  blobClient: { upload: vi.fn(), remove: vi.fn() },
+  blobClient: { uploadPublic: vi.fn(), remove: vi.fn() },
 }));
 
 import {
@@ -52,7 +52,7 @@ const upload = (name: string, type: string, size: number): File => {
 describe('uploadAdminFileService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    blob.upload.mockResolvedValue({
+    blob.uploadPublic.mockResolvedValue({
       ok: true,
       url: 'https://blob.example/scan-abc123.png',
       pathname: 'scan-abc123.png',
@@ -65,7 +65,7 @@ describe('uploadAdminFileService', () => {
     const result = await uploadAdminFileService(USER_ID, upload('scan.png', 'image/png', 2048));
 
     expect(result.status).toBe(201);
-    expect(blob.upload).toHaveBeenCalled();
+    expect(blob.uploadPublic).toHaveBeenCalled();
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://blob.example/scan-abc123.png', size: 2048 })
     );
@@ -73,7 +73,7 @@ describe('uploadAdminFileService', () => {
 
   it('writes no row when the blob upload fails', async () => {
     // A row pointing at bytes that were never written is a broken entry with no way to clear it.
-    blob.upload.mockResolvedValue({ ok: false, message: 'BLOB_NOT_CONFIGURED' });
+    blob.uploadPublic.mockResolvedValue({ ok: false, message: 'BLOB_NOT_CONFIGURED' });
 
     const result = await uploadAdminFileService(USER_ID, upload('scan.png', 'image/png', 2048));
 
@@ -89,7 +89,7 @@ describe('uploadAdminFileService', () => {
     const result = await uploadAdminFileService(USER_ID, upload('payload', type, 512));
 
     expect(result.status).toBe(415);
-    expect(blob.upload).not.toHaveBeenCalled();
+    expect(blob.uploadPublic).not.toHaveBeenCalled();
   });
 
   it('refuses a file over the size ceiling', async () => {
@@ -99,7 +99,7 @@ describe('uploadAdminFileService', () => {
     );
 
     expect(result.status).toBe(413);
-    expect(blob.upload).not.toHaveBeenCalled();
+    expect(blob.uploadPublic).not.toHaveBeenCalled();
   });
 
   it('refuses an empty file', async () => {

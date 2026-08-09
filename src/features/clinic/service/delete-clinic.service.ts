@@ -8,6 +8,8 @@ import { patientRepository } from '@/features/patient/repository/patient.reposit
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { ratingRepository } from '@/features/rating/repository/rating.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
+import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
+import { blobClient } from '@/shared/lib/blob-client';
 import { dodoClient } from '@/shared/lib/dodo-client';
 import { ServiceResult } from '@/shared/types/common';
 
@@ -74,6 +76,14 @@ export async function deleteClinicService(
     and the patients who wrote them no longer have an account here either.
   */
   await ratingRepository.deleteAllByClinic(clinicId);
+  /*
+    Photographs are deleted in two steps because there are two copies. The rows go with the rest
+    of the clinical record, but the bytes live in Blob and would survive the account outright —
+    post-operative photographs of a patient's body, still stored, belonging to nothing.
+  */
+  const photos = await patientPhotoRepository.findAllByClinic(clinicId);
+  for (const photo of photos) await blobClient.remove(photo.pathname);
+  await patientPhotoRepository.deleteAllByClinic(clinicId);
   const staff = await userRepository.deleteAllByClinic(clinicId);
 
   await clinicRepository.deleteById(clinicId);
