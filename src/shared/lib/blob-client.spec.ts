@@ -10,6 +10,9 @@ const putMock = vi.mocked(put);
 const delMock = vi.mocked(del);
 const getMock = vi.mocked(get);
 
+const PUBLIC_TOKEN = 'vercel_blob_rw_publicstore_test';
+const PRIVATE_TOKEN = 'vercel_blob_rw_privatestore_test';
+
 const PRIVATE_PATH = `${PRIVATE_BLOB_PREFIX}clinic1/patient1/day7.jpg`;
 
 const body = new ArrayBuffer(8);
@@ -23,29 +26,107 @@ describe('BlobClient', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_test';
+    process.env.BLOB_READ_WRITE_TOKEN = PUBLIC_TOKEN;
+    process.env.BLOB_PRIVATE_READ_WRITE_TOKEN = PRIVATE_TOKEN;
     client = new BlobClient();
   });
 
   afterEach(() => {
     delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.BLOB_PRIVATE_READ_WRITE_TOKEN;
   });
 
-  describe('without a token', () => {
+  describe('without any token', () => {
     beforeEach(() => {
       delete process.env.BLOB_READ_WRITE_TOKEN;
+      delete process.env.BLOB_PRIVATE_READ_WRITE_TOKEN;
     });
 
     it('reports itself unconfigured', () => {
       expect(client.isConfigured()).toBe(false);
+      expect(client.isPrivateConfigured()).toBe(false);
+    });
+
+    it('refuses a public upload with a named result rather than throwing', async () => {
+      await expect(client.uploadPublic('logo.png', body)).resolves.toEqual({
+        ok: false,
+        message: 'BLOB_NOT_CONFIGURED',
+      });
+    });
+  });
+
+  /**
+   * The two stores are separate on Vercel — a store is configured public *or* private, and the
+   * public one rejects `access: 'private'` outright. Separate tokens are worth having anyway:
+   * with one credential the admin-console path could read patient photographs and only
+   * convention would stop it.
+   */
+  describe('with only the public token', () => {
+    beforeEach(() => {
+      delete process.env.BLOB_PRIVATE_READ_WRITE_TOKEN;
+    });
+
+    it('still serves public assets', () => {
+      expect(client.isConfigured()).toBe(true);
+      expect(client.isPrivateConfigured()).toBe(false);
     });
 
     it.each([
-      ['uploadPublic', () => client.uploadPublic('logo.png', body)],
       ['uploadPrivate', () => client.uploadPrivate(PRIVATE_PATH, body)],
       ['readPrivate', () => client.readPrivate(PRIVATE_PATH)],
-    ])('refuses %s with a named result rather than throwing', async (_label, call) => {
-      await expect(call()).resolves.toEqual({ ok: false, message: 'BLOB_NOT_CONFIGURED' });
+    ])('fails %s closed rather than falling back to the public store', async (_label, call) => {
+      // A silent fallback would put a patient photograph in the store that serves publicly,
+      // and that result is permanent.
+      await expect(call()).resolves.toEqual({ ok: false, message: 'PRIVATE_BLOB_NOT_CONFIGURED' });
+      expect(putMock).not.toHaveBeenCalled();
+      expect(getMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('each half uses its own credential', () => {
+    it('writes an asset with the public token', async () => {
+      putMock.mockResolvedValue(stored as never);
+
+      await client.uploadPublic('logo.png', body);
+
+      expect(putMock.mock.calls[0][2]).toMatchObject({ token: PUBLIC_TOKEN });
+    });
+
+    it('writes a photograph with the private token', async () => {
+      putMock.mockResolvedValue(stored as never);
+
+      await client.uploadPrivate(PRIVATE_PATH, body);
+
+      expect(putMock.mock.calls[0][2]).toMatchObject({ token: PRIVATE_TOKEN });
+    });
+
+    it('reads a photograph with the private token', async () => {
+      getMock.mockResolvedValue({
+        statusCode: 200,
+        stream: blobStream(),
+        blob: { contentType: 'image/jpeg', size: 1 },
+      } as never);
+
+      await client.readPrivate(PRIVATE_PATH);
+
+      expect(getMock.mock.calls[0][1]).toMatchObject({ token: PRIVATE_TOKEN });
+    });
+
+    /**
+     * A delete sent to the wrong store does not fail loudly — it succeeds at deleting nothing.
+     * That is the worst outcome available here: account deletion would report success while the
+     * patient's photographs stayed in storage.
+     */
+    it.each([
+      ['a patient pathname', PRIVATE_PATH, PRIVATE_TOKEN],
+      ['a patient url', `https://x.blob.vercel-storage.com/${PRIVATE_PATH}`, PRIVATE_TOKEN],
+      ['an asset pathname', 'logo.png', PUBLIC_TOKEN],
+    ])('routes a delete of %s to the right store', async (_label, target, token) => {
+      delMock.mockResolvedValue(undefined as never);
+
+      await client.remove(target);
+
+      expect(delMock).toHaveBeenCalledWith(target, { token });
     });
   });
 
@@ -185,7 +266,7 @@ describe('BlobClient', () => {
       delMock.mockResolvedValue(undefined as never);
 
       await expect(client.remove(PRIVATE_PATH)).resolves.toBe(true);
-      expect(delMock).toHaveBeenCalledWith(PRIVATE_PATH, { token: 'vercel_blob_rw_test' });
+      expect(delMock).toHaveBeenCalledWith(PRIVATE_PATH, { token: PRIVATE_TOKEN });
     });
 
     it('reports failure rather than throwing', async () => {

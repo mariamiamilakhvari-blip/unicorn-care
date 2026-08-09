@@ -40,12 +40,34 @@ export function isPrivateBlobPath(pathname: string): boolean {
  * methods, each refusing the other's prefix, make the wrong thing hard to type by accident.
  */
 class BlobClient {
-  private token(): string {
+  /** Public store — admin console assets. */
+  private publicToken(): string {
     return process.env.BLOB_READ_WRITE_TOKEN ?? '';
   }
 
+  /**
+   * Private store — patient photographs, and nothing else.
+   *
+   * A separate store because Vercel configures access per store: the public one rejects
+   * `access: 'private'` outright. A separate *token* because that is worth having anyway — with
+   * one credential, the admin-console code path could read patient photographs and only
+   * convention would stop it. With two, it cannot.
+   */
+  private privateToken(): string {
+    return process.env.BLOB_PRIVATE_READ_WRITE_TOKEN ?? '';
+  }
+
   isConfigured(): boolean {
-    return this.token().length > 0;
+    return this.publicToken().length > 0;
+  }
+
+  /**
+   * Deliberately separate from `isConfigured`. A deployment with only the public token must
+   * refuse photograph uploads rather than fall back to the store that serves everything
+   * publicly — the fallback would be silent, and its result permanent.
+   */
+  isPrivateConfigured(): boolean {
+    return this.privateToken().length > 0;
   }
 
   /**
@@ -76,7 +98,7 @@ class BlobClient {
    * serve one is `readPrivate` behind a guard.
    */
   async uploadPrivate(pathname: string, body: File | Blob | ArrayBuffer): Promise<BlobUploadResult> {
-    if (!this.isConfigured()) return { ok: false, message: 'BLOB_NOT_CONFIGURED' };
+    if (!this.isPrivateConfigured()) return { ok: false, message: 'PRIVATE_BLOB_NOT_CONFIGURED' };
     if (!isPrivateBlobPath(pathname)) {
       return { ok: false, message: 'PUBLIC_PATH_ON_PRIVATE_UPLOAD' };
     }
@@ -93,7 +115,7 @@ class BlobClient {
       const result = await put(pathname, body, {
         access,
         addRandomSuffix: true,
-        token: this.token(),
+        token: access === 'private' ? this.privateToken() : this.publicToken(),
       });
       return { ok: true, url: result.url, pathname: result.pathname };
     } catch (caught) {
@@ -115,14 +137,14 @@ class BlobClient {
    * proxy that fetches public assets on a caller's behalf.
    */
   async readPrivate(pathname: string): Promise<BlobReadResult> {
-    if (!this.isConfigured()) return { ok: false, message: 'BLOB_NOT_CONFIGURED' };
+    if (!this.isPrivateConfigured()) return { ok: false, message: 'PRIVATE_BLOB_NOT_CONFIGURED' };
     if (!isPrivateBlobPath(pathname)) return { ok: false, message: 'NOT_A_PRIVATE_PATH' };
 
     try {
       const result = await get(pathname, {
         access: 'private',
         useCache: false,
-        token: this.token(),
+        token: this.privateToken(),
       });
 
       if (!result) return { ok: false, message: 'BLOB_NOT_FOUND' };
@@ -151,10 +173,17 @@ class BlobClient {
    * is the one outcome with no way out from the console.
    */
   async remove(urlOrPathname: string): Promise<boolean> {
-    if (!this.isConfigured()) return false;
+    /*
+      Routed by path, because the two stores are separate and a delete sent to the wrong one does
+      not fail loudly — it succeeds at deleting nothing. That is the worst outcome here: account
+      deletion would report success while the patient's photographs stayed in storage.
+    */
+    const isPrivate = isPrivateBlobPath(urlOrPathname) || urlOrPathname.includes(PRIVATE_BLOB_PREFIX);
+    const token = isPrivate ? this.privateToken() : this.publicToken();
+    if (!token) return false;
 
     try {
-      await del(urlOrPathname, { token: this.token() });
+      await del(urlOrPathname, { token });
       return true;
     } catch (caught) {
       console.error('[blob] delete failed', caught instanceof Error ? caught.message : caught);
