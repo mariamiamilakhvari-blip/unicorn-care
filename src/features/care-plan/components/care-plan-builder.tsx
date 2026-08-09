@@ -8,6 +8,7 @@ import { Resolver, useForm } from 'react-hook-form';
 
 
 
+import { ActivatePlanButton } from '@/features/care-plan/components/activate-plan-button';
 import { CheckupFields } from '@/features/care-plan/components/checkup-fields';
 import { MedicationFields } from '@/features/care-plan/components/medication-fields';
 import { RecoveryLogToggle } from '@/features/care-plan/components/recovery-log-toggle';
@@ -189,10 +190,12 @@ export function CarePlanBuilder({
           <Button type="submit" disabled={isPending}>
             {isPending ? tCommon('loading') : tCommon('save')}
           </Button>
-          {/* Activation is the moment reminders start existing, so it is a separate deliberate act. */}
-          <Button type="button" variant="outline" disabled={!plan || isPending} onClick={() => void activate()}>
-            {t('activatePlan')}
-          </Button>
+          {/* Asks first when the patient has no way to receive anything the plan would send. */}
+          <ActivatePlanButton
+            patientId={patientId}
+            isDisabled={!plan || isPending}
+            onActivate={activate}
+          />
           {plan && <span className="text-sm text-muted-foreground">{t(`status.${plan.status}`)}</span>}
         </div>
       </form>

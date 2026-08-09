@@ -185,7 +185,10 @@
       },
       "action": "View plans"
     },
-    "emailSuggestion": "Did you mean"
+    "emailSuggestion": "Did you mean",
+    "unreachableTitle": "This patient cannot receive reminders",
+    "unreachableNoContact": "There is no email address on file and no notifications have been enabled on their device, so nothing this plan sends will reach them. Add an email address to their record, or ask them to open their portal link and allow notifications.",
+    "unreachableSuppressed": "Email to this patient has been stopped after a bounce or complaint, and no notifications are enabled on their device, so nothing this plan sends will reach them. Check the address with the patient before clearing it."
   },
   "procedure": {
     "title": "Procedure",
@@ -260,7 +263,11 @@
     "remindMinutesBeforeHint": "Send the reminder this many minutes before each dose or session. 0 = at the time itself.",
     "remindHoursBefore": "Remind hours before",
     "recoveryLogEnabled": "Ask the patient how recovery is going",
-    "recoveryLogEnabledHelp": "Sends a short evening check-in — daily in the first week, then less often. The patient reports pain and swelling, and can attach a photograph. Off unless you turn it on."
+    "recoveryLogEnabledHelp": "Sends a short evening check-in — daily in the first week, then less often. The patient reports pain and swelling, and can attach a photograph. Off unless you turn it on.",
+    "activateUnreachableTitle": "Activate a plan this patient will not receive?",
+    "activateUnreachableNoContact": "This patient has no email address and no notifications enabled, so every reminder in this plan will be generated and marked handled without reaching them. The plan will still run, and their adherence will count doses they were never told about. Adding an email address first takes a moment.",
+    "activateUnreachableSuppressed": "Email to this patient has been stopped after a bounce or complaint, and they have no notifications enabled, so every reminder in this plan will be generated and marked handled without reaching them. The plan will still run.",
+    "activateAnyway": "Activate anyway"
   },
   "portal": {
     "today": "Today",

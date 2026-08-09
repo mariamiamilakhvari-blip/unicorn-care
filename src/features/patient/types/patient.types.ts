@@ -17,6 +17,21 @@ export type PatientSummary = {
   isArchived: boolean;
 };
 
+/**
+ * Whether reminders can reach this patient, and if not, why.
+ *
+ * `isReachable` is the whole question the clinic needs answered; the rest is what to do about it.
+ * `EMAIL_SUPPRESSED` and `NO_CONTACT_METHOD` are kept apart because the remedies differ — one is
+ * a bounce to resolve with the patient, the other is a detail nobody ever collected.
+ */
+export type PatientReachability = {
+  hasEmail: boolean;
+  emailSuppressed: boolean;
+  hasPush: boolean;
+  isReachable: boolean;
+  reason: '' | 'NO_CONTACT_METHOD' | 'EMAIL_SUPPRESSED';
+};
+
 export type PatientListResult = {
   items: PatientSummary[];
   total: number;

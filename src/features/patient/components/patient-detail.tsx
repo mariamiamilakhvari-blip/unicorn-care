@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { CarePlanBuilder } from '@/features/care-plan/components/care-plan-builder';
 import { EmailDeliveryCard } from '@/features/notifications/components/email-delivery-card';
 import { AccessLinkDialog } from '@/features/patient/components/access-link-dialog';
+import { ReachabilityNotice } from '@/features/patient/components/reachability-notice';
 import { ProcedureForm } from '@/features/procedure/components/procedure-form';
 import { ProcedureRow } from '@/features/procedure/components/procedure-row';
 import { useProcedures } from '@/features/procedure/hooks/use-procedures';
@@ -88,6 +89,13 @@ export function PatientDetail({ patientId, patientName, patientLocale }: Patient
         goes where the clinic looks first, not at the bottom of a page they may not scroll.
         The card renders nothing at all when there is nothing wrong.
       */}
+      {/*
+        Above the delivery card, because it answers a blunter question. That card explains why an
+        address stopped working; this one says there is no way to reach the patient at all, which
+        is the state where every reminder in their plan silently reaches nobody.
+      */}
+      <ReachabilityNotice patientId={patientId} />
+
       <EmailDeliveryCard patientId={patientId} />
 
       <Card>
