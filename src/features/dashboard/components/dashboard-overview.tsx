@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 import { TrialBanner } from '@/features/clinic/components/trial-banner';
+import { UnreachableBanner } from '@/features/dashboard/components/unreachable-banner';
 import { ClinicOverview } from '@/features/dashboard/types/dashboard.types';
 import { SymptomReportQueue } from '@/features/recovery-guide/components/symptom-report-queue';
 import { Button } from '@/shared/components/ui/button';
@@ -36,6 +37,12 @@ export const DashboardOverview = ({ userName, overview }: DashboardOverviewProps
       </header>
 
       <TrialBanner />
+
+      {/*
+        Above the symptom queue and the counters. Those describe work the clinic is already doing;
+        this one says some of that work is not reaching the patient at all.
+      */}
+      <UnreachableBanner patients={overview.unreachable} />
 
       <SymptomReportQueue />
 

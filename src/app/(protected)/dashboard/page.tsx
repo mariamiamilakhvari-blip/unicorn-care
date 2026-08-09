@@ -7,7 +7,7 @@ import { ADMIN_ROUTE, SIGN_IN_ROUTE } from '@/shared/const/routes.const';
 import { auth } from '@/shared/lib/auth';
 import { clinicGuard } from '@/shared/lib/clinic-guard';
 
-const EMPTY_OVERVIEW: ClinicOverview = { patientCount: 0, recentPatients: [] };
+const EMPTY_OVERVIEW: ClinicOverview = { patientCount: 0, recentPatients: [], unreachable: [] };
 
 export default async function DashboardPage() {
   const session = await auth();

@@ -335,7 +335,14 @@
     "overview": "Overview",
     "welcome": "Welcome back, {name}",
     "subtitle": "Your clinic at a glance.",
-    "recentPatients": "Recent patients"
+    "recentPatients": "Recent patients",
+    "unreachableTitle": "{count, plural, one {# patient cannot receive reminders} other {# patients cannot receive reminders}}",
+    "unreachableHelp": "Their care plans still run and every reminder is recorded as handled, but nothing reaches them. Open a patient to add an email address.",
+    "unreachableMore": "and {count} more",
+    "unreachableReason": {
+      "NO_CONTACT_METHOD": "no email address",
+      "EMAIL_SUPPRESSED": "email stopped after a bounce"
+    }
   },
   "recoveryGuide": {
     "title": "Complications and what is normal",

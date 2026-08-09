@@ -31,6 +31,32 @@ export const patientRepository = {
     return { items, total };
   },
 
+  /**
+   * Patients whose email cannot carry a reminder — no address at all, or a suppressed one.
+   *
+   * Only the candidates for "unreachable": push is checked separately, against this shortlist
+   * rather than against the whole caseload, because most patients have a working address and
+   * checking their subscriptions would be work done to prove a negative.
+   *
+   * Archived patients are excluded. They are no longer in active care, and a warning about
+   * somebody the clinic has finished with is noise on a screen whose value is that it is quiet.
+   */
+  async findWithUnusableEmail(clinicId: string): Promise<PatientDocument[]> {
+    await mongo.connect();
+    return PatientModel.find({
+      clinicId,
+      isArchived: { $ne: true },
+      $or: [
+        { email: { $in: [null, ''] } },
+        { email: { $exists: false } },
+        { emailSuppressedAt: { $ne: null } },
+      ],
+    })
+      .sort({ lastName: 1 })
+      .lean<PatientDocument[]>()
+      .exec();
+  },
+
   async search(clinicId: string, query: string): Promise<PatientDocument[]> {
     await mongo.connect();
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

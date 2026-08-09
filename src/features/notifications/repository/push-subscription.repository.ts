@@ -1,3 +1,5 @@
+import { Types } from 'mongoose';
+
 import {
   PushSubscriptionDocument,
   PushSubscriptionModel,
@@ -30,6 +32,24 @@ export const pushSubscriptionRepository = {
     return PushSubscriptionModel.find({ patientId, isActive: true })
       .lean<PushSubscriptionDocument[]>()
       .exec();
+  },
+
+  /**
+   * Which of these patients have a live subscription, in one query rather than one per patient.
+   *
+   * The dashboard asks this about every patient with no usable email address, and a per-patient
+   * round trip there turns a banner into a caseload-sized pile of queries.
+   */
+  async findPatientIdsWithActive(patientIds: string[]): Promise<string[]> {
+    await mongo.connect();
+    if (patientIds.length === 0) return [];
+    const rows = await PushSubscriptionModel.find(
+      { patientId: { $in: patientIds }, isActive: true },
+      { patientId: 1 }
+    )
+      .lean<{ patientId: Types.ObjectId }[]>()
+      .exec();
+    return [...new Set(rows.map(row => row.patientId.toString()))];
   },
 
   async deactivateByEndpoint(endpoint: string): Promise<boolean> {
