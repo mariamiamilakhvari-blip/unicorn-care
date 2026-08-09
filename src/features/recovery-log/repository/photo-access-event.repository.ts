@@ -12,7 +12,7 @@ export type PhotoAccessEventInput = {
   clinicId: Types.ObjectId | null;
   viewerType: 'clinic_user' | 'patient';
   viewerUserId: Types.ObjectId | null;
-  outcome: 'served' | 'denied';
+  outcome: 'served' | 'denied' | 'deleted';
   reason: string;
   viewedAt: Date;
 };

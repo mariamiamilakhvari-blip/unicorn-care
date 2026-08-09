@@ -55,6 +55,21 @@ export const recoveryLogRepository = {
     return result.matchedCount > 0;
   },
 
+  /**
+   * Detaches a deleted photograph from every entry that referenced it.
+   *
+   * Without this the log keeps an id pointing at nothing, and the clinic view renders a broken
+   * image where a patient believes their photograph was removed.
+   */
+  async pullPhoto(photoId: Types.ObjectId): Promise<number> {
+    await mongo.connect();
+    const result = await RecoveryLogModel.updateMany(
+      { photoIds: photoId },
+      { $pull: { photoIds: photoId } }
+    );
+    return result.modifiedCount;
+  },
+
   async deleteAllByClinic(clinicId: string): Promise<number> {
     await mongo.connect();
     const result = await RecoveryLogModel.deleteMany({ clinicId });

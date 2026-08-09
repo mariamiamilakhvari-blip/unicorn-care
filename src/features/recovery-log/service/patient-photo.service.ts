@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 
 import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
 import { photoAccessEventRepository } from '@/features/recovery-log/repository/photo-access-event.repository';
+import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { PatientPhotoDocument } from '@/features/recovery-log/schema/patient-photo.schema';
 import { blobClient, isPrivateBlobPath } from '@/shared/lib/blob-client';
 import { clock } from '@/shared/lib/clock';
@@ -26,7 +27,7 @@ async function log(
   photo: PatientPhotoDocument | null,
   photoId: string,
   viewer: PhotoViewer,
-  outcome: 'served' | 'denied',
+  outcome: 'served' | 'denied' | 'deleted',
   reason: string
 ): Promise<void> {
   await photoAccessEventRepository.create({
@@ -114,6 +115,63 @@ export async function streamPatientPhotoService(
     contentType: photo.contentType || blob.contentType,
     size: photo.size || blob.size,
   };
+}
+
+export type PhotoDeleteResult =
+  | { ok: true }
+  | { ok: false; reason: string; status: 404 | 502 };
+
+/**
+ * Deletes a photograph: the bytes, the row, and every reference to it.
+ *
+ * Both the consent wording the patient agreed to and the BAA say a photograph can be removed on
+ * request. Until this existed, neither promise had an implementation behind it — which is worse
+ * than not having made the promise.
+ *
+ * The order is the inverse of the upload's, and deliberately so. Upload writes bytes first
+ * because a blob with no row is merely wasted storage. Deletion removes the *bytes* first,
+ * because the failure modes are not symmetric: bytes gone with the row left behind is a visible,
+ * fixable inconsistency that still honours the patient's request, whereas a row deleted while the
+ * bytes survive is a photograph of somebody's body left in storage with nothing pointing at it,
+ * no way to find it, and a promise silently broken.
+ *
+ * The access log keeps a `deleted` row. Once the bytes and the record are gone, that entry is the
+ * only remaining evidence the photograph ever existed and that somebody removed it — which is
+ * precisely what is needed to answer a patient who asks whether their request was carried out.
+ */
+export async function deletePatientPhotoService(
+  photoId: string,
+  viewer: PhotoViewer
+): Promise<PhotoDeleteResult> {
+  const photo = await patientPhotoRepository.findById(photoId);
+
+  if (!photo) {
+    await log(null, photoId, viewer, 'denied', 'NOT_FOUND');
+    return { ok: false, reason: 'NOT_FOUND', status: 404 };
+  }
+
+  const refused = refusalReason(photo, viewer);
+  if (refused) {
+    await log(photo, photoId, viewer, 'denied', refused);
+    // 404 for the same reason a refused read is: a 403 confirms the photograph exists.
+    return { ok: false, reason: refused, status: 404 };
+  }
+
+  const removed = await blobClient.deletePrivate(photo.pathname);
+  if (!removed) {
+    /*
+      Refused rather than pressed on. Dropping the row here would leave the bytes unreachable and
+      undeletable, and would report success for a deletion that did not happen.
+    */
+    await log(photo, photoId, viewer, 'denied', 'BLOB_DELETE_FAILED');
+    return { ok: false, reason: 'BLOB_DELETE_FAILED', status: 502 };
+  }
+
+  await recoveryLogRepository.pullPhoto(photo._id);
+  await patientPhotoRepository.deleteById(photoId);
+  await log(photo, photoId, viewer, 'deleted', '');
+
+  return { ok: true };
 }
 
 /** The clinic's own audit trail for one photograph. */

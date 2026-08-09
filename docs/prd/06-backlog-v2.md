@@ -166,9 +166,20 @@ Shipped as `src/features/recovery-log/`. What the implementation settled on:
 - **Nothing is scored, flagged or escalated.** This is what a patient said about their own
   recovery, not a measurement. An alert built on it would be noise a clinic learns to ignore —
   the same reason the symptom-report queue is a queue and not triage.
-- Outstanding: no clinic-facing toggle for `recoveryLogEnabled` yet, so it is a database flag
-  until the care-plan builder exposes it. Photographs are stored and served but not yet rendered
-  in the clinic view.
+- **Photo deletion is implemented** — `DELETE /api/blobs/[id]`, open to the patient whose
+  photograph it is and to their clinic. The consent wording and the BAA both promise it, and
+  until this existed neither promise had anything behind it. Bytes are removed *before* the row:
+  bytes gone with a row left behind is a visible inconsistency that still honours the request,
+  while a row gone with the bytes surviving is a photograph left in storage with nothing pointing
+  at it. A failed blob delete refuses rather than pressing on. The access log keeps a `deleted`
+  row, which after the fact is the only evidence the photograph existed and was removed.
+- **The toggle and the photo rendering are both wired.** `recoveryLogEnabled` is in the care-plan
+  builder, and the clinic view renders `<img src="/api/blobs/{id}">` — every thumbnail is an
+  authorised, logged read. `next/image` is deliberately not used: it would fetch and cache the
+  bytes on the CDN, which is the exact thing this storage design exists to prevent.
+- Verified end to end against the real stores: upload → row → proxy read with matching bytes →
+  another patient refused 404 → delete → unreadable afterwards, with all four events in the
+  access log. Synthetic rows and blobs removed; both stores confirmed empty.
 
 ### Original spec
 

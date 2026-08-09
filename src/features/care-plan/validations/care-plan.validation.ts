@@ -126,6 +126,12 @@ const CarePlanBaseSchema = z.object({
   patientId: ObjectIdSchema,
   startsAt: DateSchema,
   rehabEndsAt: DateSchema,
+  /*
+    Whether this plan asks the patient how recovery is going, on the decreasing cadence in
+    `RECOVERY_LOG_CADENCE`. Defaults to false: turning it on adds a recurring evening prompt to
+    someone's phone, which is a change to what the clinic asks of them and not a default.
+  */
+  recoveryLogEnabled: z.boolean().default(false),
   medications: z.preprocess(
     dropUntouched(isUntouchedMedicationRow),
     z.array(MedicationSchema).max(30).default([])

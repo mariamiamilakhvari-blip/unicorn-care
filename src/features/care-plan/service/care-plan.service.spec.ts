@@ -70,6 +70,7 @@ function createInput(): CreateCarePlanType {
     procedureId: PROCEDURE_ID,
     patientId: PATIENT_ID,
     startsAt: STARTS_AT,
+    recoveryLogEnabled: false,
     rehabEndsAt: REHAB_ENDS_AT,
     medications: [
       {

@@ -32,7 +32,7 @@ type CarePlanResult = ServiceResult<CarePlanDocument>;
 /** Everything the builder submits; ids and `status` are the service's business, not the body's. */
 type CarePlanContentPatch = Pick<
   CarePlanInput,
-  'startsAt' | 'rehabEndsAt' | 'medications' | 'rehabTasks' | 'checkups'
+  'startsAt' | 'rehabEndsAt' | 'recoveryLogEnabled' | 'medications' | 'rehabTasks' | 'checkups'
 >;
 
 /**
@@ -205,6 +205,7 @@ function toContentPatch(input: UpdateCarePlanType): CarePlanContentPatch {
   const content = {
     startsAt: input.startsAt,
     rehabEndsAt: input.rehabEndsAt,
+    recoveryLogEnabled: input.recoveryLogEnabled,
     medications: input.medications,
     rehabTasks: input.rehabTasks,
     checkups: input.checkups.map(checkup => ({ ...checkup, completedAt: null })),

@@ -172,6 +172,17 @@ class BlobClient {
    * caller wanted, and reporting failure would strand the database row that points at it, which
    * is the one outcome with no way out from the console.
    */
+  /**
+   * Deletes a private blob, refusing anything outside the patient prefix.
+   *
+   * Symmetric with `readPrivate`, and for the same reason: without the check this is a method
+   * that deletes any blob in either store given a string, reachable from a patient-facing route.
+   */
+  async deletePrivate(pathname: string): Promise<boolean> {
+    if (!isPrivateBlobPath(pathname)) return false;
+    return this.remove(pathname);
+  }
+
   async remove(urlOrPathname: string): Promise<boolean> {
     /*
       Routed by path, because the two stores are separate and a delete sent to the wrong one does

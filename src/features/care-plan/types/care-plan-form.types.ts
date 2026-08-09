@@ -39,6 +39,7 @@ export type CheckupFormRow = {
 export type CarePlanFormType = {
   startsAt: string;
   rehabEndsAt: string;
+  recoveryLogEnabled: boolean;
   medications: MedicationFormRow[];
   rehabTasks: RehabTaskFormRow[];
   checkups: CheckupFormRow[];

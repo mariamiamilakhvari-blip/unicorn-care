@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 
+import { RecoveryPhotoStrip } from '@/features/recovery-log/components/recovery-photo-strip';
 import { RecoverySparkline } from '@/features/recovery-log/components/recovery-sparkline';
 import { useRecoveryTrend } from '@/features/recovery-log/hooks/use-recovery-trend';
 import { RecoveryLogView } from '@/features/recovery-log/types/recovery-log.types';
@@ -19,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 export function RecoveryTrendPanel({ patientId }: { patientId: string }) {
   const t = useTranslations('recoveryLog');
   const tCommon = useTranslations('common');
-  const { trend, isLoading } = useRecoveryTrend(patientId);
+  const { trend, isLoading, deletePhoto } = useRecoveryTrend(patientId);
 
   return (
     <Card>
@@ -44,7 +45,7 @@ export function RecoveryTrendPanel({ patientId }: { patientId: string }) {
             />
             <ul className="flex flex-col gap-2">
               {[...trend.points].reverse().map(point => (
-                <TrendRow key={point.id} point={point} />
+                <TrendRow key={point.id} point={point} onDeletePhoto={deletePhoto} />
               ))}
             </ul>
           </>
@@ -54,7 +55,12 @@ export function RecoveryTrendPanel({ patientId }: { patientId: string }) {
   );
 }
 
-function TrendRow({ point }: { point: RecoveryLogView }) {
+type TrendRowProps = {
+  point: RecoveryLogView;
+  onDeletePhoto: (photoId: string) => Promise<boolean>;
+};
+
+function TrendRow({ point, onDeletePhoto }: TrendRowProps) {
   const t = useTranslations('recoveryLog');
 
   return (
@@ -67,11 +73,7 @@ function TrendRow({ point }: { point: RecoveryLogView }) {
         </span>
       </div>
       {point.note && <p className="text-sm text-muted-foreground">{point.note}</p>}
-      {point.photoIds.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {t('photosAttached', { count: point.photoIds.length })}
-        </p>
-      )}
+      <RecoveryPhotoStrip photoIds={point.photoIds} onDelete={onDeletePhoto} />
     </li>
   );
 }

@@ -1,7 +1,12 @@
 import mongoose, { InferSchemaType, Schema } from 'mongoose';
 
-/** Who asked, and what they got. `denied` rows are the interesting ones. */
-export const PHOTO_ACCESS_OUTCOMES = ['served', 'denied'] as const;
+/**
+ * What happened to the photograph. `denied` rows are the interesting ones for reads; `deleted`
+ * is here because a deletion is the one event that leaves nothing else behind — once the bytes
+ * and the row are gone, this log is the only remaining evidence that the photograph existed and
+ * that someone removed it, which is exactly what a patient asking "was it deleted?" needs.
+ */
+export const PHOTO_ACCESS_OUTCOMES = ['served', 'denied', 'deleted'] as const;
 
 export const PHOTO_VIEWER_TYPES = ['clinic_user', 'patient'] as const;
 

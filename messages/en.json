@@ -258,7 +258,9 @@
     },
     "remindMinutesBefore": "Remind minutes before",
     "remindMinutesBeforeHint": "Send the reminder this many minutes before each dose or session. 0 = at the time itself.",
-    "remindHoursBefore": "Remind hours before"
+    "remindHoursBefore": "Remind hours before",
+    "recoveryLogEnabled": "Ask the patient how recovery is going",
+    "recoveryLogEnabledHelp": "Sends a short evening check-in — daily in the first week, then less often. The patient reports pain and swelling, and can attach a photograph. Off unless you turn it on."
   },
   "portal": {
     "today": "Today",
@@ -584,6 +586,8 @@
     "alreadyLoggedHelp": "You reported a pain level of {pain} today.",
     "clinicTitle": "Patient-reported recovery",
     "clinicHelp": "What the patient reported themselves. Not a clinical assessment, and nothing here is scored or escalated.",
-    "noEntries": "Nothing reported yet"
+    "noEntries": "Nothing reported yet",
+    "photoAlt": "Photograph attached by the patient",
+    "deletePhoto": "Delete"
   }
 }

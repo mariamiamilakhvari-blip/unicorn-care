@@ -68,6 +68,8 @@ export const CarePlanFormSchema = z
   .object({
     startsAt: RequiredDate,
     rehabEndsAt: RequiredDate,
+    /** Mirrors the API schema — nothing to validate, but the form's shape must match it. */
+    recoveryLogEnabled: z.boolean(),
     medications: z.array(MedicationRow).max(30),
     rehabTasks: z.array(RehabTaskRow).max(30),
     checkups: z.array(CheckupRow).max(30),

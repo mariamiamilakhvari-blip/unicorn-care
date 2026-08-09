@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import {
+  deletePatientPhotoService,
   PhotoViewer,
   streamPatientPhotoService,
 } from '@/features/recovery-log/service/patient-photo.service';
@@ -60,6 +61,35 @@ export async function GET(_req: Request, { params }: Params) {
         'X-Content-Type-Options': 'nosniff',
       },
     });
+  } catch {
+    return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
+  }
+}
+
+/**
+ * Deletes a photograph on request.
+ *
+ * The consent wording a patient agreed to at upload says they can have it removed, and the BAA
+ * repeats the undertaking — so this route is the implementation of a promise already made in
+ * production text, not a convenience.
+ *
+ * Same guard as the read, and the same two callers: the patient whose photograph it is, and their
+ * clinic. A clinic deleting on a patient's request is the path the consent wording describes; the
+ * patient deleting their own is the same right exercised directly.
+ */
+export async function DELETE(_req: Request, { params }: Params) {
+  try {
+    const viewer = await resolveViewer();
+    if (!viewer) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+
+    const { id } = await params;
+    const result = await deletePatientPhotoService(id, viewer);
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.reason }, { status: result.status });
+    }
+
+    return NextResponse.json({ deleted: true }, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
   }

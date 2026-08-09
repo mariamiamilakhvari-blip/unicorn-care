@@ -16,6 +16,8 @@ export type StoredCarePlan = {
   status: 'draft' | 'active' | 'completed' | 'cancelled';
   startsAt: string;
   rehabEndsAt: string;
+  /** Absent on plans written before check-ins existed, which is the same as off. */
+  recoveryLogEnabled?: boolean;
   medications?: Array<Omit<MedicationFormRow, 'startsOn' | 'endsOn'> & {
     startsOn: string;
     endsOn: string;
@@ -45,6 +47,7 @@ export function toCarePlanFormValues(plan: StoredCarePlan): CarePlanFormType {
   return {
     startsAt: toDateInput(plan.startsAt),
     rehabEndsAt: toDateInput(plan.rehabEndsAt),
+    recoveryLogEnabled: plan.recoveryLogEnabled ?? false,
     medications: (plan.medications ?? []).map(item => ({
       name: item.name,
       dosage: item.dosage,

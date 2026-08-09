@@ -10,6 +10,7 @@ import { Resolver, useForm } from 'react-hook-form';
 
 import { CheckupFields } from '@/features/care-plan/components/checkup-fields';
 import { MedicationFields } from '@/features/care-plan/components/medication-fields';
+import { RecoveryLogToggle } from '@/features/care-plan/components/recovery-log-toggle';
 import { RehabTaskFields } from '@/features/care-plan/components/rehab-task-fields';
 import { useCarePlan } from '@/features/care-plan/hooks/use-care-plan';
 import { CarePlanFormType } from '@/features/care-plan/types/care-plan-form.types';
@@ -86,6 +87,7 @@ export function CarePlanBuilder({
     defaultValues: {
       startsAt: '',
       rehabEndsAt: '',
+      recoveryLogEnabled: false,
       medications: [],
       rehabTasks: [],
       checkups: [],
@@ -153,6 +155,8 @@ export function CarePlanBuilder({
             )}
           />
         </div>
+
+        <RecoveryLogToggle control={form.control} />
 
         <Separator />
         <MedicationFields control={form.control} />

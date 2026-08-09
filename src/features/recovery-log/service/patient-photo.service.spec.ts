@@ -2,7 +2,10 @@ import mongoose from 'mongoose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/recovery-log/repository/patient-photo.repository', () => ({
-  patientPhotoRepository: { findById: vi.fn() },
+  patientPhotoRepository: { findById: vi.fn(), deleteById: vi.fn() },
+}));
+vi.mock('@/features/recovery-log/repository/recovery-log.repository', () => ({
+  recoveryLogRepository: { pullPhoto: vi.fn() },
 }));
 vi.mock('@/features/recovery-log/repository/photo-access-event.repository', () => ({
   photoAccessEventRepository: { create: vi.fn(), findByPhoto: vi.fn() },
@@ -11,13 +14,15 @@ vi.mock('@/shared/lib/blob-client', async () => {
   const actual = await vi.importActual<typeof import('@/shared/lib/blob-client')>(
     '@/shared/lib/blob-client'
   );
-  return { ...actual, blobClient: { readPrivate: vi.fn() } };
+  return { ...actual, blobClient: { readPrivate: vi.fn(), deletePrivate: vi.fn() } };
 });
 
 import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
 import { photoAccessEventRepository } from '@/features/recovery-log/repository/photo-access-event.repository';
+import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { PatientPhotoDocument } from '@/features/recovery-log/schema/patient-photo.schema';
 import {
+  deletePatientPhotoService,
   listPhotoAccessService,
   PhotoViewer,
   streamPatientPhotoService,
@@ -28,6 +33,7 @@ import { clock } from '@/shared/lib/clock';
 const photos = vi.mocked(patientPhotoRepository);
 const events = vi.mocked(photoAccessEventRepository);
 const blob = vi.mocked(blobClient);
+const logs = vi.mocked(recoveryLogRepository);
 
 const PHOTO = '507f1f77bcf86cd799439011';
 const PATIENT = '507f1f77bcf86cd799439022';
@@ -226,5 +232,108 @@ describe('listPhotoAccessService', () => {
 
     expect(await listPhotoAccessService(PHOTO, OTHER)).toBeNull();
     expect(events.findByPhoto).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The consent wording a patient agreed to at upload, and the BAA, both say a photograph can be
+ * removed on request. Before this existed neither promise had an implementation behind it, which
+ * is worse than not having made it.
+ */
+describe('deletePatientPhotoService', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.spyOn(clock, 'now').mockReturnValue(NOW);
+    events.create.mockResolvedValue('event-id');
+    photos.findById.mockResolvedValue(photo());
+    photos.deleteById.mockResolvedValue(true);
+    logs.pullPhoto.mockResolvedValue(1);
+    blob.deletePrivate.mockResolvedValue(true);
+  });
+
+  it('deletes the bytes, the row and the references', async () => {
+    const result = await deletePatientPhotoService(PHOTO, patientViewer);
+
+    expect(result.ok).toBe(true);
+    expect(blob.deletePrivate).toHaveBeenCalledWith(photo().pathname);
+    expect(photos.deleteById).toHaveBeenCalledWith(PHOTO);
+    expect(logs.pullPhoto).toHaveBeenCalled();
+  });
+
+  /**
+   * The inverse of the upload order, deliberately. Bytes gone with a row left behind is a visible
+   * inconsistency that still honours the request; a row gone while the bytes survive is a
+   * photograph of somebody's body left in storage with nothing pointing at it.
+   */
+  it('removes the bytes before the row', async () => {
+    await deletePatientPhotoService(PHOTO, patientViewer);
+
+    expect(blob.deletePrivate.mock.invocationCallOrder[0]).toBeLessThan(
+      photos.deleteById.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('keeps the row when the bytes could not be removed', async () => {
+    blob.deletePrivate.mockResolvedValue(false);
+
+    const result = await deletePatientPhotoService(PHOTO, patientViewer);
+
+    expect(result).toMatchObject({ ok: false, reason: 'BLOB_DELETE_FAILED', status: 502 });
+    // Otherwise the bytes become unreachable and undeletable, and we reported success.
+    expect(photos.deleteById).not.toHaveBeenCalled();
+    expect(logs.pullPhoto).not.toHaveBeenCalled();
+  });
+
+  it('detaches the photograph from the log entry that referenced it', async () => {
+    // A dangling id renders as a broken image where a patient believes it was removed.
+    await deletePatientPhotoService(PHOTO, patientViewer);
+
+    expect(logs.pullPhoto.mock.calls[0][0].toString()).toBe(PHOTO);
+  });
+
+  describe('who may delete', () => {
+    it('lets the clinic delete, which is the path the consent wording describes', async () => {
+      expect((await deletePatientPhotoService(PHOTO, clinicViewer)).ok).toBe(true);
+    });
+
+    it('refuses another clinic', async () => {
+      const result = await deletePatientPhotoService(PHOTO, { ...clinicViewer, clinicId: OTHER });
+
+      expect(result).toMatchObject({ ok: false, reason: 'WRONG_CLINIC', status: 404 });
+      expect(blob.deletePrivate).not.toHaveBeenCalled();
+    });
+
+    it('refuses another patient', async () => {
+      const result = await deletePatientPhotoService(PHOTO, {
+        ...patientViewer,
+        patientId: OTHER,
+      });
+
+      expect(result).toMatchObject({ ok: false, reason: 'NOT_YOUR_PHOTO', status: 404 });
+      expect(blob.deletePrivate).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 for a photograph that does not exist', async () => {
+      photos.findById.mockResolvedValue(null);
+
+      expect(await deletePatientPhotoService(PHOTO, patientViewer)).toMatchObject({ status: 404 });
+    });
+  });
+
+  /**
+   * Once the bytes and the row are gone this entry is the only remaining evidence the photograph
+   * existed and that somebody removed it — which is what answers a patient asking whether their
+   * request was carried out.
+   */
+  it('leaves a deletion record behind', async () => {
+    await deletePatientPhotoService(PHOTO, patientViewer);
+
+    expect(logged()[0]).toMatchObject({ outcome: 'deleted', viewerType: 'patient', reason: '' });
+  });
+
+  it('records a refused deletion too', async () => {
+    await deletePatientPhotoService(PHOTO, { ...clinicViewer, clinicId: OTHER });
+
+    expect(logged()[0]).toMatchObject({ outcome: 'denied', reason: 'WRONG_CLINIC' });
   });
 });
