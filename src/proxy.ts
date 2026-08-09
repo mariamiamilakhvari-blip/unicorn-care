@@ -65,6 +65,8 @@ export const config = {
     '/p',
     '/sign-in',
     '/sign-up',
+    '/forgot-password',
+    '/reset-password',
     '/',
     '/en',
     '/en/:path*',

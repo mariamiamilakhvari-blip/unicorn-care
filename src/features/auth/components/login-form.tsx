@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
-import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
+import { CLINIC_SIGN_UP_ROUTE, FORGOT_PASSWORD_ROUTE } from '@/shared/const/routes.const';
 
 export const LoginForm = () => {
   const t = useTranslations('auth');
@@ -58,7 +58,15 @@ export const LoginForm = () => {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('password')}</FormLabel>
+                  <div className="flex items-center justify-between gap-2">
+                    <FormLabel>{t('password')}</FormLabel>
+                    <Link
+                      href={FORGOT_PASSWORD_ROUTE}
+                      className="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary"
+                    >
+                      {t('forgotPassword')}
+                    </Link>
+                  </div>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>

@@ -1,4 +1,17 @@
-export const AUTH_ROUTES = ['/sign-in', '/sign-up'];
+/**
+ * Pages a signed-in visitor has no use for, and is bounced off.
+ *
+ * `/reset-password` is deliberately absent. Someone already signed in on this browser may still be
+ * following a reset link — bouncing them to the dashboard would consume nothing and leave them with
+ * no way to finish, and the link is the credential either way.
+ */
+export const AUTH_ROUTES = ['/sign-in', '/sign-up', '/forgot-password'];
+
+/** Where a visitor who cannot get in asks for a reset link. */
+export const FORGOT_PASSWORD_ROUTE = '/forgot-password';
+
+/** Where the emailed link lands. The raw token rides in `?token=`. */
+export const RESET_PASSWORD_ROUTE = '/reset-password';
 
 /** Where clinics actually register, and where a clinic-less account is sent to finish setup. */
 export const CLINIC_SIGN_UP_ROUTE = '/clinic-sign-up';
