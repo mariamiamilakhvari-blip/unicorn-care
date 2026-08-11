@@ -134,14 +134,14 @@ describe('dispatchDueRemindersService', () => {
     makeReminderSender.mockReturnValue(sendReminderEmail);
   });
 
-  it('queries the 6h window with the 500 cap and marks a delivered occurrence sent', async () => {
+  it('queries the 6h window with the 2000 cap and marks a delivered occurrence sent', async () => {
     givenDue([buildOccurrence()]);
     subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
     pushClient.send.mockResolvedValue({ ok: true });
 
     const result = await dispatchDueRemindersService();
 
-    expect(occurrenceRepo.findDueForDispatch).toHaveBeenCalledWith(NOW, 6, 500);
+    expect(occurrenceRepo.findDueForDispatch).toHaveBeenCalledWith(NOW, 6, 2000);
     /*
       What each channel managed is written with the status. `status: 'sent'` only says the sweep
       handled the row — it is set even when nothing reached the patient — so deliverability has to

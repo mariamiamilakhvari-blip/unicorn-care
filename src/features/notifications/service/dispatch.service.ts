@@ -28,8 +28,19 @@ const STALE_CLAIM_MINUTES = 15;
 /** How far back a due reminder is still worth sending. Older than this it is `missed` (PRD 04 §6). */
 const GRACE_HOURS = 6;
 
-/** Hard ceiling per run so one sweep can never exceed the function timeout (PRD 04 §2). */
-const DISPATCH_LIMIT = 500;
+/**
+ * Hard ceiling per run so one sweep can never exceed the function timeout (PRD 04 §2).
+ *
+ * Sized for a sweep every 5 minutes. GitHub's scheduler is delivering roughly one run an hour
+ * against a five-minute schedule, so each sweep now faces about twelve times the backlog it was
+ * drawn for and 500 truncates it — the remainder waits for whenever the next run happens to land.
+ *
+ * Raised as a stopgap until a scheduler that keeps its cadence takes over. Note this is only the
+ * cheaper of the two ceilings: `RUN_BUDGET_MS` still stops a run after 45 seconds, and at three
+ * sequential round trips per occurrence that is the one that binds first on a slow provider.
+ * Lifting it needs the deployed function timeout known, which is a separate change.
+ */
+const DISPATCH_LIMIT = 2000;
 
 /**
  * How long this run may spend sending before it stops and hands the rest back.
