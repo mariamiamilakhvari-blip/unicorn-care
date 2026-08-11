@@ -10,6 +10,8 @@ import { cn } from '@/shared/lib/utils';
 
 type OccurrenceCardProps = {
   occurrence: PortalOccurrence;
+  /** The clinic's zone. Always passed explicitly — see `PortalPlanView.timeZone`. */
+  timeZone: string;
   onComplete: (id: string, outcome: 'done' | 'skipped') => void;
   isBusy: boolean;
 };
@@ -24,7 +26,7 @@ const KIND_ICON: Record<PortalOccurrence['kind'], typeof Pill> = {
   recovery_log: HeartPulse,
 };
 
-export function OccurrenceCard({ occurrence, onComplete, isBusy }: OccurrenceCardProps) {
+export function OccurrenceCard({ occurrence, timeZone, onComplete, isBusy }: OccurrenceCardProps) {
   const t = useTranslations('portal');
   const format = useFormatter();
   const Icon = KIND_ICON[occurrence.kind];
@@ -52,7 +54,11 @@ export function OccurrenceCard({ occurrence, onComplete, isBusy }: OccurrenceCar
 
         <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="size-3" aria-hidden />
-          {format.dateTime(new Date(occurrence.dueAt), { hour: '2-digit', minute: '2-digit' })}
+          {format.dateTime(new Date(occurrence.scheduledAt), {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone,
+          })}
         </p>
       </div>
 

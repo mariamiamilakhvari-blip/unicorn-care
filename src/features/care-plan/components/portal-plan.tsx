@@ -14,10 +14,6 @@ import { RecoveryLogForm } from '@/features/recovery-log/components/recovery-log
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 
-function isSameUtcDay(dateIso: string, referenceIso: string): boolean {
-  return dateIso === referenceIso.slice(0, 10);
-}
-
 export function PortalPlan() {
   const t = useTranslations('portal');
   const tCommon = useTranslations('common');
@@ -47,8 +43,10 @@ export function PortalPlan() {
     );
   }
 
-  const today = plan.days.find(day => isSameUtcDay(day.date, plan.todayIso));
-  const upcoming = plan.days.filter(day => day.date > plan.todayIso.slice(0, 10));
+  // Both keys are already the clinic's calendar day, so this is a string compare and not a
+  // second, subtly different, notion of "today".
+  const today = plan.days.find(day => day.date === plan.todayKey);
+  const upcoming = plan.days.filter(day => day.date > plan.todayKey);
 
   return (
     <div className="flex flex-col gap-6">
@@ -65,9 +63,10 @@ export function PortalPlan() {
           <CardContent>
             <p className="font-medium">{plan.nextCheckup.title}</p>
             <p className="text-sm text-muted-foreground">
-              {format.dateTime(new Date(plan.nextCheckup.dueAt), {
+              {format.dateTime(new Date(plan.nextCheckup.scheduledAt), {
                 dateStyle: 'medium',
                 timeStyle: 'short',
+                timeZone: plan.timeZone,
               })}
             </p>
           </CardContent>
@@ -82,6 +81,7 @@ export function PortalPlan() {
               <OccurrenceCard
                 key={occurrence.id}
                 occurrence={occurrence}
+                timeZone={plan.timeZone}
                 onComplete={(id, outcome) => void handleComplete(id, outcome)}
                 isBusy={busyId === occurrence.id}
               />
@@ -92,7 +92,9 @@ export function PortalPlan() {
         )}
       </section>
 
-      {upcoming.length > 0 && <UpcomingDays days={upcoming} label={t('upcoming')} />}
+      {upcoming.length > 0 && (
+        <UpcomingDays days={upcoming} timeZone={plan.timeZone} label={t('upcoming')} />
+      )}
 
       {/* Renders nothing unless the plan asks for a check-in and today has none filed yet. */}
       <RecoveryLogForm />
@@ -128,7 +130,9 @@ function NothingToday({ title, body }: { title: string; body: string }) {
   );
 }
 
-function UpcomingDays({ days, label }: { days: PortalDay[]; label: string }) {
+type UpcomingDaysProps = { days: PortalDay[]; timeZone: string; label: string };
+
+function UpcomingDays({ days, timeZone, label }: UpcomingDaysProps) {
   const format = useFormatter();
 
   return (
@@ -137,16 +141,20 @@ function UpcomingDays({ days, label }: { days: PortalDay[]; label: string }) {
       {days.map(day => (
         <div key={day.date} className="flex flex-col gap-1">
           <p className="text-sm font-medium text-muted-foreground">
-            {format.dateTime(new Date(day.date), { dateStyle: 'full' })}
+            {/* `date` is already the clinic's calendar day, and `new Date('YYYY-MM-DD')` reads it
+                as UTC midnight — rendering it in any other zone would shift the heading off the
+                day it names, backwards for every zone west of UTC. */}
+            {format.dateTime(new Date(day.date), { dateStyle: 'full', timeZone: 'UTC' })}
           </p>
           <ul className="flex flex-col gap-1 text-sm">
             {day.occurrences.map(occurrence => (
               <li key={occurrence.id} className="flex justify-between gap-4 rounded-md border border-border px-3 py-2">
                 <span className="truncate">{occurrence.title}</span>
                 <span className="shrink-0 text-muted-foreground">
-                  {format.dateTime(new Date(occurrence.dueAt), {
+                  {format.dateTime(new Date(occurrence.scheduledAt), {
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone,
                   })}
                 </span>
               </li>

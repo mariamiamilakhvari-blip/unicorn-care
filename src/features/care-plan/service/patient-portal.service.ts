@@ -6,6 +6,8 @@ import {
   PortalOccurrence,
   PortalPlanView,
 } from '@/features/care-plan/types/portal.types';
+import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { DEFAULT_TIMEZONE, isValidTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 
@@ -24,30 +26,48 @@ function toPortalOccurrence(occurrence: ReminderOccurrenceDocument): PortalOccur
     body: occurrence.body ?? '',
     intensity: occurrence.intensity ?? null,
     dueAt: occurrence.dueAt.toISOString(),
+    // Rows written before `scheduledAt` existed have no lead recorded anywhere, so `dueAt` is the
+    // best available answer for them — the same fallback the schema documents.
+    scheduledAt: (occurrence.scheduledAt ?? occurrence.dueAt).toISOString(),
     status: occurrence.status,
   };
 }
 
-/** Groups by UTC calendar day; the client renders each `date` in the patient's own zone. */
-function groupByDay(occurrences: PortalOccurrence[]): PortalDay[] {
+/**
+ * Groups by the calendar day the patient is living in.
+ *
+ * Slicing the UTC day off the ISO string put a 01:00 Tbilisi dose on the previous day's list, and
+ * an evening dose in a western zone on the next day's — always for the patients least able to
+ * shrug it off. The day a dose belongs to is the day it is *taken*, so `scheduledAt` decides it.
+ */
+function groupByDay(occurrences: PortalOccurrence[], timeZone: string): PortalDay[] {
   const byDate = new Map<string, PortalOccurrence[]>();
 
   for (const occurrence of occurrences) {
-    const date = occurrence.dueAt.slice(0, 10);
+    const date = clock.dateKeyInZone(new Date(occurrence.scheduledAt), timeZone);
     const bucket = byDate.get(date) ?? [];
     bucket.push(occurrence);
     byDate.set(date, bucket);
   }
 
   return [...byDate.entries()]
-    .map(([date, items]) => ({ date, occurrences: items }))
+    .map(([date, items]) => ({
+      date,
+      occurrences: [...items].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)),
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * The appointment itself has to still be ahead, not its reminder. Those differ by
+ * `remindHoursBefore` — a day by default — so filtering on `dueAt` retired the card the moment the
+ * reminder went out and hid the appointment for the last 24 hours before it, which is exactly when
+ * a patient checks where they are meant to be.
+ */
 function findNextCheckup(occurrences: PortalOccurrence[], now: Date): PortalOccurrence | null {
-  const upcoming = occurrences.filter(
-    item => item.kind === 'checkup' && new Date(item.dueAt).getTime() >= now.getTime()
-  );
+  const upcoming = occurrences
+    .filter(item => item.kind === 'checkup' && new Date(item.scheduledAt).getTime() >= now.getTime())
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   return upcoming[0] ?? null;
 }
 
@@ -59,6 +79,16 @@ export async function getPortalPlanService(
   patientId: string,
   clinicId: string
 ): Promise<ServiceResult<PortalPlanView>> {
+  const clinic = await clinicRepository.findById(clinicId);
+  if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
+
+  /*
+    A zone written before the settings field was validated still throws inside `Intl`, and here
+    that would take down the patient's whole plan view. Falling back keeps the portal readable;
+    the clinic sees the same bad value refused on the write side and at activation.
+  */
+  const timeZone = isValidTimeZone(clinic.timezone) ? clinic.timezone : DEFAULT_TIMEZONE;
+
   const now = clock.now();
   const from = clock.addDays(now, -DAYS_BEHIND);
   const to = clock.addDays(now, DAYS_AHEAD);
@@ -83,7 +113,9 @@ export async function getPortalPlanService(
   return {
     data: {
       todayIso: now.toISOString(),
-      days: groupByDay(occurrences),
+      todayKey: clock.dateKeyInZone(now, timeZone),
+      timeZone,
+      days: groupByDay(occurrences, timeZone),
       nextCheckup: findNextCheckup(checkupDocuments.map(toPortalOccurrence), now),
       rehabEndsAt,
     },
