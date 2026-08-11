@@ -10,6 +10,7 @@ import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
 import { Button } from '@/shared/components/ui/button';
 import { CLINIC_SIGN_UP_ROUTE } from '@/shared/const/routes.const';
+import { cn } from '@/shared/lib/utils';
 import { AppLocale } from '@/shared/types/roles';
 
 export const HomePage = () => {
@@ -22,8 +23,21 @@ export const HomePage = () => {
       <Header />
 
       <main className="flex-1">
-        <section className="mx-auto w-full max-w-5xl px-6 pb-16 pt-20 sm:px-10 sm:pt-28">
-          <div className="animate-rise inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1">
+        {/*
+          `min-h-screen` is a floor, never a cap: the hero still grows with its content, so the
+          Georgian headline — which wraps to more lines than the English one — is never clipped.
+          It exists because the two locales otherwise disagree about where the fold lands. English
+          copy is shorter, so the hero collapsed and the benefit cards below crested the fold on a
+          laptop; Georgian pushed them under it. The floor makes the first screen read the same in
+          both languages.
+
+          The floor is the whole job — the section stays a block. Making it a flex column instead
+          stretched every child to the container width, which is not what `inline-flex` on the
+          eyebrow pill looks like it should do, and centring the column on a screen-tall section
+          dropped the headline well below where it reads.
+        */}
+        <section className="mx-auto min-h-screen w-full max-w-5xl px-6 pb-16 pt-12 sm:px-10 sm:pt-16">
+          <div className="animate-rise inline-flex w-fit items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
             <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               {t('eyebrow')}
@@ -35,7 +49,21 @@ export const HomePage = () => {
             "პოსტოპერაციული" render wider than a 320px viewport at this size, and without it the
             whole page scrolls sideways. It only engages when a word genuinely cannot fit.
           */}
-          <h1 className="animate-rise animate-rise-1 mt-6 max-w-3xl break-words text-4xl font-bold leading-tight sm:text-6xl">
+          {/*
+            Two steps down the scale for Georgian only. The same sentence is far longer set in
+            Georgian than in English — it wraps to four lines at the English size and pushed the
+            CTA off the first screen. English keeps the display size it was designed at; the two
+            locales are sized to occupy the same space, not to use the same class.
+          */}
+          <h1
+            className={cn(
+              'animate-rise animate-rise-1 mt-6 max-w-3xl break-words font-bold',
+              locale === 'ka' ? 'text-3xl sm:text-5xl' : 'text-4xl sm:text-6xl',
+              // Last on purpose: tailwind-merge counts `text-*` as conflicting with `leading-*`,
+              // so a leading class written before the size is dropped from the output entirely.
+              'leading-tight'
+            )}
+          >
             {t('headline')} <span className="text-primary">{t('headlineAccent')}</span>
           </h1>
 
@@ -43,7 +71,11 @@ export const HomePage = () => {
             {t('subheadline')}
           </p>
 
-          <div className="animate-rise animate-rise-3 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <p className="animate-rise animate-rise-3 mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            {t('subheadlineSupport')}
+          </p>
+
+          <div className="animate-rise animate-rise-4 mt-12 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button size="lg" asChild className="font-semibold">
               <Link href={CLINIC_SIGN_UP_ROUTE}>
                 {t('ctaPrimary')}

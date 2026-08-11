@@ -97,10 +97,15 @@ export function AudienceSection({ locale }: { locale: AppLocale }) {
   const prefix = locale === 'en' ? '/en' : '';
   const exploreLabel = locale === 'en' ? 'Explore each part' : 'იხილეთ დეტალურად';
 
+  /*
+    The top padding is the break between the benefit cards and the prose. Without it the only gap
+    was the cards' own `pb-20`, which read as one continuous block — the cards are a claim, this is
+    the argument, and they should not look like the same thought.
+  */
   return (
     <section
       aria-labelledby="audience-heading"
-      className="mx-auto w-full max-w-5xl px-6 pb-20 sm:px-10"
+      className="mx-auto w-full max-w-5xl px-6 pb-20 pt-24 sm:px-10 sm:pt-32"
     >
       <h2 id="audience-heading" className="font-heading max-w-3xl text-2xl font-semibold sm:text-3xl">
         {copy.heading}
