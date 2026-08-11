@@ -34,6 +34,11 @@ type DraftFields = {
   kind: OccurrenceDraft['kind'];
   sourceItemId: OccurrenceDraft['sourceItemId'];
   dueAt: Date;
+  /*
+    The prescribed instant. Equal to `dueAt` for everything without a lead, which is why the
+    builders that have no lead to speak of simply pass the same value rather than leaving it out.
+  */
+  scheduledAt: Date;
   title: string;
   body: string;
   intensity: OccurrenceDraft['intensity'];
@@ -46,7 +51,8 @@ type DailySpec = {
   timesOfDay: string[];
   /** Fires each reminder this many minutes before its scheduled time. 0 = at the time itself. */
   remindMinutesBefore?: number | null;
-  build: (dueAt: Date, timeOfDay: string) => DraftFields;
+  /** `scheduledAt` is supplied by `dailyDrafts`, which is what knows the lead. */
+  build: (dueAt: Date, timeOfDay: string) => Omit<DraftFields, 'scheduledAt'>;
 };
 
 /**
@@ -152,6 +158,9 @@ function checkupDrafts(context: GeneratorContext, item: CheckupItem): Occurrence
       kind: 'checkup',
       sourceItemId: item._id,
       dueAt,
+      // The appointment itself, which is a day ahead of the reminder by default — the largest
+      // gap of any kind, and the one where printing `dueAt` would be most wrong.
+      scheduledAt: item.scheduledAt,
       title: item.title,
       body,
       intensity: null,
@@ -176,7 +185,9 @@ function dailyDrafts(context: GeneratorContext, spec: DailySpec): OccurrenceDraf
       // so a lead that crosses midnight or a DST boundary still lands the prescribed wall clock.
       const scheduledAt = clock.zonedTimeToUtc(day, timeOfDay, context.timezone);
       const dueAt = leadMs > 0 ? new Date(scheduledAt.getTime() - leadMs) : scheduledAt;
-      return draft(context, spec.build(dueAt, timeOfDay));
+      // Applied here rather than in each `build`: the lead is this function's business, and the
+      // builders would otherwise each have to re-derive a time they never subtracted from.
+      return draft(context, { ...spec.build(dueAt, timeOfDay), scheduledAt });
     })
   );
 }

@@ -27,7 +27,13 @@ function isAuthorised(req: NextRequest): boolean {
   return timingSafeEqual(expected, provided);
 }
 
-/** Vercel Cron hits this every 5 minutes with `Authorization: Bearer ${CRON_SECRET}`. */
+/**
+ * Called with `Authorization: Bearer ${CRON_SECRET}` by two schedulers, both of which matter:
+ * `.github/workflows/dispatch-reminders.yml` every 5 minutes, which is what makes a reminder
+ * arrive near its time, and the daily Vercel cron in `vercel.json` as a backstop. The Hobby plan
+ * caps Vercel cron at once a day, so on its own it would leave most of the day's doses to be
+ * swept up hours late and then marked missed past the 6-hour grace window.
+ */
 export async function GET(req: NextRequest) {
   if (!isAuthorised(req)) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });

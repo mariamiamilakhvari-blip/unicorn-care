@@ -104,6 +104,11 @@ export type ReminderEmailInput = {
   title: string;
   body: string;
   dueAt: Date;
+  /**
+   * When the patient should act. `null` on rows written before the field existed, where the only
+   * time available is `dueAt` — early by the clinic's lead, but the best the row can say.
+   */
+  scheduledAt: Date | null;
   /** Portal URL for the CTA. No token: an email must never carry a portal credential. */
 };
 

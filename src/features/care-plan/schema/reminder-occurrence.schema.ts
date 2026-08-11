@@ -30,6 +30,17 @@ const ReminderOccurrenceSchema = new Schema(
       default: null,
     },
     dueAt: { type: Date, required: true },
+    /*
+      When the patient is meant to act, as against `dueAt`, which is when the reminder is sent.
+      They differ by the lead the clinic set: a dose at 08:00 with a 5-minute lead is `dueAt`
+      07:55, `scheduledAt` 08:00. The email prints this one — printing `dueAt` told a patient to
+      take their tablet at 07:55, every single time.
+
+      Nullable because rows generated before this field existed have no way to recover it: the
+      lead lives on the plan item, and the row does not carry it. Readers fall back to `dueAt`,
+      which reproduces the old (wrong-by-the-lead) time rather than crashing on those rows.
+    */
+    scheduledAt: { type: Date, required: false, default: null },
     status: {
       type: String,
       // `sending` is the claimed state: a dispatch run has taken this row and no other run may

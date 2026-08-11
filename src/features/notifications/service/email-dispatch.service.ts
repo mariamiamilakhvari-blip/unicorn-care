@@ -134,6 +134,7 @@ export function createReminderEmailSender() {
         title: occurrence.title,
         body: occurrence.body ?? '',
         dueAt: occurrence.dueAt,
+        scheduledAt: occurrence.scheduledAt ?? null,
       });
 
       const result = await resendClient.send({

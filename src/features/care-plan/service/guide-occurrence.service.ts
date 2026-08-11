@@ -51,6 +51,9 @@ export function buildGuideOccurrences(
         kind: 'guide' as const,
         sourceItemId: sign._id,
         dueAt,
+        // A notice, not an appointment: it is sent at the time it is for, so there is no lead
+        // and nothing to correct for.
+        scheduledAt: dueAt,
         title: sign.title,
         body: context.t('expectedSign'),
         intensity: null,

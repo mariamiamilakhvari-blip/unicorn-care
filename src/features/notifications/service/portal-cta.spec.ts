@@ -56,6 +56,7 @@ describe('every patient-facing email offers the portal', () => {
       title: 'Amoxicillin — 500 mg',
       body: 'Take with food. 08:00',
       dueAt: new Date('2026-08-09T04:00:00.000Z'),
+      scheduledAt: new Date('2026-08-09T04:00:00.000Z'),
     }),
   };
 

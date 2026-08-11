@@ -29,7 +29,10 @@ import { emailCopy } from '@/shared/const/email-copy.const';
  */
 export function buildReminderEmail(input: ReminderEmailInput): BuiltEmail {
   const copy = emailCopy(input.patient.locale);
-  const at = zonedTime(input.dueAt, input.clinic.timezone);
+  // `dueAt` is the fallback, not the intent: it is this email's send time, and on a row carrying
+  // a lead it is exactly the wrong number to print. Only rows generated before `scheduledAt`
+  // existed reach it.
+  const at = zonedTime(input.scheduledAt ?? input.dueAt, input.clinic.timezone);
 
   const heading = `${copy.reminderSubject} — ${at}`;
 

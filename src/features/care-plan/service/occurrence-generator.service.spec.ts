@@ -336,6 +336,11 @@ describe('lead time before each dose', () => {
     expect(draft.dueAt.toISOString()).toBe(expected);
     // The intake time survives in the body, so an early reminder still says when to take it.
     expect(draft.body).toContain('08:00');
+    /*
+      And on the row itself, whatever the lead. This is what the reminder email prints; without
+      it the only time the email could reach was `dueAt`, which is early by exactly this lead.
+    */
+    expect(draft.scheduledAt?.toISOString()).toBe('2025-06-02T06:00:00.000Z');
   });
 
   it('fires at the dose time when the lead is 0, so old plans are unchanged', () => {

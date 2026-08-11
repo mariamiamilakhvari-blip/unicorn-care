@@ -16,8 +16,9 @@ function input(overrides: Partial<ReminderEmailInput> = {}): ReminderEmailInput 
     },
     title: 'citramoni — 500',
     body: 'with food',
-    // 13:25 UTC is 17:25 in Tbilisi: a 17:30 dose with a 5-minute lead.
+    // A 17:30 Tbilisi dose with a 5-minute lead: sent at 17:25 (13:25 UTC), taken at 17:30.
     dueAt: new Date('2026-08-08T13:25:00.000Z'),
+    scheduledAt: new Date('2026-08-08T13:30:00.000Z'),
     ...overrides,
   };
 }
@@ -34,9 +35,27 @@ describe('buildReminderEmail', () => {
   it('shows the time in the clinic zone, not UTC', () => {
     const email = buildReminderEmail(input());
 
-    // 13:25Z in Asia/Tbilisi (UTC+4).
+    // 13:30Z in Asia/Tbilisi (UTC+4).
+    expect(email.html).toContain('17:30');
+    expect(email.html).not.toContain('13:30');
+  });
+
+  /*
+    The whole point of the lead: the email arrives early so the patient is ready at the time it
+    names. Printing the send time instead moved every dose earlier by the lead, permanently —
+    a 17:30 tablet reported as 17:25 in every reminder the patient ever received.
+  */
+  it('prints the dose time, not the earlier moment the email was sent', () => {
+    const email = buildReminderEmail(input());
+
+    expect(email.html).toContain('17:30');
+    expect(email.html).not.toContain('17:25');
+  });
+
+  it('falls back to the send time on a row generated before scheduledAt existed', () => {
+    const email = buildReminderEmail(input({ scheduledAt: null }));
+
     expect(email.html).toContain('17:25');
-    expect(email.html).not.toContain('13:25');
   });
 
   it('carries a portal link and never a portal token', () => {

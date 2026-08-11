@@ -71,6 +71,8 @@ export function buildRecoveryLogOccurrences(context: LogDraftContext): Occurrenc
         kind: 'recovery_log' as const,
         sourceItemId: plan._id,
         dueAt,
+        // Prompted at the moment it is for, so the two are the same instant.
+        scheduledAt: dueAt,
         title: t('recoveryCheckIn'),
         body: '',
         intensity: null,
