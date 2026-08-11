@@ -87,7 +87,9 @@ describe('getClinicAnalyticsService', () => {
       By default every reminder reached its patient, so the cases below can be about what they
       are about. The exclusion has its own describe block at the end.
     */
-    repo.countDeliveredByStatus.mockImplementation(() => repo.countOccurrencesByStatus());
+    repo.countDeliveredByStatus.mockImplementation((...args) =>
+      repo.countOccurrencesByStatus(...args)
+    );
     repo.countUndelivered.mockResolvedValue(0);
   });
 
