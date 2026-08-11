@@ -16,7 +16,7 @@ export const patientAccessTokenRepository = {
   /**
    * Redemption lookup. Intentionally NOT clinic-scoped: the token itself is the credential and
    * the row is what tells us which clinic the holder belongs to. The caller (patientGuard /
-   * redemption route) must still check `revokedAt` and `expiresAt`.
+   * redemption route) must still check `revokedAt`.
    */
   async findByTokenHash(tokenHash: string): Promise<PatientAccessTokenDocument | null> {
     await mongo.connect();

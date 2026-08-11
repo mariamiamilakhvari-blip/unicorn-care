@@ -16,12 +16,19 @@ import { ServiceResult } from '@/shared/types/common';
 import { hashPassword } from '@/shared/utils/password';
 
 const TOKEN_BYTES = 32;
-export const TOKEN_TTL_DAYS = 90;
 
 /**
  * PRD 02 §B "Issuing". 32 random bytes → base64url is the raw token; only its SHA-256 is stored,
- * so a database read yields no working links. Prior tokens are revoked *before* the new row is
- * written — revoking afterwards would match and kill the token we just issued.
+ * so a database read yields no working links.
+ *
+ * Issuing is purely additive: it does not expire, and it does not revoke what came before. A
+ * patient keeps whichever link they still have — the one in the first email, the one a relative
+ * forwarded them — for their whole rehabilitation, and a clinic re-issuing a link for one patient
+ * cannot lock that patient out of the copy they were already using.
+ *
+ * The consequence is that live links accumulate, one per issue, all equally valid. Revocation is
+ * the only way any of them ends, and `revokeAccessService` deliberately ends all of them at once:
+ * a clinic that revokes because a link leaked means every outstanding link, not the newest.
  */
 export async function issueTokenService(
   clinicId: string,
@@ -30,33 +37,25 @@ export async function issueTokenService(
   const patient = await patientRepository.findById(patientId, clinicId);
   if (!patient) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
-  const now = clock.now();
-  await patientAccessTokenRepository.revokeAllForPatient(patientId, clinicId, now);
-
   const rawToken = randomBytes(TOKEN_BYTES).toString('base64url');
-  const expiresAt = clock.addDays(now, TOKEN_TTL_DAYS);
 
   await patientAccessTokenRepository.create({
     patientId: new Types.ObjectId(patientId),
     clinicId: new Types.ObjectId(clinicId),
     tokenHash: hashPassword(rawToken),
-    expiresAt,
     revokedAt: null,
     lastUsedAt: null,
   });
 
   return {
-    data: {
-      url: `${process.env.NEXTAUTH_URL}${PATIENT_PORTAL_ROUTE}/${rawToken}`,
-      expiresAt: expiresAt.toISOString(),
-    },
+    data: { url: `${process.env.NEXTAUTH_URL}${PATIENT_PORTAL_ROUTE}/${rawToken}` },
     status: 201,
   };
 }
 
 /**
  * PRD 02 §B "Redeeming". Every rejection returns the same 401 so the endpoint cannot be used to
- * distinguish an unknown token from a revoked or expired one.
+ * distinguish an unknown token from a revoked one.
  */
 export async function redeemTokenService(
   rawToken: string
@@ -67,9 +66,6 @@ export async function redeemTokenService(
   if (token.revokedAt) return { data: { error: 'INVALID_TOKEN' }, status: 401 };
 
   const now = clock.now();
-  if (token.expiresAt.getTime() <= now.getTime()) {
-    return { data: { error: 'INVALID_TOKEN' }, status: 401 };
-  }
 
   const patientId = token.patientId.toString();
   const clinicId = token.clinicId.toString();

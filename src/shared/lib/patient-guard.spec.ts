@@ -39,7 +39,6 @@ function tokenRow(overrides: Record<string, unknown> = {}) {
     patientId: { toString: () => PATIENT_ID },
     clinicId: { toString: () => CLINIC_ID },
     tokenHash: hashPassword(RAW_TOKEN),
-    expiresAt: new Date(Date.now() + 86400000),
     revokedAt: null,
     lastUsedAt: null,
     ...overrides,
@@ -109,12 +108,23 @@ describe('patientGuard.requirePatient', () => {
     expect(mockPatientRepo.findById).not.toHaveBeenCalled();
   });
 
-  it('returns null when the token has expired', async () => {
+  /*
+    The inverse of the test this replaces. A stale `expiresAt` left on a row written before links
+    became permanent must not lock the patient out — nothing reads the field any more, and this
+    is what says so.
+  */
+  it('admits a token carrying a long-past expiresAt from before links were permanent', async () => {
     setCookie(RAW_TOKEN);
     mockTokenRepo.findByTokenHash.mockResolvedValueOnce(
-      tokenRow({ expiresAt: new Date(Date.now() - 1000) }) as never
+      tokenRow({ expiresAt: new Date('2020-01-01T00:00:00Z') }) as never
     );
-    expect(await patientGuard.requirePatient()).toBeNull();
+    mockPatientRepo.findById.mockResolvedValueOnce({ locale: 'ka' } as never);
+
+    expect(await patientGuard.requirePatient()).toEqual({
+      patientId: PATIENT_ID,
+      clinicId: CLINIC_ID,
+      locale: 'ka',
+    });
   });
 
   it('returns null when the patient record no longer resolves', async () => {

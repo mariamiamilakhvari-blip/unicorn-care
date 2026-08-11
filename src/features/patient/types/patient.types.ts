@@ -39,10 +39,12 @@ export type PatientListResult = {
   limit: number;
 };
 
-/** One-time magic link. `url` embeds the raw token and is never recoverable after this response. */
+/**
+ * Magic link. `url` embeds the raw token and is never recoverable after this response. It carries
+ * no expiry because the link has none — it is valid until the clinic revokes it.
+ */
 export type AccessLinkResult = {
   url: string;
-  expiresAt: string;
 };
 
 export type AccessRevokeResult = {

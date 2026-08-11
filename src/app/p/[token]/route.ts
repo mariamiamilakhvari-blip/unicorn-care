@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { redeemTokenService } from '@/features/patient/service/patient-access.service';
-import { TOKEN_TTL_DAYS } from '@/features/patient/service/patient-access.service';
 import {
   LINK_EXPIRED_ROUTE,
   PATIENT_COOKIE_NAME,
@@ -11,7 +10,13 @@ import { rateLimit } from '@/shared/lib/rate-limit';
 
 const REDEEM_LIMIT = 10;
 const REDEEM_WINDOW_MS = 10 * 60 * 1000;
-const COOKIE_MAX_AGE_SECONDS = TOKEN_TTL_DAYS * 24 * 60 * 60;
+
+/*
+  The token itself no longer expires, so this is only how long a browser keeps the patient signed
+  in before it has to follow the link again. 400 days is the ceiling Chrome enforces on cookie
+  lifetime; asking for more is silently clamped, so it is the longest honest value to write.
+*/
+const COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60;
 
 /**
  * Magic-link redemption (PRD 02 §B). A route handler rather than a page so the cookie is set on
