@@ -303,7 +303,7 @@
     "nothingToday": "Nothing scheduled for today",
     "allDone": "Today's plan is complete",
     "greeting": "Hello, {name}",
-    "linkExpired": "This link has expired",
+    "linkExpired": "Invalid or inactive link",
     "linkExpiredHelp": "Contact your clinic to get a new link",
     "offline": "You are offline",
     "kind_guide": "What is expected",
