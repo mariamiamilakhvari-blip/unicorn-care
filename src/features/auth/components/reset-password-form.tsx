@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/shared/components/ui/form';
-import { Input } from '@/shared/components/ui/input';
+import { PasswordInput } from '@/shared/components/ui/password-input';
 import { FORGOT_PASSWORD_ROUTE, SIGN_IN_ROUTE } from '@/shared/const/routes.const';
 
 type ResetPasswordFormProps = {
@@ -95,7 +95,7 @@ export const ResetPasswordForm = ({ token, isTokenValid }: ResetPasswordFormProp
                 <FormItem>
                   <FormLabel>{t('newPassword')}</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <PasswordInput placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,7 +108,7 @@ export const ResetPasswordForm = ({ token, isTokenValid }: ResetPasswordFormProp
                 <FormItem>
                   <FormLabel>{t('confirmPassword')}</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <PasswordInput placeholder="••••••••" {...field} />
                   </FormControl>
                   {/*
                     Not `FormMessage`: it prints the schema's own message, and the mismatch rule

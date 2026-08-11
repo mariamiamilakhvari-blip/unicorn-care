@@ -19,7 +19,9 @@
     "required": "სავალდებულო ველი",
     "none": "არცერთი",
     "notFound": "ვერ მოიძებნა",
-    "language": "ენა"
+    "language": "ენა",
+    "showPassword": "პაროლის ჩვენება",
+    "hidePassword": "პაროლის დამალვა"
   },
   "nav": {
     "home": "მთავარი",

@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
+import { PasswordInput } from '@/shared/components/ui/password-input';
 import { CLINIC_SIGN_UP_ROUTE, FORGOT_PASSWORD_ROUTE } from '@/shared/const/routes.const';
 
 export const LoginForm = () => {
@@ -68,7 +69,7 @@ export const LoginForm = () => {
                     </Link>
                   </div>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <PasswordInput placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -19,7 +19,9 @@
     "required": "Required field",
     "none": "None",
     "notFound": "Not found",
-    "language": "Language"
+    "language": "Language",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "nav": {
     "home": "Home",

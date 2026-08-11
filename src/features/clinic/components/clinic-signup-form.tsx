@@ -30,6 +30,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
+import { PasswordInput } from '@/shared/components/ui/password-input';
 import { Separator } from '@/shared/components/ui/separator';
 import { BAA_ROUTE, PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
 
@@ -117,7 +118,7 @@ export function ClinicSignUpForm() {
                   <FormItem>
                     <FormLabel>{tAuth('password')}</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <PasswordInput {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
