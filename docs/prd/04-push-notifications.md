@@ -79,7 +79,7 @@ hooks/use-push-subscription.ts
 
 ### The sweep — `GET /api/cron/dispatch-reminders`
 
-Runs every 5 minutes.
+Runs every few minutes — currently every minute, driven by cron-job.org.
 
 1. Authorise: header `Authorization: Bearer ${CRON_SECRET}` must match, else 401.
    (Vercel Cron sends this automatically when `CRON_SECRET` is set.)
@@ -94,10 +94,11 @@ Runs every 5 minutes.
 7. Rolling extension: for active plans whose generated horizon ends within 14 days, generate the
    next 90-day window (see PRD 03).
 
-Cron registration in `vercel.ts`:
+Cron registration in `vercel.json` is the daily backstop only — the Hobby plan caps Vercel cron at
+one run a day, which is why the minute cadence comes from cron-job.org instead:
 
-```ts
-crons: [{ path: '/api/cron/dispatch-reminders', schedule: '*/5 * * * *' }]
+```json
+"crons": [{ "path": "/api/cron/dispatch-reminders", "schedule": "0 6 * * *" }]
 ```
 
 For local dev, the same route can be hit manually with the bearer token.

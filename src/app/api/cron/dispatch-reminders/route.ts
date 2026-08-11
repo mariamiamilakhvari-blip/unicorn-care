@@ -28,11 +28,15 @@ function isAuthorised(req: NextRequest): boolean {
 }
 
 /**
- * Called with `Authorization: Bearer ${CRON_SECRET}` by two schedulers, both of which matter:
- * `.github/workflows/dispatch-reminders.yml` every 5 minutes, which is what makes a reminder
- * arrive near its time, and the daily Vercel cron in `vercel.json` as a backstop. The Hobby plan
- * caps Vercel cron at once a day, so on its own it would leave most of the day's doses to be
- * swept up hours late and then marked missed past the 6-hour grace window.
+ * Called with `Authorization: Bearer ${CRON_SECRET}` by cron-job.org every minute, which is what
+ * makes a reminder arrive near its time, and by the daily Vercel cron in `vercel.json` as a
+ * backstop. The Hobby plan caps Vercel cron at once a day, so on its own it would leave most of
+ * the day's doses to be swept up hours late and then marked missed past the 6-hour grace window.
+ *
+ * `.github/workflows/dispatch-reminders.yml` can still fire a sweep by hand but no longer holds a
+ * schedule: GitHub delivered about one run an hour against a five-minute cron, which is why the
+ * scheduler moved off it. Concurrent callers are safe — a row is claimed before anything is sent,
+ * so a manual run alongside the minute cadence cannot double-send.
  */
 export async function GET(req: NextRequest) {
   if (!isAuthorised(req)) {

@@ -124,18 +124,22 @@ last `GRACE_HOURS` (6). Anything older is marked `missed`. A once-a-day run ther
 hours of doses unsent *and* marks them missed — the product silently stops working.
 
 Vercel's **Hobby plan caps cron at once per day**, so `vercel.json` schedules a daily run as a
-safety net only. The real scheduler is `.github/workflows/dispatch-reminders.yml`, which hits the
-same endpoint every 5 minutes. Add two repository secrets for it:
+backstop only. The real scheduler is **cron-job.org**, calling the endpoint every minute with the
+`Authorization: Bearer $CRON_SECRET` header.
+
+`.github/workflows/dispatch-reminders.yml` held that schedule until it didn't: against a
+five-minute cron GitHub delivered roughly one run an hour, so reminders arrived up to an hour
+after the time printed on them, and every run was green while it happened. The workflow is now
+manual-trigger only, for firing a sweep by hand. It still needs two repository secrets to do that,
+and nothing else depends on them:
 
 | Secret | Value |
 |---|---|
 | `APP_URL` | `https://your-deployment.vercel.app` (no trailing slash) |
 | `CRON_SECRET` | same value as the `CRON_SECRET` env var on Vercel |
 
-GitHub's scheduler is best-effort: it can lag under load and disables scheduled workflows after 60
-days without repository activity. For production use either Vercel **Pro** (then set
-`vercel.json` back to `*/5 * * * *` and delete the workflow) or a dedicated scheduler such as
-cron-job.org or Upstash QStash.
+Whatever calls it, the cadence has to be minutes. Upstash QStash and Vercel **Pro** (which allows
+`*/5 * * * *` in `vercel.json` directly) are the other two options.
 
 ## iOS note
 

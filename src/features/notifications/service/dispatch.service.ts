@@ -31,16 +31,16 @@ const GRACE_HOURS = 6;
 /**
  * Hard ceiling per run so one sweep can never exceed the function timeout (PRD 04 §2).
  *
- * Sized for a sweep every 5 minutes. GitHub's scheduler is delivering roughly one run an hour
- * against a five-minute schedule, so each sweep now faces about twelve times the backlog it was
- * drawn for and 500 truncates it — the remainder waits for whenever the next run happens to land.
+ * Sized against the cadence: cron-job.org calls the sweep every minute, so a run carries about a
+ * minute of backlog and never comes close to this. It was briefly 2000, when GitHub Actions held
+ * the schedule and delivered roughly one run an hour — twelve times the backlog, which 500
+ * truncated. That is the number to raise again if the scheduler ever falls behind, and the
+ * symptom to look for is a sweep returning exactly this many rows.
  *
- * Raised as a stopgap until a scheduler that keeps its cadence takes over. Note this is only the
- * cheaper of the two ceilings: `RUN_BUDGET_MS` still stops a run after 45 seconds, and at three
- * sequential round trips per occurrence that is the one that binds first on a slow provider.
- * Lifting it needs the deployed function timeout known, which is a separate change.
+ * It is the cheaper of two ceilings either way: `RUN_BUDGET_MS` ends a run after 45 seconds, and
+ * at three sequential round trips per occurrence that is what binds first on a slow provider.
  */
-const DISPATCH_LIMIT = 2000;
+const DISPATCH_LIMIT = 500;
 
 /**
  * How long this run may spend sending before it stops and hands the rest back.
@@ -80,12 +80,13 @@ function wasDelivered(result: Awaited<ReturnType<typeof sendToPatientService>>):
  * The sweep (PRD 04 §"The sweep"). Runs unscoped by clinic — the cron is the platform,
  * authorised by `CRON_SECRET`, and has no clinic session.
  *
- * Two schedulers call this: GitHub Actions every 5 minutes, and the daily Vercel cron as a safety
- * net for when GitHub's best-effort scheduler lags. They collide every day at 06:00 UTC, and a
- * slow 5-minute run also overruns into the next one. Selecting rows and marking them afterwards
- * left a window where both runs read the same `pending` rows and pushed the same medication
- * reminder twice, so selection is a claim: a row is moved to `sending` before anything is sent,
- * and a run only ever sends rows carrying its own claim.
+ * Two schedulers call this: cron-job.org every minute, and the daily Vercel cron as a backstop.
+ * They collide every day at 06:00 UTC, and a run lasting more than a minute overruns into the
+ * next one — which the minute cadence makes routine rather than exceptional, since the budget
+ * allows 45 seconds. Selecting rows and marking them afterwards left a window where both runs
+ * read the same `pending` rows and pushed the same medication reminder twice, so selection is a
+ * claim: a row is moved to `sending` before anything is sent, and a run only ever sends rows
+ * carrying its own claim.
  *
  * Every claimed occurrence leaves this run as `sent`, even when nothing could be delivered.
  * Leaving it `pending` would make the next run pick it up again forever; the `undelivered`
