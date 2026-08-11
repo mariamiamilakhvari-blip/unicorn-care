@@ -5,6 +5,7 @@
  * table, composed in `email-copy.const.ts`. Nothing else imports these directly.
  */
 import { EmailCopy } from '@/shared/const/email-copy.types';
+import { WARNING_SEVERITY_LABELS } from '@/shared/const/recovery.const';
 
 export const EMAIL_COPY_KA: EmailCopy = {
   welcomeSubject: 'თქვენი სარეაბილიტაციო გეგმა',
@@ -28,11 +29,8 @@ export const EMAIL_COPY_KA: EmailCopy = {
   withoutFood: 'ცარიელ კუჭზე',
   minutesShort: 'წთ',
   dayRange: 'დღე',
-  severity: {
-    monitor: 'დააკვირდით',
-    call_clinic: 'დაურეკეთ კლინიკას',
-    urgent: 'გადაუდებელი — დაუყოვნებლივ მიმართეთ ექიმს',
-  },
+  // Same wording as the patient's screen — see the English table for why.
+  severity: WARNING_SEVERITY_LABELS.ka,
   footerNote: 'ეს წერილი გამოგზავნილია თქვენი კლინიკის მიერ. გთხოვთ, არ უპასუხოთ ამ მისამართს.',
   questionsCall: 'კითხვები? დარეკეთ',
   addressLabel: 'მისამართი:',

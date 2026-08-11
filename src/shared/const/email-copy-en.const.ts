@@ -5,6 +5,7 @@
  * table, composed in `email-copy.const.ts`. Nothing else imports these directly.
  */
 import { EmailCopy } from '@/shared/const/email-copy.types';
+import { WARNING_SEVERITY_LABELS } from '@/shared/const/recovery.const';
 
 export const EMAIL_COPY_EN: EmailCopy = {
   welcomeSubject: 'Your recovery plan',
@@ -28,11 +29,9 @@ export const EMAIL_COPY_EN: EmailCopy = {
   withoutFood: 'on an empty stomach',
   minutesShort: 'min',
   dayRange: 'day',
-  severity: {
-    monitor: 'Monitor',
-    call_clinic: 'Call your clinic',
-    urgent: 'Urgent — seek care now',
-  },
+  // The email says exactly what the patient's screen says. Written once, in the guide's own
+  // vocabulary, so an inbox and the portal can never instruct the same person differently.
+  severity: WARNING_SEVERITY_LABELS.en,
   footerNote: 'This email is from your clinic. Do not reply to this address.',
   questionsCall: 'Questions? Call',
   addressLabel: 'Address:',

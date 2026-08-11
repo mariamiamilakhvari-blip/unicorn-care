@@ -21,6 +21,7 @@ import {
 } from '@/features/notifications/types/email.types';
 import { emailCopy, EmailCopy } from '@/shared/const/email-copy.const';
 import { PROCEDURE_TYPES } from '@/shared/const/procedure.const';
+import { isWarningSeverity } from '@/shared/const/recovery.const';
 
 /**
  * The whole plan in one email, sent when the clinic activates it.
@@ -138,7 +139,7 @@ function expectedSection(guide: EmailGuide | null, copy: EmailCopy): string {
 function warningSection(guide: EmailGuide | null, copy: EmailCopy): string {
   if (!guide || guide.warning.length === 0) return '';
   const rows = guide.warning.map(item => {
-    const severity = copy.severity[item.severity] ?? item.severity;
+    const severity = isWarningSeverity(item.severity) ? copy.severity[item.severity] : item.severity;
     const description = item.description ? `<br />${escapeHtml(item.description)}` : '';
     return `<strong>${escapeHtml(item.title)}</strong> — ${escapeHtml(severity)}${description}`;
   });

@@ -90,6 +90,27 @@ describe('buildDailyEmail', () => {
     expect(html).toContain('Nothing scheduled for today.');
   });
 
+  /**
+   * The loudest severity used to fall through the label table — it was written against an older
+   * enum — and the patient read the bare token `emergency` in the row telling them to call an
+   * ambulance.
+   */
+  it('spells out the emergency severity instead of printing its enum value', () => {
+    const { html } = buildDailyEmail(
+      input({
+        guide: {
+          expected: [],
+          warning: [
+            { title: 'heavy bleeding', description: '', severity: 'emergency', fromDay: 0, toDay: 14 },
+          ],
+        },
+      })
+    );
+
+    expect(html).toContain('Seek emergency care now');
+    expect(html).not.toContain('emergency<');
+  });
+
   it('writes Georgian for a Georgian patient', () => {
     const { html, subject } = buildDailyEmail(
       input({

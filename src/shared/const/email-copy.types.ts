@@ -8,6 +8,8 @@
  * The two filled-in tables live in `email-copy-en.const.ts` and `email-copy-ka.const.ts`, and
  * `email-copy.const.ts` is what callers reach for.
  */
+import { WarningSeverity } from '@/shared/const/recovery.const';
+
 export type EmailCopy = {
   welcomeSubject: string;
   dailySubject: string;
@@ -30,7 +32,8 @@ export type EmailCopy = {
   withoutFood: string;
   minutesShort: string;
   dayRange: string;
-  severity: Record<string, string>;
+  /** Keyed by the schema enum, so a new severity cannot be added without wording for the inbox. */
+  severity: Record<WarningSeverity, string>;
   footerNote: string;
   questionsCall: string;
   /* Footer labels. Each line is omitted whole when the clinic has not filled the field in. */

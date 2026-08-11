@@ -18,6 +18,7 @@ import {
 } from '@/features/notifications/service/welcome-email.service';
 import { BuiltEmail, DailyEmailInput, EmailGuide } from '@/features/notifications/types/email.types';
 import { emailCopy, EmailCopy } from '@/shared/const/email-copy.const';
+import { isWarningSeverity } from '@/shared/const/recovery.const';
 
 /**
  * One email per recovery day, carrying only what applies to that day.
@@ -120,7 +121,7 @@ function warningSection(guide: EmailGuide | null, day: number, copy: EmailCopy):
   if (applicable.length === 0) return '';
 
   const rows = applicable.map(item => {
-    const severity = copy.severity[item.severity] ?? item.severity;
+    const severity = isWarningSeverity(item.severity) ? copy.severity[item.severity] : item.severity;
     const description = item.description ? `<br />${escapeHtml(item.description)}` : '';
     return `<strong>${escapeHtml(item.title)}</strong> — ${escapeHtml(severity)}${description}`;
   });
