@@ -22,13 +22,20 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { WARNING_SEVERITIES } from '@/shared/const/recovery.const';
+import { WARNING_SEVERITIES, warningSeverityLabel } from '@/shared/const/recovery.const';
+import { AppLocale } from '@/shared/types/roles';
+
+type WarningFieldsProps = {
+  control: Control<RecoveryGuideFormType>;
+  /** The guide's own language. Severity labels follow it, not the clinician's interface. */
+  locale: AppLocale;
+};
 
 /**
  * "When to contact the clinic". Severity is the clinic's own instruction to the patient — the
  * product never derives or upgrades it.
  */
-export function WarningFields({ control }: { control: Control<RecoveryGuideFormType> }) {
+export function WarningFields({ control, locale }: WarningFieldsProps) {
   const t = useTranslations('recoveryGuide');
   const tCommon = useTranslations('common');
   const { fields, append, remove } = useFieldArray({ control, name: 'warning' });
@@ -50,12 +57,17 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
 
       {fields.map((row, index) => (
         <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-3">
-          <div className="grid gap-3 sm:grid-cols-4">
+          {/*
+            Twelfths rather than four equal columns: the four fields are nothing like equal. The
+            title is a sentence, the severity is a phrase, and the two day fields hold at most three
+            digits each — split evenly, the title truncated while the day inputs sat mostly empty.
+          */}
+          <div className="grid gap-3 sm:grid-cols-12">
             <FormField
               control={control}
               name={`warning.${index}.title`}
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0 sm:col-span-5">
                   <FormLabel>{t('itemTitle')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -68,7 +80,7 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
               control={control}
               name={`warning.${index}.severity`}
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0 sm:col-span-3">
                   <FormLabel>{t('severityLabel')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
@@ -79,7 +91,7 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
                     <SelectContent>
                       {WARNING_SEVERITIES.map(value => (
                         <SelectItem key={value} value={value}>
-                          {t(`severity.${value}`)}
+                          {warningSeverityLabel(locale, value)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -92,7 +104,7 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
               control={control}
               name={`warning.${index}.fromDay`}
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0 sm:col-span-2">
                   <FormLabel>{t('fromDay')}</FormLabel>
                   <FormControl>
                     <Input
@@ -110,7 +122,7 @@ export function WarningFields({ control }: { control: Control<RecoveryGuideFormT
               control={control}
               name={`warning.${index}.toDay`}
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0 sm:col-span-2">
                   <FormLabel>{t('toDay')}</FormLabel>
                   <FormControl>
                     <Input

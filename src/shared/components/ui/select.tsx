@@ -45,6 +45,9 @@ function SelectTrigger({
         'data-[placeholder]:text-muted-foreground data-[size=default]:h-9 data-[size=sm]:h-8',
         '*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex',
         '*:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2',
+        // Without min-w-0 the value is a flex item at its full intrinsic width: line-clamp never
+        // engages and a long option pushes the trigger past its grid column into the next field.
+        '*:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate',
         'dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:ring-destructive/40',
         "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "[&_svg:not([class*='text-'])]:text-muted-foreground",

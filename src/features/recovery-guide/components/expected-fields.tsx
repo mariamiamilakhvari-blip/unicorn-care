@@ -39,12 +39,14 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
 
       {fields.map((row, index) => (
         <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-3">
-          <div className="grid gap-3 sm:grid-cols-4">
+          {/* Twelfths, and the same day-column width as the warning rows below: the two lists sit
+              one above the other, so their day fields should line up rather than nearly line up. */}
+          <div className="grid gap-3 sm:grid-cols-12">
             <FormField
               control={control}
               name={`expected.${index}.title`}
               render={({ field }) => (
-                <FormItem className="sm:col-span-2">
+                <FormItem className="min-w-0 sm:col-span-8">
                   <FormLabel>{t('itemTitle')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -57,7 +59,7 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
               control={control}
               name={`expected.${index}.fromDay`}
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0 sm:col-span-2">
                   <FormLabel>{t('fromDay')}</FormLabel>
                   <FormControl>
                     <Input
@@ -75,7 +77,7 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
               control={control}
               name={`expected.${index}.toDay`}
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0 sm:col-span-2">
                   <FormLabel>{t('toDay')}</FormLabel>
                   <FormControl>
                     <Input

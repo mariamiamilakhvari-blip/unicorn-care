@@ -80,7 +80,7 @@ export function CarePlanGuideSection({ manipulationType, locale }: CarePlanGuide
 
         <ExpectedFields control={form.control} />
         <Separator />
-        <WarningFields control={form.control} />
+        <WarningFields control={form.control} locale={locale} />
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
