@@ -309,7 +309,13 @@
     "linkExpiredHelp": "Contact your clinic to get a new link",
     "offline": "You are offline",
     "kind_guide": "What is expected",
-    "nothingTodayHelp": "Nothing is due today. Your plan continues tomorrow."
+    "nothingTodayHelp": "Nothing is due today. Your plan continues tomorrow.",
+    "linkRequestEmail": "Your email address",
+    "linkRequestSubmit": "Email me a link",
+    "linkRequestSending": "Sending…",
+    "linkRequestFailed": "Could not send the link. Please try again.",
+    "linkRequestedTitle": "Check your email",
+    "linkRequestedHelp": "If that address belongs to a patient, a link to open your plan is on its way. It works once and stops working after 24 hours."
   },
   "push": {
     "enableNotifications": "Enable notifications",

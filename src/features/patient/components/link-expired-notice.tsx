@@ -1,6 +1,8 @@
 import { LinkIcon } from 'lucide-react';
 
+import { PortalLinkRequestForm } from '@/features/patient/components/portal-link-request-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Separator } from '@/shared/components/ui/separator';
 
 type LinkExpiredNoticeProps = {
   title: string;
@@ -17,8 +19,10 @@ export function LinkExpiredNotice({ title, help }: LinkExpiredNoticeProps) {
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">{help}</p>
+          <Separator />
+          <PortalLinkRequestForm />
         </CardContent>
       </Card>
     </div>

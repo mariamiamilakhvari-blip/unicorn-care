@@ -79,4 +79,13 @@ export const EMAIL_COPY_EN: EmailCopy = {
     'If this was not you, ignore this email. Your password has not changed and nobody can ' +
     'change it without this link.',
   resetFooterNote: 'This email is from Unicorn Care. Do not reply to this address.',
+  portalLinkSubject: 'Open your recovery plan',
+  portalLinkHeadline: 'Open your recovery plan',
+  portalLinkIntro:
+    'Use the button below to open your recovery plan on this device. You will stay signed in ' +
+    'afterwards, so you only need to do this once per device.',
+  portalLinkCta: 'Open my plan',
+  portalLinkExpiry: 'This link works once and stops working after {hours} hours.',
+  portalLinkIgnore:
+    'If you did not ask for this, ignore this email. Nobody can open your plan without this link.',
 };

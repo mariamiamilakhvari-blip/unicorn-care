@@ -83,4 +83,14 @@ export type EmailCopy = {
   resetExpiry: string;
   resetIgnore: string;
   resetFooterNote: string;
+  /*
+    The link a patient asks for when the portal no longer opens on their device. Sent by the
+    clinic, so it keeps the standard footer — unlike the reset above.
+  */
+  portalLinkSubject: string;
+  portalLinkHeadline: string;
+  portalLinkIntro: string;
+  portalLinkCta: string;
+  portalLinkExpiry: string;
+  portalLinkIgnore: string;
 };

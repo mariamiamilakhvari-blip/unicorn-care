@@ -6,6 +6,7 @@ import {
   LINK_EXPIRED_ROUTE,
   PATIENT_COOKIE_NAME,
   PATIENT_PORTAL_ROUTE,
+  PORTAL_LOGIN_ROUTE,
   PROTECTED_ROUTES,
   SESSION_COOKIE_NAMES,
   SIGN_IN_ROUTE,
@@ -17,9 +18,22 @@ const matchesRoute = (pathname: string, routes: string[]): boolean =>
 const isPatientPortalPath = (pathname: string): boolean =>
   matchesRoute(pathname, [PATIENT_PORTAL_ROUTE]);
 
-/** `/p/<token>` — exactly one segment after `/p` — is the public redemption route. */
-const isPatientRedemptionPath = (pathname: string): boolean =>
-  pathname.split('/').filter(Boolean).length === 2;
+/**
+ * The two public ways into the portal, both of which carry their credential in the URL and so must
+ * reach their route handler without a cookie:
+ *
+ *   `/p/<token>`        the durable access token from a staff-issued link
+ *   `/p/login/<token>`  the single-use link a patient asked for by email
+ *
+ * Anything else under `/p` is the portal proper and needs the cookie. Getting this wrong is silent
+ * in the worst way — the redirect fires before the route runs, so the link looks invalid rather
+ * than blocked.
+ */
+const isPatientRedemptionPath = (pathname: string): boolean => {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length === 2) return true;
+  return segments.length === 3 && `/${segments[0]}/${segments[1]}` === PORTAL_LOGIN_ROUTE;
+};
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

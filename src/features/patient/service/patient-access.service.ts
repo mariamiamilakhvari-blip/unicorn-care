@@ -11,11 +11,50 @@ import {
   PatientAccessGrant,
 } from '@/features/patient/types/patient.types';
 import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
+import { SITE_URL } from '@/shared/const/seo.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 import { hashPassword } from '@/shared/utils/password';
 
 const TOKEN_BYTES = 32;
+
+/**
+ * The origin a staff-issued link points at. Same rule as the password reset link: `NEXTAUTH_URL`
+ * so a link minted locally opens the local app, falling back to the public origin. The fallback is
+ * not cosmetic — interpolating the bare variable produced `undefined/p/<token>` on any deployment
+ * that had not set it.
+ */
+const linkOrigin = (): string => process.env.NEXTAUTH_URL || SITE_URL;
+
+/**
+ * A correlation handle for the logs. The first bytes of the *hash*, never the token: it is enough
+ * to follow one link from issue to redemption across log lines, and it cannot be turned back into
+ * anything that opens a portal.
+ */
+export function tokenTag(rawToken: string): string {
+  return hashPassword(rawToken).slice(0, 8);
+}
+
+/**
+ * Writes a durable access token and hands back the raw value, which exists nowhere else.
+ *
+ * Shared by the staff-issued link and by the redemption of an emailed portal link, so both arrive
+ * at a session the same way — one place decides what an access token is.
+ */
+export async function mintAccessToken(patientId: string, clinicId: string): Promise<string> {
+  const rawToken = randomBytes(TOKEN_BYTES).toString('base64url');
+
+  await patientAccessTokenRepository.create({
+    patientId: new Types.ObjectId(patientId),
+    clinicId: new Types.ObjectId(clinicId),
+    tokenHash: hashPassword(rawToken),
+    revokedAt: null,
+    lastUsedAt: null,
+  });
+
+  console.warn('[patient-access] issued', { patientId, clinicId, token: tokenTag(rawToken) });
+  return rawToken;
+}
 
 /**
  * PRD 02 §B "Issuing". 32 random bytes → base64url is the raw token; only its SHA-256 is stored,
@@ -37,18 +76,10 @@ export async function issueTokenService(
   const patient = await patientRepository.findById(patientId, clinicId);
   if (!patient) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
-  const rawToken = randomBytes(TOKEN_BYTES).toString('base64url');
-
-  await patientAccessTokenRepository.create({
-    patientId: new Types.ObjectId(patientId),
-    clinicId: new Types.ObjectId(clinicId),
-    tokenHash: hashPassword(rawToken),
-    revokedAt: null,
-    lastUsedAt: null,
-  });
+  const rawToken = await mintAccessToken(patientId, clinicId);
 
   return {
-    data: { url: `${process.env.NEXTAUTH_URL}${PATIENT_PORTAL_ROUTE}/${rawToken}` },
+    data: { url: `${linkOrigin()}${PATIENT_PORTAL_ROUTE}/${rawToken}` },
     status: 201,
   };
 }
@@ -60,10 +91,23 @@ export async function issueTokenService(
 export async function redeemTokenService(
   rawToken: string
 ): Promise<ServiceResult<PatientAccessGrant>> {
+  /*
+    The caller gets one undifferentiated 401; the log gets the reason. Which of these fired is the
+    difference between "the clinic revoked this", "this link was never ours" and "the patient
+    record is gone", and without it every one of them looked identical from the outside.
+  */
+  const tag = tokenTag(rawToken);
+
   const token = await patientAccessTokenRepository.findByTokenHash(hashPassword(rawToken));
-  if (!token) return { data: { error: 'INVALID_TOKEN' }, status: 401 };
+  if (!token) {
+    console.warn('[patient-access] rejected: unknown token', { token: tag });
+    return { data: { error: 'INVALID_TOKEN' }, status: 401 };
+  }
   // Truthy check, not `!== null`: the field is nullable *and* optional in the inferred type.
-  if (token.revokedAt) return { data: { error: 'INVALID_TOKEN' }, status: 401 };
+  if (token.revokedAt) {
+    console.warn('[patient-access] rejected: revoked token', { token: tag });
+    return { data: { error: 'INVALID_TOKEN' }, status: 401 };
+  }
 
   const now = clock.now();
 
@@ -71,7 +115,10 @@ export async function redeemTokenService(
   const clinicId = token.clinicId.toString();
 
   const patient = await patientRepository.findById(patientId, clinicId);
-  if (!patient) return { data: { error: 'INVALID_TOKEN' }, status: 401 };
+  if (!patient) {
+    console.warn('[patient-access] rejected: patient not found', { token: tag, patientId });
+    return { data: { error: 'INVALID_TOKEN' }, status: 401 };
+  }
 
   await patientAccessTokenRepository.touchLastUsed(token._id.toString(), now);
 

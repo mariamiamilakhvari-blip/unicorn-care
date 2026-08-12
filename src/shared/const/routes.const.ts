@@ -24,6 +24,13 @@ export const PATIENT_COOKIE_NAME = 'uc_patient';
 
 export const LINK_EXPIRED_ROUTE = '/link-expired';
 
+/**
+ * Where an emailed portal link lands. Deeper than `/p/<token>` on purpose: that path takes the
+ * durable access token, this one takes the short-lived single-use link, and the two must never be
+ * matched by the same route.
+ */
+export const PORTAL_LOGIN_ROUTE = '/p/login';
+
 export const SIGN_IN_ROUTE = '/sign-in';
 
 export const DASHBOARD_ROUTE = '/dashboard';
