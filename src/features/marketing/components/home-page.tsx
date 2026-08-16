@@ -82,7 +82,12 @@ export const HomePage = () => {
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" asChild>
+            {/*
+              Filled indigo rather than outlined. An outline button draws its shape from the border
+              alone, and on a near-white surface that reads as an empty box beside a solid sage one
+              — the pair stopped looking like two choices. `secondary` is the indigo fill.
+            */}
+            <Button variant="secondary" size="lg" asChild>
               <Link href="/sign-in">{t('ctaSecondary')}</Link>
             </Button>
           </div>

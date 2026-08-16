@@ -52,64 +52,92 @@
 }
 
 /*
-  The product is dark by default: Midnight Indigo is the surface, Sage Green is the action colour.
-  Surfaces step up in lightness (background < card < muted) so panels separate without borders
-  doing all the work.
+  The product is light by default: Ivory is the surface, Sage Green is the action colour and
+  Midnight Indigo is the ink.
+
+  The surface is near-white, so panels cannot lift off it the way they do on a dark field —
+  there is almost no headroom left above 0.961. Cards go to plain white and the borders carry the
+  separation instead. That is a real inversion of the dark theme, where the field is dark enough
+  that a card can step up and be seen without any border at all.
+
+  Every neutral carries the surface's warm hue rather than the ink's. Cool grey panels on a cream
+  field read as a rendering fault, not as a neutral: the eye judges "grey" relative to whatever
+  surrounds it, and next to warm paper a blue-grey looks plainly blue.
 */
 :root {
-  /* Midnight Indigo #092B4D */
-  --background: oklch(0.286 0.073 252.1);
-  --foreground: oklch(0.97 0.008 252);
-  --card: oklch(0.344 0.084 252.1);
-  --card-foreground: oklch(0.97 0.008 252);
-  --popover: oklch(0.344 0.084 252.1);
-  --popover-foreground: oklch(0.97 0.008 252);
+  /* Ivory #F5F2E8 */
+  --background: oklch(0.961 0.014 91.9);
+  /* Midnight Indigo as ink. 10.8:1 on the ivory — well past the 4.5:1 body-text floor. */
+  --foreground: oklch(0.25 0.062 252.1);
   /*
-    Sage Green #79947E — buttons, icons, focus.
-    The label on it is ink, not white: sage is light enough that white reaches only 3.31:1, while
-    the near-black indigo below clears 5:1. Never put white text on this fill.
+    White, not a tint. On a 0.961 surface there is no room to lift a panel by lightness alone, so
+    the card is the one plainly lighter thing on the page and `--border` does the rest.
+  */
+  --card: oklch(0.995 0.003 92);
+  --card-foreground: oklch(0.25 0.062 252.1);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.062 252.1);
+  /*
+    Sage Green #79947E — buttons, icons, focus. Unchanged by the background move: it is a brand
+    colour, and the label on it is still ink rather than white. White reaches only 3.31:1 on this
+    fill while the near-black indigo clears 5:1. Never put white text on this fill.
   */
   --primary: oklch(0.639 0.045 150.5);
   --primary-foreground: oklch(0.20 0.05 252.1);
   /*
-    Sage against #092B4D is 4.34:1, comfortably over the 3:1 WCAG floor for UI component
-    boundaries — unlike the moss it replaces, which sat at 2.33:1 and needed this edge to be
-    legible at all. The lighter edge is kept for definition and for focus rings, not for rescue.
+    The edge is an accessibility requirement, and on this surface it had to invert — it lifts on
+    the dark theme and must *drop* here. Sage against the ivory is 2.95:1, still under the 3:1
+    WCAG floor for UI component boundaries, so a sage button has no readable shape without it.
+    The near miss is the trap: it looks fine and fails the check, which is exactly the case that
+    survives a design review and gets caught in an audit.
   */
-  --primary-edge: oklch(0.72 0.048 150.5);
-  --secondary: oklch(0.396 0.094 251.8);
+  --primary-edge: oklch(0.50 0.048 150.5);
+  /*
+    Midnight Indigo #0c2a4a as a filled surface — this is the `Sign in` button.
+    13:1 against the ivory, and white on it clears 14:1.
+  */
+  --secondary: oklch(0.282 0.069 253.0);
   --secondary-foreground: oklch(0.97 0.008 252);
-  --muted: oklch(0.372 0.088 252);
-  --muted-foreground: oklch(0.80 0.032 252);
-  --accent: oklch(0.42 0.075 200);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.62 0.21 25);
-  --border: oklch(1 0 0 / 18%);
-  --input: oklch(1 0 0 / 22%);
-  --ring: oklch(0.72 0.048 150.5);
+  --muted: oklch(0.925 0.016 92);
+  /* Held at 6:1 on the ivory. Secondary text is still text, so it gets no 3:1 exemption. */
+  --muted-foreground: oklch(0.40 0.055 252);
+  --accent: oklch(0.94 0.020 92);
+  --accent-foreground: oklch(0.25 0.062 252.1);
+  --destructive: oklch(0.52 0.21 25);
+  /*
+    Indigo at low alpha, and carrying more of the separation than a border has to on a dark
+    field — with cards at plain white there is only 0.034 of lightness between a panel and the
+    page, so the border is what makes the edge of a card a fact rather than a suggestion.
+  */
+  --border: oklch(0.286 0.073 252.1 / 22%);
+  --input: oklch(0.286 0.073 252.1 / 32%);
+  --ring: oklch(0.50 0.048 150.5);
   --moss: oklch(0.639 0.045 150.5);
   --moss-foreground: oklch(0.20 0.05 252.1);
-  /* Ramp alternates the two brand hues, lifted for legibility on the indigo surface. */
-  --chart-1: oklch(0.72 0.048 150.5);
-  --chart-2: oklch(0.72 0.075 251);
-  --chart-3: oklch(0.565 0.042 150.5);
+  /* Ramp alternates the two brand hues, darkened to hold their own against a light surface. */
+  --chart-1: oklch(0.52 0.048 150.5);
+  --chart-2: oklch(0.45 0.085 251);
+  --chart-3: oklch(0.64 0.042 150.5);
   --chart-4: oklch(0.60 0.09 251.5);
-  --chart-5: oklch(0.84 0.040 150.5);
+  --chart-5: oklch(0.38 0.040 150.5);
   --radius: 0.625rem;
-  --sidebar: oklch(0.322 0.080 252.1);
-  --sidebar-foreground: oklch(0.97 0.008 252);
+  /* A shade below the page rather than above it — the sidebar is a frame, not a raised panel. */
+  --sidebar: oklch(0.935 0.018 92);
+  --sidebar-foreground: oklch(0.25 0.062 252.1);
   --sidebar-primary: oklch(0.639 0.045 150.5);
   --sidebar-primary-foreground: oklch(0.20 0.05 252.1);
-  --sidebar-accent: oklch(0.40 0.07 200);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 18%);
-  --sidebar-ring: oklch(0.72 0.048 150.5);
+  --sidebar-accent: oklch(0.90 0.022 92);
+  --sidebar-accent-foreground: oklch(0.25 0.062 252.1);
+  --sidebar-border: oklch(0.286 0.073 252.1 / 22%);
+  --sidebar-ring: oklch(0.50 0.048 150.5);
 }
 
 /*
-  Same identity, deeper. The default theme is already dark, so this is a night variant of the
-  indigo — not a separate palette. The green fill is the same sage in both themes; only the edge
-  and ring lift a step, since a darker field needs a brighter boundary to read as one.
+  Same identity, at night. The indigo that is ink in the light theme becomes the surface here, and
+  the ivory drops out entirely — a near-white paper tone has no dark counterpart, and darkening it
+  yields a muddy brown rather than a night version of itself. The green fill is the same sage in
+  both themes; the edge and ring lift rather than drop, since a dark field needs a brighter
+  boundary where a light field needs a darker one.
 */
 .dark {
   --background: oklch(0.205 0.055 252.1);
