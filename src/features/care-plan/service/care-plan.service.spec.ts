@@ -34,6 +34,15 @@ vi.mock('@/features/recovery-guide/service/resolve-guide.service', () => ({
   resolveGuideForProcedure: vi.fn(),
 }));
 
+/*
+  Activation emails the patient their whole plan. That is a network call to the mail provider and
+  a read of its own, neither of which this spec is about — and left real it makes the outcome of
+  an activation test depend on whether a socket happens to answer.
+*/
+vi.mock('@/features/notifications/service/email-dispatch.service', () => ({
+  sendWelcomeEmailService: vi.fn(),
+}));
+
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
@@ -338,5 +347,66 @@ describe('getAdherenceService', () => {
     if ('error' in summary) throw new Error('expected an adherence summary');
     expect(summary.totals).toEqual({ pending: 0, sent: 0, done: 0, skipped: 0, missed: 0 });
     expect(summary.lastSevenDays.every(bucket => bucket.total === 0)).toBe(true);
+  });
+});
+
+/**
+ * A care plan is a clinical record like a patient is, so it sits behind the same subscription
+ * wall. Without this a clinic whose trial had run out could no longer add a patient but could
+ * still build and switch on a full reminder schedule for the ones they already had — the limit
+ * was on the roster rather than on the product.
+ */
+describe('care plans behind the subscription wall', () => {
+  /** A clinic seven days past the start of its trial, with everything else left alone. */
+  const lapsedClinic = { timezone: 'Europe/Berlin', locale: 'en', trialEndsAt: new Date(Date.now() - 86_400_000) } as never;
+
+  it('refuses to create a plan once the trial has expired', async () => {
+    clinics.findById.mockResolvedValue(lapsedClinic);
+
+    expect(await createCarePlanService(CLINIC_ID, createInput())).toEqual({
+      data: { error: 'SUBSCRIPTION_INACTIVE' },
+      status: 402,
+    });
+    expect(plans.create).not.toHaveBeenCalled();
+  });
+
+  /* 402, not 403: the request is valid and payment is the only thing missing. */
+  it('answers a lapsed clinic with payment required, not forbidden', async () => {
+    clinics.findById.mockResolvedValue(lapsedClinic);
+
+    const { status } = await createCarePlanService(CLINIC_ID, createInput());
+
+    expect(status).toBe(402);
+  });
+
+  /*
+    Activation is the moment reminders are materialised and start being sent, so it is gated even
+    though the plan already exists — a draft written before the trial ran out must not be able to
+    switch on messaging afterwards.
+  */
+  it('refuses to activate an existing plan once the trial has expired', async () => {
+    clinics.findById.mockResolvedValue(lapsedClinic);
+    plans.findById.mockResolvedValue(planDoc());
+
+    expect(await activateCarePlanService(CLINIC_ID, PLAN_ID)).toEqual({
+      data: { error: 'SUBSCRIPTION_INACTIVE' },
+      status: 402,
+    });
+    expect(occurrences.insertMany).not.toHaveBeenCalled();
+    expect(plans.updateById).not.toHaveBeenCalled();
+  });
+
+  it('lets a clinic inside its trial create and activate as normal', async () => {
+    clinics.findById.mockResolvedValue({
+      timezone: 'Europe/Berlin',
+      locale: 'en',
+      trialEndsAt: new Date(Date.now() + 3 * 86_400_000),
+    } as never);
+    plans.findById.mockResolvedValue(planDoc());
+    // `clearAllMocks` keeps implementations, so an earlier test's "one already exists" survives.
+    plans.findByProcedureId.mockResolvedValue(null);
+
+    expect((await createCarePlanService(CLINIC_ID, createInput())).status).toBe(201);
+    expect((await activateCarePlanService(CLINIC_ID, PLAN_ID)).status).toBe(200);
   });
 });

@@ -45,6 +45,20 @@ export type SubscriptionView = {
   activePatients: number;
   isAtPatientLimit: boolean;
   canWrite: boolean;
+  /** Whether there is a live subscription left to switch off — trialing or active, nothing else. */
+  canCancel: boolean;
+  /**
+   * Whether reminders are still going out. True on a live subscription, and true on a lapsed one
+   * until the 14-day grace window closes — writing and sending stop at different moments.
+   */
+  remindersActive: boolean;
+  /** Lapsed, but still inside the grace window: reminders are running on borrowed time. */
+  isInGrace: boolean;
+  /** Inside the last four days of the grace window. */
+  isGraceWarning: boolean;
+  /** When reminders stop. `null` while the subscription is live. */
+  graceEndsAt: string | null;
+  graceDaysLeft: number | null;
   trialEndsAt: string | null;
   trialDaysLeft: number | null;
   renewsAt: string | null;

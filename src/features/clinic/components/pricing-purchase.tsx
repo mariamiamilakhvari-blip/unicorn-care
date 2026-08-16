@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 
 import { PricingTable } from '@/features/clinic/components/pricing-table';
+import { SubscriptionStatusStrip } from '@/features/clinic/components/subscription-status-strip';
 import { useSubscription } from '@/features/clinic/hooks/use-subscription';
 
 /**
@@ -18,6 +19,9 @@ export function PricingPurchase() {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Days left and seats used, above the plans — the two numbers that decide the purchase. */}
+      {subscription && <SubscriptionStatusStrip subscription={subscription} />}
+
       <PricingTable
         onSelect={startCheckout}
         currentPlan={subscription?.plan}

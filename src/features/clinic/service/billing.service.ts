@@ -152,6 +152,18 @@ export async function applySubscriptionEventService(
       : clinic.planRenewsAt ?? null,
     // The trial is over once a real subscription exists either way.
     trialEndsAt: status === 'active' ? null : clinic.trialEndsAt ?? null,
+    /*
+      The anchor for the 14-day reminder grace window.
+
+      Stamped when this event is what ended paid access, and cleared the moment a subscription goes
+      active — so a clinic that lapses, pays, and lapses again gets a fresh fourteen days instead of
+      the remains of the old window. Kept as-is on a repeated ending event (`on_hold` followed by
+      `failed`, say) rather than restamped, because each restamp would slide the cutoff further out
+      and a clinic receiving a retry a week could stay in grace indefinitely.
+    */
+    subscriptionEndedAt: status === 'active'
+      ? null
+      : clinic.subscriptionEndedAt ?? clock.now(),
   });
 
   return { data: { applied: true }, status: 200 };

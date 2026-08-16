@@ -1,8 +1,9 @@
 'use client';
 
-import { AlertTriangle, CreditCard } from 'lucide-react';
+import { AlertTriangle, BellRing, CreditCard } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import { CancelSubscription } from '@/features/clinic/components/cancel-subscription';
 import { PricingTable } from '@/features/clinic/components/pricing-table';
 import { useSubscription } from '@/features/clinic/hooks/use-subscription';
 import { Badge } from '@/shared/components/ui/badge';
@@ -11,11 +12,15 @@ import { cn } from '@/shared/lib/utils';
 
 const METER_CELLS = 24;
 
+/** Cancellation failures that have copy of their own. Everything else falls through raw. */
+const CANCEL_ERRORS = ['NOT_CANCELLABLE', 'CANCEL_FAILED'];
+
 /** Seat usage and plan state, plus the switcher. Shown on the clinic page. */
 export function SubscriptionCard() {
   const t = useTranslations('pricing');
   const tCommon = useTranslations('common');
-  const { subscription, isLoading, isPending, error, startCheckout } = useSubscription();
+  const { subscription, isLoading, isPending, error, startCheckout, cancelSubscription } =
+    useSubscription();
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>;
   if (!subscription) return null;
@@ -86,9 +91,42 @@ export function SubscriptionCard() {
           </p>
         )}
 
-        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+        {/*
+          What is happening to the patients, stated separately from what is happening to the
+          account. A lapsed clinic's first question is whether the people in their care are still
+          being reminded, and the plan badge above cannot answer it — writing and sending stop
+          fourteen days apart.
+        */}
+        {!subscription.canWrite && (
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <BellRing
+              className={cn(
+                'mt-0.5 size-4 shrink-0',
+                subscription.remindersActive ? 'text-primary' : 'text-destructive'
+              )}
+              aria-hidden
+            />
+            {subscription.isInGrace && subscription.graceDaysLeft !== null
+              ? t('remindersUntil', { count: subscription.graceDaysLeft })
+              : t('remindersStopped')}
+          </p>
+        )}
+
+        {/* Known codes get a sentence the clinic can act on; anything else shows raw. */}
+        {error && (
+          <p className="text-sm font-medium text-destructive">
+            {CANCEL_ERRORS.includes(error) ? t(`cancelError.${error}`) : error}
+          </p>
+        )}
 
         <PricingTable onSelect={startCheckout} currentPlan={plan} isPending={isPending} />
+
+        {/* Below the plans: leaving is the last thing to offer, after every way to stay. */}
+        <CancelSubscription
+          subscription={subscription}
+          isPending={isPending}
+          onCancel={cancelSubscription}
+        />
       </CardContent>
     </Card>
   );
