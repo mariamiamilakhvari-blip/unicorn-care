@@ -55,7 +55,17 @@ export function buildReminderEmail(input: ReminderEmailInput): BuiltEmail {
   ];
 
   return {
-    subject: `${copy.reminderSubject}: ${input.title}`,
+    /*
+      The time, not the medication.
+
+      This read `Reminder: Amoxicillin — 500 mg`, which put a prescription into a subject line —
+      the one part of an email that shows in an inbox preview over someone's shoulder, and the
+      part that survives in transport and provider logs whatever the body is encrypted with. Data
+      minimisation under the Law of Georgia on Personal Data Protection asks the processor to send
+      only what the purpose needs, and the purpose here is "open this now": the time carries that
+      and the drug name does not. The title is still the first line of the body, behind the click.
+    */
+    subject: `${copy.reminderSubject} — ${at}`,
     html: shell(heading, sections, input.clinic, copy),
     text: toPlainText(heading, lines, input.clinic, copy),
   };

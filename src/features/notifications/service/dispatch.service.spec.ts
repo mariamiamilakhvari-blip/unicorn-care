@@ -37,6 +37,15 @@ vi.mock('@/features/notifications/service/email-dispatch.service', () => ({
   createReminderEmailSender: vi.fn(),
 }));
 
+/*
+  The sweep reads the patient to check consent to automated messages before it sends anything.
+  Mocked to a consenting patient by default, so only the cases that are about withdrawal have to
+  say anything about it.
+*/
+vi.mock('@/features/patient/repository/patient.repository', () => ({
+  patientRepository: { findById: vi.fn() },
+}));
+
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
@@ -47,6 +56,7 @@ import {
   createReminderEmailSender,
   sendDailyDigestsService,
 } from '@/features/notifications/service/email-dispatch.service';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { webPushClient } from '@/shared/lib/web-push-client';
 
 import { dispatchDueRemindersService } from './dispatch.service';
@@ -58,6 +68,7 @@ const extendPlans = vi.mocked(extendActivePlansService);
 const plans = vi.mocked(carePlanRepository);
 const sendDigests = vi.mocked(sendDailyDigestsService);
 const makeReminderSender = vi.mocked(createReminderEmailSender);
+const patientRepo = vi.mocked(patientRepository);
 
 /** The per-occurrence email sender the sweep builds once per run. */
 let sendReminderEmail: ReturnType<typeof createReminderEmailSender>;
@@ -99,6 +110,13 @@ const givenDue = (occurrences: ReminderOccurrenceDocument[], claimed = occurrenc
   occurrenceRepo.findByClaimId.mockResolvedValue(claimed);
 };
 
+/**
+ * A patient who consents to being messaged. `notificationsRevokedAt: null` is the whole point of
+ * it — the sweep withholds every send when that field carries a date.
+ */
+const buildPatient = (notificationsRevokedAt: Date | null = null) =>
+  ({ _id: new mongoose.Types.ObjectId(PATIENT_ID), notificationsRevokedAt }) as never;
+
 const buildSubscription = (endpoint: string): PushSubscriptionDocument => ({
   _id: new mongoose.Types.ObjectId(),
   patientId: new mongoose.Types.ObjectId(PATIENT_ID),
@@ -132,6 +150,8 @@ describe('dispatchDueRemindersService', () => {
     sendDigests.mockResolvedValue({ data: { considered: 0, sent: 0, failed: 0, skipped: 0 }, status: 200 });
     sendReminderEmail = vi.fn().mockResolvedValue(true);
     makeReminderSender.mockReturnValue(sendReminderEmail);
+    // A patient who still consents to automated messages, which is every case but the two below.
+    patientRepo.findById.mockResolvedValue(buildPatient());
   });
 
   it('queries the 6h window with the 500 cap and marks a delivered occurrence sent', async () => {
@@ -154,6 +174,70 @@ describe('dispatchDueRemindersService', () => {
       emailDelivered: true,
     });
     expect(result.data).toMatchObject({ processed: 1, sent: 1, undelivered: 0 });
+  });
+
+  /*
+    Withdrawing consent to automated messages is a right the Law of Georgia on Personal Data
+    Protection says takes effect when it is exercised, so it has to bind the sweep rather than the
+    next regeneration. These cases pin that it stops both channels, retires the row anyway, and is
+    counted apart from a delivery failure.
+  */
+  describe('withdrawn consent', () => {
+    beforeEach(() => {
+      patientRepo.findById.mockResolvedValue(buildPatient(new Date('2026-07-20T00:00:00.000Z')));
+      subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
+      pushClient.send.mockResolvedValue({ ok: true });
+    });
+
+    it('sends neither push nor email', async () => {
+      givenDue([buildOccurrence()]);
+
+      await dispatchDueRemindersService();
+
+      expect(pushClient.send).not.toHaveBeenCalled();
+      expect(sendReminderEmail).not.toHaveBeenCalled();
+    });
+
+    it('retires the row rather than leaving it for the next run to pick up forever', async () => {
+      givenDue([buildOccurrence()]);
+
+      await dispatchDueRemindersService();
+
+      expect(occurrenceRepo.updateStatus).toHaveBeenCalledWith(OCCURRENCE_ID, {
+        status: 'sent',
+        sentAt: NOW,
+        pushDelivered: false,
+        emailDelivered: false,
+      });
+    });
+
+    it('counts it as withheld, not as undelivered — the sweep worked correctly', async () => {
+      givenDue([buildOccurrence()]);
+
+      const result = await dispatchDueRemindersService();
+
+      expect(result.data).toMatchObject({ processed: 1, withheld: 1, sent: 0, undelivered: 0 });
+    });
+
+    it('reads the patient once for a run carrying several of their reminders', async () => {
+      givenDue([buildOccurrence(), buildOccurrence('507f1f77bcf86cd799439066')]);
+
+      await dispatchDueRemindersService();
+
+      // A sweep can carry hundreds of rows and they cluster per patient; without the memo this is
+      // one consent query per dose.
+      expect(patientRepo.findById).toHaveBeenCalledTimes(1);
+    });
+
+    it('withholds when the patient cannot be read at all, rather than sending anyway', async () => {
+      givenDue([buildOccurrence()]);
+      patientRepo.findById.mockResolvedValue(null);
+
+      const result = await dispatchDueRemindersService();
+
+      expect(pushClient.send).not.toHaveBeenCalled();
+      expect(result.data).toMatchObject({ withheld: 1 });
+    });
   });
 
   it('tags the payload with the occurrence id so a resend replaces rather than stacks', async () => {
@@ -379,6 +463,8 @@ describe('dispatchDueRemindersService — timed reminder emails', () => {
     });
     sendReminderEmail = vi.fn().mockResolvedValue(true);
     makeReminderSender.mockReturnValue(sendReminderEmail);
+    // A patient who still consents to automated messages, which is every case but the two below.
+    patientRepo.findById.mockResolvedValue(buildPatient());
   });
 
   it('emails once per claimed occurrence and counts it', async () => {
@@ -464,6 +550,8 @@ describe('dispatchDueRemindersService — resilience', () => {
     });
     sendReminderEmail = vi.fn().mockResolvedValue(true);
     makeReminderSender.mockReturnValue(sendReminderEmail);
+    // A patient who still consents to automated messages, which is every case but the two below.
+    patientRepo.findById.mockResolvedValue(buildPatient());
   });
 
   it('keeps going after one occurrence throws', async () => {

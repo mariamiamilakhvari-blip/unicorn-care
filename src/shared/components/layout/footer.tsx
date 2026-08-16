@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { BAA_ROUTE, PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
+import { DPA_ROUTE, PRIVACY_ROUTE, TERMS_ROUTE } from '@/shared/const/routes.const';
 
 /**
  * The legal links live here as well as in the consent checkboxes. A visitor who has not reached
@@ -24,10 +24,10 @@ export const Footer = () => {
           Privacy
         </Link>
         <Link
-          href={BAA_ROUTE}
+          href={DPA_ROUTE}
           className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
-          BAA
+          DPA
         </Link>
       </nav>
     </footer>

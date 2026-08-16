@@ -14,7 +14,7 @@
  * and have moved together since, so they share one value.
  *
  * *Not* the date every legal page shows — each document carries its own `lastUpdated`, and the
- * BAA takes its date from `BAA_VERSION` instead. Move this when the substance of the Terms or the
+ * DPA takes its date from `DPA_VERSION` instead. Move this when the substance of the Terms or the
  * Privacy Policy changes, and only those two follow.
  */
 export const LEGAL_LAST_UPDATED = '2026-07-30';

@@ -18,14 +18,21 @@ const DateOfBirthSchema = z.union([z.null(), z.coerce.date()]).default(null);
  *
  * These are not the patient's own consents — the patient is not at the keyboard. They are the
  * clinic confirming it already holds that consent offline, which is the only honest model here:
- * under GDPR Art. 9 health data needs explicit consent, and the platform never speaks to the
- * patient before the record exists. `healthData` is listed separately from `personalData` for
- * that reason; special-category data is a distinct legal basis, not a stronger version of one.
+ * under the Law of Georgia on Personal Data Protection health data is special-category data
+ * requiring explicit consent, and the platform never speaks to the patient before the record
+ * exists. `healthData` is listed separately from `personalData` for that reason; special-category
+ * data is a distinct legal basis, not a stronger version of one.
+ *
+ * Four of these are consents to processing and are written to the `ConsentRecord` audit trail with
+ * their own timestamp, wording version and source — see `INTAKE_CONSENT_MAP`, which is the
+ * authority on which. The remaining three are attestations about the record rather than bases for
+ * touching it, and are stored as one dated confirmation on the patient instead.
  */
 export const PatientConsentSchema = z.object({
   personalData: requiredConsent(),
   healthData: requiredConsent(),
   reminders: requiredConsent(),
+  portalAccess: requiredConsent(),
   informed: requiredConsent(),
   accurate: requiredConsent(),
   corrections: requiredConsent(),

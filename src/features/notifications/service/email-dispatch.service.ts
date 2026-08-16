@@ -119,6 +119,16 @@ export function createReminderEmailSender() {
       const patient = patients.get(patientId) ?? null;
       if (!patient || !patient.email || patient.isArchived) return false;
       /*
+        Withdrawn consent stops the send outright, before any channel question is asked.
+
+        Distinct from suppression below in kind, not just in degree: suppression is the platform
+        deciding an address cannot receive mail, and this is the patient deciding they do not want
+        it. Under the Law of Georgia on Personal Data Protection a withdrawal takes effect when it
+        is made, so it is checked on the send rather than applied by regenerating the plan — the
+        occurrence rows stay exactly as they are, and the clinical record with them.
+      */
+      if (patient.notificationsRevokedAt) return false;
+      /*
         Email only. The push for this occurrence has already gone out and is unaffected — a
         patient whose inbox is dead must still get the notification that can wake their phone,
         which is why suppression is a per-channel fact and not a per-patient one.
@@ -200,6 +210,12 @@ export async function sendDailyDigestsService(): Promise<ServiceResult<EmailSend
     */
     const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
     if (!patient || !patient.email || patient.isArchived || isEmailSuppressed(patient)) {
+      skipped += 1;
+      continue;
+    }
+
+    // A withdrawal covers every automated message, not only the timed reminders. See above.
+    if (patient.notificationsRevokedAt) {
       skipped += 1;
       continue;
     }

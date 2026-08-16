@@ -8,6 +8,7 @@ import {
 import { CreatePatientSchema } from '@/features/patient/validations/patient.validation';
 import { clinicGuard } from '@/shared/lib/clinic-guard';
 import { validateBody } from '@/shared/middleware/validate-body';
+import { clientIp } from '@/shared/utils/client-ip';
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,7 +35,12 @@ export async function POST(req: NextRequest) {
     const validated = await validateBody(req, CreatePatientSchema);
     if (validated instanceof NextResponse) return validated;
 
-    const { data, status } = await createPatientService(session.clinicId, validated.data);
+    // Recorded beside the consents this request captures — supporting evidence, never authority.
+    const { data, status } = await createPatientService(
+      session.clinicId,
+      validated.data,
+      clientIp(req.headers)
+    );
     return NextResponse.json(data, { status });
   } catch {
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });

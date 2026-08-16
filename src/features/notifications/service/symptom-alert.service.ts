@@ -25,7 +25,7 @@ import { AppLocale } from '@/shared/types/roles';
  * **What this is not.** It is a notification, not monitoring. The platform does not watch for
  * symptoms, does not assess them, and nothing escalates if this email goes unread — which the
  * email says in as many words. A clinic that came to treat it as a safety net would be relying on
- * something the Terms and the BAA both disclaim, and a patient in danger must call emergency
+ * something the Terms and the DPA both disclaim, and a patient in danger must call emergency
  * services rather than wait for a clinic to read their inbox.
  *
  * **Minimum necessary.** The patient's name and the guide item they tapped go in the email; the

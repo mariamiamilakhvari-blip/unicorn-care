@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     if (validated instanceof NextResponse) return validated;
 
     // Read here, not in the service: the request is the only place the address exists, and a
-    // BAA acceptance is recorded with the provenance of the request that made it.
+    // Acceptance of the Data Processing Agreement is recorded with the provenance of the request.
     const { data, status } = await registerClinicService(validated.data, clientIp(req.headers));
     return NextResponse.json(data, { status });
   } catch {

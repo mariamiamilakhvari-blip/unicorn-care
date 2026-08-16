@@ -30,6 +30,21 @@ export const carePlanRepository = {
       .exec();
   },
 
+  /**
+   * Every plan this patient has ever had, whatever its status.
+   *
+   * Distinct from `findActiveByPatient` because the data subject access right is a right to the
+   * whole record, not to the part still in force — a patient asking what is held about them is
+   * usually asking about the course of treatment that finished.
+   */
+  async findAllByPatient(patientId: string, clinicId: string): Promise<CarePlanDocument[]> {
+    await mongo.connect();
+    return CarePlanModel.find({ patientId, clinicId })
+      .sort({ startsAt: 1 })
+      .lean<CarePlanDocument[]>()
+      .exec();
+  },
+
   async deleteById(id: string, clinicId: string): Promise<boolean> {
     await mongo.connect();
     const result = await CarePlanModel.findOneAndDelete({ _id: id, clinicId });

@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 
 import { checkPatientSeat } from '@/features/clinic/service/subscription.service';
+import { recordIntakeConsentsService } from '@/features/data-protection/service/consent.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PatientDocument } from '@/features/patient/schema/patient.schema';
 import { PatientListResult, PatientSummary } from '@/features/patient/types/patient.types';
@@ -8,9 +9,11 @@ import {
   CreatePatientType,
   UpdatePatientType,
 } from '@/features/patient/validations/patient.validation';
+import { ConsentType, INTAKE_CONSENT_MAP } from '@/shared/const/consent-type.const';
 import { CONSENT_VERSION } from '@/shared/const/consent.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
+import { UNKNOWN_IP } from '@/shared/utils/client-ip';
 
 export const PATIENT_PAGE_SIZE = 20;
 
@@ -31,9 +34,28 @@ function toPatientSummary(patient: PatientDocument): PatientSummary {
   };
 }
 
+/**
+ * The intake boxes that are bases for processing, in the vocabulary the audit trail uses.
+ *
+ * Driven by `INTAKE_CONSENT_MAP` rather than by a hand-written list so a consent added to the form
+ * cannot quietly fail to reach the log — the map is the single place the two vocabularies meet.
+ */
+function grantedConsentTypes(consents: Record<string, boolean>): ConsentType[] {
+  return Object.entries(INTAKE_CONSENT_MAP)
+    .filter(([formKey]) => consents[formKey] === true)
+    .map(([, consentType]) => consentType);
+}
+
+/**
+ * `ipAddress` is recorded next to the consents this call captures, as supporting evidence of where
+ * the attestation was made from. It defaults rather than being required because the service is
+ * callable from contexts that have no request in hand — a seed, a test — and `unknown` is the
+ * honest record for those. It is never used to authorise anything: see `clientIp`.
+ */
 export async function createPatientService(
   clinicId: string,
-  input: CreatePatientType
+  input: CreatePatientType,
+  ipAddress: string = UNKNOWN_IP
 ): Promise<ServiceResult<PatientSummary>> {
   /*
     Plan limits are enforced here rather than in the route so every caller is covered, and the
@@ -60,6 +82,18 @@ export async function createPatientService(
     consent: { version: CONSENT_VERSION, confirmedAt: clock.now() },
     isArchived: false,
   });
+
+  /*
+    The audit trail the Law of Georgia on Personal Data Protection asks for: one dated row per
+    purpose, carrying the wording version and where the attestation came from. The `consent` block
+    written above is the summary the clinic sees on the record; this is the evidence behind it, and
+    the only one of the two that can answer what was agreed to and when it was withdrawn.
+
+    Awaited but not checked. The service swallows and logs its own failures by design — a clinic
+    that cannot enter a patient because the audit collection is unavailable is worse than a gap
+    that can be repaired. See `recordIntakeConsentsService`.
+  */
+  await recordIntakeConsentsService(patientId, clinicId, grantedConsentTypes(consents), ipAddress);
 
   const created = await patientRepository.findById(patientId, clinicId);
   if (!created) return { data: { error: 'NOT_FOUND' }, status: 404 };

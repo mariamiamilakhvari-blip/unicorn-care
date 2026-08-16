@@ -163,6 +163,28 @@ export const reminderOccurrenceRepository = {
       .exec();
   },
 
+  /**
+   * Every occurrence this patient has, bounded rather than unbounded.
+   *
+   * The data subject access export reads this, and a year-long plan with four daily doses is over
+   * a thousand rows — enough to matter in one response, not enough to justify paging a document
+   * whose value is being one file. `limit` is the caller's ceiling and the sort is newest-first, so
+   * a truncated export keeps the part of the record a patient is most likely to be asking about.
+   */
+  async findAllByPatient(
+    patientId: string,
+    clinicId: string,
+    limit: number
+  ): Promise<ReminderOccurrenceDocument[]> {
+    await mongo.connect();
+    return ReminderOccurrenceModel.find({ patientId, clinicId }, null, {
+      sort: { dueAt: -1 },
+      limit,
+    })
+      .lean<ReminderOccurrenceDocument[]>()
+      .exec();
+  },
+
   async findByIdForPatient(
     id: string,
     patientId: string

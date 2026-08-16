@@ -10,6 +10,7 @@ import {
 } from '@/features/notifications/service/email-dispatch.service';
 import { sendToPatientService } from '@/features/notifications/service/push.service';
 import { DispatchSummary } from '@/features/notifications/types/push.types';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PATIENT_PORTAL_ROUTE } from '@/shared/const/routes.const';
 import { clock } from '@/shared/lib/clock';
 import { PushPayload } from '@/shared/lib/web-push-client';
@@ -77,6 +78,34 @@ function wasDelivered(result: Awaited<ReturnType<typeof sendToPatientService>>):
 }
 
 /**
+ * Whether this patient still consents to automated messages, memoised for one sweep.
+ *
+ * The gate has to sit here rather than inside the push service, which takes a patient id and no
+ * clinic and so cannot make the tenancy-scoped read. Here the occurrence carries both, and a run's
+ * rows cluster hard enough — one patient's four daily doses — that the memo turns a per-row lookup
+ * into one read per patient.
+ *
+ * Fails closed. If the patient cannot be read at all there is no evidence of a standing consent,
+ * and sending a health reminder to someone the platform cannot resolve is the worse of the two
+ * mistakes. The email sender re-checks the same flag from the record it loads anyway; that
+ * duplication is deliberate, since either path reaching a patient who withdrew would be a breach
+ * of a withdrawal the law says takes effect when it is made.
+ */
+function createConsentGate() {
+  const allowed = new Map<string, boolean>();
+
+  return async function mayNotify(patientId: string, clinicId: string): Promise<boolean> {
+    const cached = allowed.get(patientId);
+    if (cached !== undefined) return cached;
+
+    const patient = await patientRepository.findById(patientId, clinicId);
+    const may = Boolean(patient) && !patient?.notificationsRevokedAt;
+    allowed.set(patientId, may);
+    return may;
+  };
+}
+
+/**
  * The sweep (PRD 04 §"The sweep"). Runs unscoped by clinic — the cron is the platform,
  * authorised by `CRON_SECRET`, and has no clinic session.
  *
@@ -131,10 +160,14 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
   */
   const sendReminderEmail = createReminderEmailSender();
 
+  /* One consent read per patient per run, for the same clustering reason. */
+  const mayNotify = createConsentGate();
+
   const deadline = now.getTime() + RUN_BUDGET_MS;
   let processed = 0;
   let failed = 0;
   let abandoned = 0;
+  let withheld = 0;
 
   for (const occurrence of due) {
     /*
@@ -156,6 +189,27 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
       them in the queue.
     */
     try {
+      /*
+        A withdrawn consent retires the row without sending anything.
+
+        Marked `sent` rather than left pending, for the same reason a row nobody could be reached
+        on is: leaving it would have the next run pick it up forever. Both delivery fields are
+        `false`, which is the honest record — nothing landed — and the counters below treat it as
+        undelivered, so a clinic looking at adherence sees a patient who is not being reminded
+        rather than a run that quietly did nothing.
+      */
+      if (!(await mayNotify(occurrence.patientId.toString(), occurrence.clinicId.toString()))) {
+        await reminderOccurrenceRepository.updateStatus(occurrence._id.toString(), {
+          status: 'sent',
+          sentAt: now,
+          pushDelivered: false,
+          emailDelivered: false,
+        });
+        withheld += 1;
+        processed += 1;
+        continue;
+      }
+
       const result = await sendToPatientService(
         occurrence.patientId.toString(),
         toPayload(occurrence)
@@ -268,6 +322,7 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
       emailedReminders,
       failed,
       abandoned,
+      withheld,
     },
     status: 200,
   };

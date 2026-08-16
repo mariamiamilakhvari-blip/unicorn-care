@@ -28,6 +28,16 @@ export type DispatchSummary = {
    * missing contact detail, and is fixed by the clinic rather than by retrying.
    */
   unreachable: number;
+  /**
+   * Occurrences retired without being sent because the patient withdrew consent to automated
+   * messages.
+   *
+   * Deliberately not folded into `undelivered`. That number is a problem to investigate — a dead
+   * endpoint, a bounced address — and this one is the platform working correctly: someone
+   * exercised a right under the Law of Georgia on Personal Data Protection and the sweep obeyed.
+   * Counting them together would have a clinic chasing a delivery fault that does not exist.
+   */
+  withheld: number;
   /** Occurrences aged past the grace window and flipped to `missed`. */
   missed: number;
   /** Plans whose rehabilitation window closed on this run and were retired to `completed`. */

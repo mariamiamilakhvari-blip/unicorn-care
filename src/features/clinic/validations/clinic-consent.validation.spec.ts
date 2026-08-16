@@ -13,12 +13,12 @@ const allTicked = (keys: readonly string[]) =>
   Object.fromEntries(keys.map(key => [key, true]));
 
 /*
-  `baa` is in the clinic key list — it is a rendered checkbox — but it is not one of the mandatory
-  consents these cases are about. Whether it is required depends on the clinic's country, which
-  this schema cannot see, so it is enforced at the object level and covered in
-  `clinic.validation.spec.ts` instead.
+  Every clinic consent is mandatory now, including the Data Processing Agreement. It used to be
+  filtered out of this list because it was a US-only Business Associate Agreement enforced at the
+  object level against the clinic's country; under the Law of Georgia on Personal Data Protection
+  every controller engaging a processor needs one, so there is nothing left to exclude.
 */
-const CLINIC_MANDATORY_KEYS = CLINIC_CONSENT_KEYS.filter(key => key !== 'baa');
+const CLINIC_MANDATORY_KEYS = CLINIC_CONSENT_KEYS;
 
 /**
  * These consents are the product's legal footing, so the rules are pinned rather than trusted to
@@ -27,8 +27,8 @@ const CLINIC_MANDATORY_KEYS = CLINIC_CONSENT_KEYS.filter(key => key !== 'baa');
  * a truthiness check.
  */
 describe.each([
-  ['clinic', ClinicConsentSchema, CLINIC_MANDATORY_KEYS, 8],
-  ['patient', PatientConsentSchema, PATIENT_CONSENT_KEYS, 6],
+  ['clinic', ClinicConsentSchema, CLINIC_MANDATORY_KEYS, 9],
+  ['patient', PatientConsentSchema, PATIENT_CONSENT_KEYS, 7],
 ] as const)('%s consents', (_label, schema, keys, expectedCount) => {
   it('exposes every mandatory consent in its key list', () => {
     expect(keys).toHaveLength(expectedCount);
@@ -59,29 +59,32 @@ describe.each([
 });
 
 /**
- * The BAA is the one clinic consent the schema alone does not decide, so its schema-level
- * behaviour is pinned separately: it must be rendered, must be a real boolean, and must record a
- * deliberate `false` rather than an absence when it is left alone.
+ * The Data Processing Agreement used to be the one clinic consent the schema alone did not
+ * decide — it was a US-only Business Associate Agreement, enforced against the clinic's country
+ * at object level. It is now mandatory like the rest, and these cases pin the move: it is still
+ * rendered with the others, and neither an omission nor a refusal gets past the schema.
  */
-describe('the BAA consent', () => {
+describe('the Data Processing Agreement consent', () => {
   it('is rendered with the others, so the checklist actually shows it', () => {
-    expect(CLINIC_CONSENT_KEYS).toContain('baa');
+    expect(CLINIC_CONSENT_KEYS).toContain('dataProcessing');
     expect(Object.keys(ClinicConsentSchema.shape).sort()).toEqual([...CLINIC_CONSENT_KEYS].sort());
   });
 
-  it('defaults to false when omitted, rather than to an absence storage has to interpret', () => {
-    const result = ClinicConsentSchema.safeParse(allTicked(CLINIC_MANDATORY_KEYS));
-    expect(result.success).toBe(true);
-    expect(result.success && result.data.baa).toBe(false);
+  it('rejects an omitted Data Processing Agreement rather than defaulting it to false', () => {
+    // It carried a `.default(false)` while it was a US-only Business Associate Agreement. Now that
+    // every controller needs a written processor agreement, a default would be the one way a
+    // clinic could be created without one.
+    const withoutDpa = allTicked(CLINIC_MANDATORY_KEYS.filter(key => key !== 'dataProcessing'));
+    expect(ClinicConsentSchema.safeParse(withoutDpa).success).toBe(false);
   });
 
-  it('does not block this schema on its own — the country rule decides that', () => {
-    const payload = { ...allTicked(CLINIC_MANDATORY_KEYS), baa: false };
-    expect(ClinicConsentSchema.safeParse(payload).success).toBe(true);
+  it('rejects a refused Data Processing Agreement — it is mandatory in every country', () => {
+    const payload = { ...allTicked(CLINIC_MANDATORY_KEYS), dataProcessing: false };
+    expect(ClinicConsentSchema.safeParse(payload).success).toBe(false);
   });
 
   it('still refuses a truthy non-boolean', () => {
-    const payload = { ...allTicked(CLINIC_MANDATORY_KEYS), baa: 'true' };
+    const payload = { ...allTicked(CLINIC_MANDATORY_KEYS), dataProcessing: 'true' };
     expect(ClinicConsentSchema.safeParse(payload).success).toBe(false);
   });
 });

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { DEFAULT_TIMEZONE, isValidTimeZone } from '@/shared/const/timezone.const';
-import { requiresBaa } from '@/shared/utils/baa';
 import { requiredConsent } from '@/shared/utils/consent';
 import { normaliseTaxId, taxIdIssue } from '@/shared/utils/tax-id';
 
@@ -105,15 +104,16 @@ export const ClinicConsentSchema = z.object({
   remindersNotMedicalAdvice: requiredConsent(),
   regulatoryCompliance: requiredConsent(),
   /*
-    The HIPAA Business Associate Agreement. The one consent here that is not `requiredConsent()`,
-    because whether it is required depends on the clinic's country: HIPAA binds US Covered
-    Entities, and a clinic elsewhere is not a party to a BAA. `withBaaRule` enforces it for US
-    clinics; everywhere else it is offered, and whatever the clinic chose is recorded.
+    The Data Processing Agreement — the controller–processor contract between the clinic and this
+    platform.
 
-    Defaulted rather than optional so a body that omits it records a deliberate `false` instead of
-    an absence the storage layer has to interpret.
+    Mandatory like every other consent here, and deliberately not country-conditional. It replaced
+    a Business Associate Agreement that was required of US clinics only, which was the wrong shape
+    for this product twice over: HIPAA does not reach a Georgian clinic, and the Law of Georgia on
+    Personal Data Protection requires a written processor agreement from *every* controller that
+    engages one. There is no clinic on this platform that does not need it.
   */
-  baa: z.boolean().default(false),
+  dataProcessing: requiredConsent(),
 });
 
 export type ClinicConsentType = z.infer<typeof ClinicConsentSchema>;
@@ -123,29 +123,6 @@ export const CLINIC_CONSENT_KEYS = Object.keys(
   ClinicConsentSchema.shape
 ) as (keyof ClinicConsentType)[];
 
-/** The two fields the BAA rule reads, in the shape the flat schemas carry them. */
-type BaaAware = { country?: string; consents?: { baa?: boolean } };
-
-/**
- * Makes the Business Associate Agreement mandatory for clinics in the United States.
- *
- * Country-conditional for the same reason the tax ID rule is: this field means different things
- * in different places. HIPAA reaches US Covered Entities, so a US clinic cannot register without
- * a BAA on file, while a clinic elsewhere is offered the box and blocked by nothing.
- *
- * Raised at `path: ['consents', 'baa']` so the message lands under the checkbox rather than at
- * the top of the form, and with its own code so the UI can explain *why* it is required here and
- * not on the eight consents beside it.
- */
-export function withBaaRule<Schema extends z.ZodType<BaaAware>>(schema: Schema): Schema {
-  return schema.superRefine((value, ctx) => {
-    if (!requiresBaa(value.country ?? '')) return;
-    if (value.consents?.baa === true) return;
-
-    ctx.addIssue({ code: 'custom', message: 'BAA_REQUIRED', path: ['consents', 'baa'] });
-  }) as Schema;
-}
-
 export const ClinicOwnerSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
@@ -154,33 +131,20 @@ export const ClinicOwnerSchema = z.object({
 
 export type ClinicOwnerType = z.infer<typeof ClinicOwnerSchema>;
 
-/**
- * `POST /api/clinic/register` — creates the owner `User` and the `Clinic` in one call.
- *
- * The BAA rule is spelled out rather than reusing `withBaaRule`: this is the one body where the
- * country sits under `clinic` instead of at the top, so the helper's shape does not fit. The rule
- * itself is the same one — `requiresBaa` is the single source of the answer.
- */
-export const RegisterClinicSchema = z
-  .object({
-    owner: ClinicOwnerSchema,
-    clinic: ClinicProfileSchema,
-    consents: ClinicConsentSchema,
-  })
-  .superRefine((value, ctx) => {
-    if (!requiresBaa(value.clinic?.country ?? '')) return;
-    if (value.consents?.baa === true) return;
-
-    ctx.addIssue({ code: 'custom', message: 'BAA_REQUIRED', path: ['consents', 'baa'] });
-  });
+/** `POST /api/clinic/register` — creates the owner `User` and the `Clinic` in one call. */
+export const RegisterClinicSchema = z.object({
+  owner: ClinicOwnerSchema,
+  clinic: ClinicProfileSchema,
+  consents: ClinicConsentSchema,
+});
 
 /**
  * `POST /api/clinic` — the repair path, attaching a clinic to an account that already exists.
  * It creates a clinic just as registration does, so it collects the same consents; the profile
  * schema alone would let that route in without them.
  */
-export const CreateClinicForUserSchema = withBaaRule(
-  withTaxIdRule(ClinicProfileBase.extend({ consents: ClinicConsentSchema }))
+export const CreateClinicForUserSchema = withTaxIdRule(
+  ClinicProfileBase.extend({ consents: ClinicConsentSchema })
 );
 
 export type CreateClinicForUserType = z.infer<typeof CreateClinicForUserSchema>;

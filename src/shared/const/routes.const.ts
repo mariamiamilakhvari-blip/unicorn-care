@@ -20,6 +20,12 @@ export const PROTECTED_ROUTES = ['/dashboard'];
 
 export const PATIENT_PORTAL_ROUTE = '/p';
 
+/**
+ * Where a patient manages consent, downloads their record, and files a correction or erasure
+ * request. Inside `/p/` so it inherits the portal's guard and its `noindex`.
+ */
+export const PORTAL_PRIVACY_ROUTE = '/p/privacy';
+
 export const PATIENT_COOKIE_NAME = 'uc_patient';
 
 export const LINK_EXPIRED_ROUTE = '/link-expired';
@@ -43,8 +49,13 @@ export const TERMS_ROUTE = '/terms';
 
 export const PRIVACY_ROUTE = '/privacy';
 
-/** The HIPAA Business Associate Agreement, linked from the consent block and the footer. */
-export const BAA_ROUTE = '/baa';
+/**
+ * The Data Processing Agreement, linked from the consent block and the footer.
+ *
+ * The controller–processor contract the Law of Georgia on Personal Data Protection requires
+ * between a clinic and this platform. Every clinic accepts it at registration.
+ */
+export const DPA_ROUTE = '/dpa';
 
 /** Where a freshly registered clinic lands: it has a trial but has not chosen a plan yet. */
 export const PRICING_ROUTE = '/pricing';

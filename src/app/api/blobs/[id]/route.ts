@@ -69,7 +69,7 @@ export async function GET(_req: Request, { params }: Params) {
 /**
  * Deletes a photograph on request.
  *
- * The consent wording a patient agreed to at upload says they can have it removed, and the BAA
+ * The consent wording a patient agreed to at upload says they can have it removed, and the DPA
  * repeats the undertaking — so this route is the implementation of a promise already made in
  * production text, not a convenience.
  *

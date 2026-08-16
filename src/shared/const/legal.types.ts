@@ -11,7 +11,7 @@ export type LegalDocument = {
    *
    * Per-document rather than one shared constant. The documents are revised on their own
    * schedules, and a single date meant publishing a new one re-dated the two that had not
-   * changed — or, as happened with the BAA, showed a brand-new agreement as older than it was,
+   * changed — or, as happened with the processor agreement, showed a brand-new one as older than it was,
    * disagreeing with the version recorded against every clinic's acceptance of it.
    *
    * Required, not optional: a document that forgets its date fails the build rather than
@@ -22,4 +22,4 @@ export type LegalDocument = {
   sections: LegalSection[];
 };
 
-export type LegalSlug = 'terms' | 'privacy' | 'baa';
+export type LegalSlug = 'terms' | 'privacy' | 'dpa';
