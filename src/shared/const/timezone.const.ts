@@ -41,3 +41,22 @@ export function isValidTimeZone(value: string): boolean {
     return false;
   }
 }
+
+/**
+ * The zone a patient's own times are in: theirs when it is known and usable, the clinic's until
+ * then, and the default only if the clinic's own value is unusable too.
+ *
+ * A patient's zone is empty until they first open the portal, and recovery starts at the clinic —
+ * so inheriting is the correct answer for a new patient, not a stopgap. Each candidate is
+ * revalidated rather than trusted: a bad zone written before either field was checked throws
+ * inside `Intl` at format time, which is a 500 on the page a patient reads every morning.
+ *
+ * Pure, and deliberately in `const/` rather than in either feature: the portal read, the reminder
+ * generator and the email builders all need the same answer, and putting it in one of them would
+ * make the other two import a service they otherwise have no business knowing about.
+ */
+export function effectiveTimeZone(patientZone: string, clinicZone: string): string {
+  if (isValidTimeZone(patientZone)) return patientZone;
+  if (isValidTimeZone(clinicZone)) return clinicZone;
+  return DEFAULT_TIMEZONE;
+}

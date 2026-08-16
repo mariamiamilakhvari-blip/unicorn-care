@@ -17,17 +17,23 @@ vi.mock('@/features/clinic/repository/clinic.repository', () => ({
   clinicRepository: { findById: vi.fn() },
 }));
 
+vi.mock('@/features/patient/repository/patient.repository', () => ({
+  patientRepository: { findById: vi.fn() },
+}));
+
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { getPortalPlanService } from '@/features/care-plan/service/patient-portal.service';
 import { PortalPlanView } from '@/features/care-plan/types/portal.types';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { clock } from '@/shared/lib/clock';
 
 const occurrences = vi.mocked(reminderOccurrenceRepository);
 const plans = vi.mocked(carePlanRepository);
 const clinics = vi.mocked(clinicRepository);
+const patients = vi.mocked(patientRepository);
 
 const CLINIC = '507f1f77bcf86cd799439022';
 const PATIENT = '507f1f77bcf86cd799439011';
@@ -62,6 +68,8 @@ describe('getPortalPlanService', () => {
     vi.resetAllMocks();
     vi.spyOn(clock, 'now').mockReturnValue(NOW);
     clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi' } as never);
+    // No zone of their own: the patient has never opened the portal, so the clinic's is in force.
+    patients.findById.mockResolvedValue({ timezone: '' } as never);
     plans.findActiveByPatient.mockResolvedValue([] as never);
     occurrences.findByPatientAndRange.mockResolvedValue([occurrence()] as never);
   });
@@ -79,11 +87,29 @@ describe('getPortalPlanService', () => {
     expect(item.dueAt).toBe('2026-08-11T05:25:00.000Z');
   });
 
-  it("hands the client the clinic's zone to render in", async () => {
+  it("hands the client the clinic's zone until the patient has one of their own", async () => {
     const view = await portal();
 
     expect(view.timeZone).toBe('Asia/Tbilisi');
     expect(view.todayKey).toBe('2026-08-11');
+  });
+
+  /**
+   * The patient who flew home. Their rows were rebuilt against Amsterdam when the portal reported
+   * the move, and this is the other half: the view has to render them in the zone they are in, or
+   * a correctly rebuilt 09:30 dose would still be printed as 07:30.
+   */
+  it('renders in the patient’s own zone once the portal has learned it', async () => {
+    patients.findById.mockResolvedValue({ timezone: 'Europe/Amsterdam' } as never);
+
+    expect((await portal()).timeZone).toBe('Europe/Amsterdam');
+  });
+
+  /** A patient's zone comes from their browser, so it gets the same revalidation as the clinic's. */
+  it('ignores an unusable patient zone rather than breaking the view', async () => {
+    patients.findById.mockResolvedValue({ timezone: 'Amsterdam' } as never);
+
+    expect((await portal()).timeZone).toBe('Asia/Tbilisi');
   });
 
   /** An invalid zone is a clinic settings problem; it must not blank a patient's plan. */

@@ -13,12 +13,17 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
   patientRepository: { findById: vi.fn() },
 }));
 
+vi.mock('@/features/patient/repository/patient-portal-link.repository', () => ({
+  patientPortalLinkRepository: { markAllUsedForPatient: vi.fn() },
+}));
+
 vi.mock('@/features/notifications/repository/push-subscription.repository', () => ({
   pushSubscriptionRepository: { deactivateAllForPatient: vi.fn() },
 }));
 
 import { pushSubscriptionRepository } from '@/features/notifications/repository/push-subscription.repository';
 import { patientAccessTokenRepository } from '@/features/patient/repository/patient-access-token.repository';
+import { patientPortalLinkRepository } from '@/features/patient/repository/patient-portal-link.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import {
   issueTokenService,
@@ -30,6 +35,7 @@ import { hashPassword } from '@/shared/utils/password';
 const tokens = vi.mocked(patientAccessTokenRepository);
 const patients = vi.mocked(patientRepository);
 const pushSubscriptions = vi.mocked(pushSubscriptionRepository);
+const portalLinks = vi.mocked(patientPortalLinkRepository);
 
 const CLINIC_ID = '507f1f77bcf86cd799439011';
 const PATIENT_ID = '507f1f77bcf86cd799439033';
@@ -54,6 +60,7 @@ beforeEach(() => {
   tokens.revokeAllForPatient.mockResolvedValue(0);
   tokens.touchLastUsed.mockResolvedValue(true);
   pushSubscriptions.deactivateAllForPatient.mockResolvedValue(0);
+  portalLinks.markAllUsedForPatient.mockResolvedValue(0);
 });
 
 describe('issueTokenService', () => {
@@ -144,5 +151,15 @@ describe('revokeAccessService', () => {
   it('deactivates push subscriptions too, so reminders stop with the access', async () => {
     await revokeAccessService(CLINIC_ID, PATIENT_ID);
     expect(pushSubscriptions.deactivateAllForPatient).toHaveBeenCalledWith(PATIENT_ID);
+  });
+
+  /*
+    Every notification email carries an unspent portal link, and each one is a standing offer to
+    mint a fresh access token. Revoking the tokens alone would leave a month of reminders in the
+    mailbox, any one of which hands back the access that was just withdrawn.
+  */
+  it('spends the portal links sitting in the patient’s inbox', async () => {
+    await revokeAccessService(CLINIC_ID, PATIENT_ID);
+    expect(portalLinks.markAllUsedForPatient).toHaveBeenCalledWith(PATIENT_ID, expect.any(Date));
   });
 });

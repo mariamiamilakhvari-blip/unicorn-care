@@ -64,7 +64,18 @@ export type EmailGuide = {
   warning: { title: string; description: string; severity: string; fromDay: number; toDay: number }[];
 };
 
-export type WelcomeEmailInput = {
+/**
+ * The patient's own way back into the portal, carried by every patient-facing email.
+ *
+ * A single-use `/p/login/<token>` URL, minted per email by `portalLinkForEmail`. Optional because
+ * the builders are pure and a template must still render without one — the CTA then falls back to
+ * the tokenless portal address, which is a worse email rather than a failed send.
+ */
+type PortalLinkCarrier = {
+  portalUrl?: string;
+};
+
+export type WelcomeEmailInput = PortalLinkCarrier & {
   patient: EmailPatient;
   clinic: EmailClinic;
   procedure: EmailProcedure | null;
@@ -74,7 +85,7 @@ export type WelcomeEmailInput = {
   guide: EmailGuide | null;
 };
 
-export type DailyEmailInput = {
+export type DailyEmailInput = PortalLinkCarrier & {
   patient: EmailPatient;
   clinic: EmailClinic;
   /** Only what falls on the patient's recovery day this email covers. */
@@ -98,7 +109,7 @@ export type DailyEmailInput = {
  * minutes from the prescribed intake time when it created the row, so this is what the patient
  * was told to expect, not the dose time.
  */
-export type ReminderEmailInput = {
+export type ReminderEmailInput = PortalLinkCarrier & {
   patient: EmailPatient;
   clinic: EmailClinic;
   title: string;
@@ -109,7 +120,6 @@ export type ReminderEmailInput = {
    * time available is `dueAt` — early by the clinic's lead, but the best the row can say.
    */
   scheduledAt: Date | null;
-  /** Portal URL for the CTA. No token: an email must never carry a portal credential. */
 };
 
 export type EmailSendSummary = {

@@ -22,9 +22,13 @@ const patient = {
   locale: 'ka' as const,
 };
 
+/** What `portalLinkForEmail` hands the builders: this email's own single-use link. */
+const PORTAL_LINK = 'https://unicorn.care/p/login/Xy7-a9Bc_D3eF6gH8iJkLmNoPqRsTuVwXyZ0123456789';
+
 const plan = {
   patient,
   clinic,
+  portalUrl: PORTAL_LINK,
   procedure: null,
   medications: [],
   rehabTasks: [],
@@ -57,16 +61,17 @@ describe('every patient-facing email offers the portal', () => {
       body: 'Take with food. 08:00',
       dueAt: new Date('2026-08-09T04:00:00.000Z'),
       scheduledAt: new Date('2026-08-09T04:00:00.000Z'),
+      portalUrl: PORTAL_LINK,
     }),
   };
 
   it.each(Object.entries(built))('%s carries the portal link in the HTML', (_name, email) => {
-    expect(email.html).toContain(PORTAL_URL);
+    expect(email.html).toContain(PORTAL_LINK);
   });
 
   it.each(Object.entries(built))('%s carries it in the plain text too', (_name, email) => {
     // A text alternative without the link is what a plain-text client would show.
-    expect(email.text).toContain(PORTAL_URL);
+    expect(email.text).toContain(PORTAL_LINK);
   });
 
   it.each(Object.entries(built))('%s labels the link in the patient’s language', (_name, email) => {
@@ -74,12 +79,33 @@ describe('every patient-facing email offers the portal', () => {
   });
 
   /**
-   * No token in the link, matching the decision every other patient email follows: a portal
-   * credential in an inbox outlives the message, and an old email in a compromised account would
-   * be a live door into that patient's record.
+   * The link is the patient's own, not the bare portal address.
+   *
+   * A tokenless CTA only opened for a browser that already held the portal cookie — which the
+   * patient reading their reminder in a mail app's in-app browser, on a new phone, or after
+   * clearing cookies does not. That was the lockout: the email arrived, and the link in it went
+   * to "invalid or inactive link".
    */
-  it.each(Object.entries(built))('%s carries no credential in the link', (_name, email) => {
-    expect(email.html).not.toMatch(/\/p\/[A-Za-z0-9_-]{16,}/);
-    expect(PORTAL_URL).not.toMatch(/token|[?&]t=/i);
+  it.each(Object.entries(built))('%s links the patient’s own way in', (_name, email) => {
+    expect(email.html).toContain('/p/login/');
+  });
+
+  /**
+   * The fallback still sends. Minting a link is a database write, and an email that lands with the
+   * bare portal address is worth more than an email that never leaves — that address reaches the
+   * page where a patient can ask for a link, so it is not a dead end either.
+   */
+  it('falls back to the tokenless portal address when no link was minted', () => {
+    const email = buildReminderEmail({
+      patient,
+      clinic,
+      title: 'Amoxicillin — 500 mg',
+      body: 'Take with food. 08:00',
+      dueAt: new Date('2026-08-09T04:00:00.000Z'),
+      scheduledAt: new Date('2026-08-09T04:00:00.000Z'),
+    });
+
+    expect(email.html).toContain(PORTAL_URL);
+    expect(email.text).toContain(PORTAL_URL);
   });
 });

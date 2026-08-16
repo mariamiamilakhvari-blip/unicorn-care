@@ -5,6 +5,7 @@ vi.mock('@/features/patient/repository/patient-portal-link.repository', () => ({
   patientPortalLinkRepository: {
     create: vi.fn(),
     findByTokenHash: vi.fn(),
+    markUsed: vi.fn(),
     markAllUsedForPatient: vi.fn(),
   },
 }));
@@ -76,6 +77,7 @@ beforeEach(() => {
   vi.spyOn(clock, 'now').mockReturnValue(NOW);
   clinics.findById.mockResolvedValue({ name: 'Clinic', timezone: 'Asia/Tbilisi' } as never);
   mint.mockResolvedValue('fresh-access-token');
+  links.markUsed.mockResolvedValue(true);
 });
 
 describe('requestPortalLinkService', () => {
@@ -127,24 +129,18 @@ describe('requestPortalLinkService', () => {
   });
 
   /**
-   * Order matters: spending outstanding links *after* writing the new one would match the row just
-   * created and kill the link the patient is about to be sent.
+   * Issuing is additive. Every notification email carries its own link now, so spending the
+   * patient's outstanding set here would mean asking for a link killed every reminder already in
+   * the inbox — and, when the request was made twice because the first message was slow, killed
+   * the one that finally arrived.
    */
-  it('spends outstanding links before writing the new one', async () => {
+  it('leaves the patient’s other outstanding links alone', async () => {
     patients.findByEmail.mockResolvedValue(patient() as never);
-    const order: string[] = [];
-    links.markAllUsedForPatient.mockImplementation(async () => {
-      order.push('spend');
-      return 1;
-    });
-    links.create.mockImplementation(async () => {
-      order.push('create');
-      return 'id';
-    });
 
     await requestPortalLinkService({ email: 'patient@example.com' });
 
-    expect(order).toEqual(['spend', 'create']);
+    expect(links.create).toHaveBeenCalledOnce();
+    expect(links.markAllUsedForPatient).not.toHaveBeenCalled();
   });
 });
 
@@ -157,7 +153,35 @@ describe('redeemPortalLinkService', () => {
 
     expect(status).toBe(200);
     expect(data).toEqual({ accessToken: 'fresh-access-token' });
-    expect(links.markAllUsedForPatient).toHaveBeenCalledWith(PATIENT, NOW);
+    expect(links.markUsed).toHaveBeenCalledWith('507f1f77bcf86cd799439033', NOW);
+  });
+
+  /**
+   * Only the link that was followed. Opening today's reminder must not kill the rest of the
+   * inbox — those older emails are what a patient reaches for from a device with no session.
+   */
+  it('spends the followed link and no other', async () => {
+    links.findByTokenHash.mockResolvedValue(link() as never);
+    patients.findById.mockResolvedValue(patient() as never);
+
+    await redeemPortalLinkService('raw');
+
+    expect(links.markAllUsedForPatient).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The write is the claim. Two requests carrying the same token — a mail client prefetching the
+   * URL and the patient then pressing the button — must not both come away with a session.
+   */
+  it('refuses the loser of a race for the same link', async () => {
+    links.findByTokenHash.mockResolvedValue(link() as never);
+    patients.findById.mockResolvedValue(patient() as never);
+    links.markUsed.mockResolvedValue(false);
+
+    const { status } = await redeemPortalLinkService('raw');
+
+    expect(status).toBe(401);
+    expect(mint).not.toHaveBeenCalled();
   });
 
   /** Every rejection is the same 401: the difference is only ever useful to someone guessing. */

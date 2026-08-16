@@ -19,6 +19,21 @@ const PatientSchema = new Schema(
       required: true,
     },
     locale: { type: String, enum: ['ka', 'en'], default: 'ka', required: true },
+    /*
+      The IANA zone the patient is actually living in, detected from their device the first time
+      they open the portal and re-checked on every visit.
+
+      Empty means "inherit the clinic's", which is the right answer for a patient who has never
+      opened the portal and the reason this is not defaulted to a real zone: a plan must not be
+      built against a guess when the clinic's own zone is the better one.
+
+      It exists because recovery outlives the stay. A patient operated on in Tbilisi and recovering
+      at home in Amsterdam was still being reminded on Tbilisi wall-clock, which is two hours out —
+      a 09:30 dose announced at 07:30. `timezoneUpdatedAt` records when the move was noticed, which
+      is what a clinic asking "why did this patient's schedule shift" needs to see.
+    */
+    timezone: { type: String, required: false, default: '' },
+    timezoneUpdatedAt: { type: Date, required: false, default: null },
     allergies: { type: [String], default: [] },
     notes: { type: String, required: false, default: '' },
     /*

@@ -7,7 +7,8 @@ import {
   PortalPlanView,
 } from '@/features/care-plan/types/portal.types';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
-import { DEFAULT_TIMEZONE, isValidTimeZone } from '@/shared/const/timezone.const';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 
@@ -83,11 +84,15 @@ export async function getPortalPlanService(
   if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
 
   /*
-    A zone written before the settings field was validated still throws inside `Intl`, and here
-    that would take down the patient's whole plan view. Falling back keeps the portal readable;
-    the clinic sees the same bad value refused on the write side and at activation.
+    The patient's own zone once the portal has learned it, the clinic's until then.
+
+    `effectiveTimeZone` revalidates both: a zone written before either field was checked still
+    throws inside `Intl`, and here that would take down the patient's whole plan view. Falling back
+    keeps the portal readable; the clinic sees the same bad value refused on the write side and at
+    activation.
   */
-  const timeZone = isValidTimeZone(clinic.timezone) ? clinic.timezone : DEFAULT_TIMEZONE;
+  const patient = await patientRepository.findById(patientId, clinicId);
+  const timeZone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
 
   const now = clock.now();
   const from = clock.addDays(now, -DAYS_BEHIND);

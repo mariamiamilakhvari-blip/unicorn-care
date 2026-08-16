@@ -47,7 +47,7 @@ export function buildDailyEmail(input: DailyEmailInput): BuiltEmail {
       now it was the only patient-facing template with no way back into the portal — so the
       message that arrives every day was the one that could not be acted on.
     */
-    portalCta(copy),
+    portalCta(copy, input.portalUrl),
   ].join('');
 
   return {
@@ -55,7 +55,7 @@ export function buildDailyEmail(input: DailyEmailInput): BuiltEmail {
     html: shell(copy.dailySubject, sections, input.clinic, copy),
     text: toPlainText(
       copy.dailySubject,
-      [...plainLines(input, copy, zone), ...portalCtaLines(copy)],
+      [...plainLines(input, copy, zone), ...portalCtaLines(copy, input.portalUrl)],
       input.clinic,
       copy
     ),

@@ -10,8 +10,10 @@ import {
 } from '@/features/notifications/types/email.types';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PatientDocument } from '@/features/patient/schema/patient.schema';
+import { portalLinkForEmail } from '@/features/patient/service/portal-link.service';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
+import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -99,7 +101,8 @@ export async function toWelcomeInput(
       addressLine: clinic.addressLine ?? '',
       phone: clinic.phone ?? '',
       email: clinic.email ?? '',
-      timezone: clinic.timezone,
+      // Where the patient is, not where the clinic is — every time in this email is printed in it.
+      timezone: effectiveTimeZone(patient.timezone ?? '', clinic.timezone),
     },
     procedure: procedure
       ? {
@@ -108,6 +111,14 @@ export async function toWelcomeInput(
         operatorName: procedure.operatorName,
       }
       : null,
+    /*
+      Minted here rather than in the builder: the builders are pure, and a portal link is a row.
+      Skipped when there is no address to send to — the caller drops the email a moment later, and
+      writing a credential nobody will ever receive is litter with a lifetime.
+    */
+    portalUrl: patient.email
+      ? await portalLinkForEmail(patient._id.toString(), patient.clinicId)
+      : undefined,
     medications: toMedications(plan),
     rehabTasks: toRehabTasks(plan),
     checkups: plan.checkups.map(item => ({
@@ -132,7 +143,13 @@ export async function toDailyInput(
   patient: PatientDocument,
   now: Date
 ): Promise<DailyEmailInput> {
-  const zone = clinic.timezone;
+  /*
+    The patient's zone decides which day this summary covers, not the clinic's. A patient
+    recovering two zones west of their clinic would otherwise be sent the clinic's day: on the
+    evening flights that is tomorrow's list, and the doses they still have left today go missing
+    from the email they were sent to replace.
+  */
+  const zone = effectiveTimeZone(patient.timezone ?? '', clinic.timezone);
   const locale = (patient.locale ?? clinic.locale) as AppLocale;
   const weekday = clock.weekdayInZone(now, zone);
 
@@ -153,6 +170,7 @@ export async function toDailyInput(
       email: clinic.email ?? '',
       timezone: zone,
     },
+    portalUrl: await portalLinkForEmail(patient._id.toString(), patient.clinicId),
     medications: toMedications(plan).filter(item => runsToday(item, now, zone)),
     // A rehab task also has to fall on a weekday the clinic prescribed, unlike a medication.
     rehabTasks: toRehabTasks(plan).filter(

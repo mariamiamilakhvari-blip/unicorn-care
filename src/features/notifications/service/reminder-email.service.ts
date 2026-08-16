@@ -46,12 +46,12 @@ export function buildReminderEmail(input: ReminderEmailInput): BuiltEmail {
         muted(`${copy.reminderAt} ${at}`),
       ].join('')
     ),
-    portalCta(copy),
+    portalCta(copy, input.portalUrl),
   ].join('');
 
   const lines = [
     ...[input.title, input.body, `${copy.reminderAt} ${at}`].filter(Boolean),
-    ...portalCtaLines(copy),
+    ...portalCtaLines(copy, input.portalUrl),
   ];
 
   return {

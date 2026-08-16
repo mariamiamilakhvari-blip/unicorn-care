@@ -10,12 +10,14 @@ import { buildReminderEmail } from '@/features/notifications/service/reminder-em
 import { buildWelcomeEmail } from '@/features/notifications/service/welcome-email.service';
 import { EmailSendSummary } from '@/features/notifications/types/email.types';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { portalLinkForEmail } from '@/features/patient/service/portal-link.service';
+import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { resendClient } from '@/shared/lib/resend-client';
 import { ServiceResult } from '@/shared/types/common';
 import { AppLocale } from '@/shared/types/roles';
 
-/** Clinic-local hour the day's email goes out. Morning, before the first doses are usually due. */
+/** Patient-local hour the day's email goes out. Morning, before the first doses are usually due. */
 const DIGEST_HOUR = 8;
 
 /** Ceiling per sweep so one run cannot exceed the function timeout. */
@@ -92,6 +94,14 @@ export async function sendWelcomeEmailService(
 export function createReminderEmailSender() {
   const clinics = new Map<string, ClinicDocument | null>();
   const patients = new Map<string, Awaited<ReturnType<typeof patientRepository.findById>>>();
+  /*
+    One portal link per patient per sweep, not per reminder. A patient's doses cluster into the
+    same run, and minting a row for each would write four identical-in-purpose credentials for one
+    morning. Sharing within a run is safe because the emails go out together: whichever one the
+    patient opens first is the one that gets spent, and the rest of that run's emails were never
+    going to be the way back in anyway.
+  */
+  const portalLinks = new Map<string, string>();
 
   return async function sendReminderEmail(
     occurrence: ReminderOccurrenceDocument
@@ -115,6 +125,10 @@ export function createReminderEmailSender() {
       */
       if (isEmailSuppressed(patient)) return false;
 
+      if (!portalLinks.has(patientId)) {
+        portalLinks.set(patientId, await portalLinkForEmail(patientId, patient.clinicId));
+      }
+
       const email = buildReminderEmail({
         patient: {
           firstName: patient.firstName,
@@ -129,12 +143,15 @@ export function createReminderEmailSender() {
           addressLine: clinic.addressLine ?? '',
           phone: clinic.phone ?? '',
           email: clinic.email ?? '',
-          timezone: clinic.timezone,
+          // The dose time this email prints is wall clock where the patient is. Printing it in the
+          // clinic's zone is what told a patient recovering abroad to take a 09:30 tablet at 07:30.
+          timezone: effectiveTimeZone(patient.timezone ?? '', clinic.timezone),
         },
         title: occurrence.title,
         body: occurrence.body ?? '',
         dueAt: occurrence.dueAt,
         scheduledAt: occurrence.scheduledAt ?? null,
+        portalUrl: portalLinks.get(patientId),
       });
 
       const result = await resendClient.send({
@@ -175,20 +192,33 @@ export async function sendDailyDigestsService(): Promise<ServiceResult<EmailSend
       continue;
     }
 
-    // Before the clinic's morning, or already sent for this calendar date.
-    if (clock.hourInZone(now, clinic.timezone) < DIGEST_HOUR) {
-      skipped += 1;
-      continue;
-    }
-
-    const localDate = clock.dateKeyInZone(now, clinic.timezone);
-    if (plan.lastDigestOn === localDate) {
-      skipped += 1;
-      continue;
-    }
-
+    /*
+      Read before the morning check, not after it, because the patient is what decides when their
+      morning is. The gate used to run on the clinic's zone, which skips a patient recovering east
+      of their clinic for as many hours as they are ahead — their 08:00 summary arrived at 10:00
+      local, or not at all on the day they travelled. It costs one extra read per plan per sweep.
+    */
     const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
     if (!patient || !patient.email || patient.isArchived || isEmailSuppressed(patient)) {
+      skipped += 1;
+      continue;
+    }
+
+    const zone = effectiveTimeZone(patient.timezone ?? '', clinic.timezone);
+
+    // Before the patient's own morning, or already sent for this calendar date.
+    if (clock.hourInZone(now, zone) < DIGEST_HOUR) {
+      skipped += 1;
+      continue;
+    }
+
+    /*
+      The claim key is the patient's calendar date. Someone who flies west gains hours, and their
+      new local date can repeat one already claimed — which is the correct outcome: they have had
+      today's summary, and a second copy of the same list is not worth the send.
+    */
+    const localDate = clock.dateKeyInZone(now, zone);
+    if (plan.lastDigestOn === localDate) {
       skipped += 1;
       continue;
     }

@@ -23,7 +23,7 @@ const isPatientPortalPath = (pathname: string): boolean =>
  * reach their route handler without a cookie:
  *
  *   `/p/<token>`        the durable access token from a staff-issued link
- *   `/p/login/<token>`  the single-use link a patient asked for by email
+ *   `/p/login/<token>`  the single-use link carried by every patient email
  *
  * Anything else under `/p` is the portal proper and needs the cookie. Getting this wrong is silent
  * in the worst way — the redirect fires before the route runs, so the link looks invalid rather

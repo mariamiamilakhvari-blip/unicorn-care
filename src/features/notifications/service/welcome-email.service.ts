@@ -48,12 +48,11 @@ export function buildWelcomeEmail(input: WelcomeEmailInput): BuiltEmail {
       goes to *act* on it, tick things off and read the recovery guide, so the invitation belongs
       after they know what they are being invited to.
 
-      No token in the link, matching every other patient email: a portal credential in an inbox
-      outlives the message, and an old email in a compromised account would be a live door into
-      that patient's record. A patient on the device that redeemed their magic link lands straight
-      in; anyone else reaches the expired-link page, which points them back to their clinic.
+      The link is this email's own: single-use, bounded, and good from any device. A tokenless one
+      only opened for a browser that already held the portal cookie, which the patient reading
+      this on their phone's mail app usually does not.
     */
-    portalCta(copy),
+    portalCta(copy, input.portalUrl),
   ].join('');
 
   return {
@@ -61,7 +60,7 @@ export function buildWelcomeEmail(input: WelcomeEmailInput): BuiltEmail {
     html: shell(copy.welcomeSubject, sections, input.clinic, copy),
     text: toPlainText(
       copy.welcomeSubject,
-      [...plainLines(input, copy, zone), ...portalCtaLines(copy)],
+      [...plainLines(input, copy, zone), ...portalCtaLines(copy, input.portalUrl)],
       input.clinic,
       copy
     ),

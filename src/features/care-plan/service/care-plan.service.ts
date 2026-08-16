@@ -23,9 +23,10 @@ import { sendWelcomeEmailService } from '@/features/notifications/service/email-
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
-import { isValidTimeZone } from '@/shared/const/timezone.const';
+import { effectiveTimeZone, isValidTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { PaginatedResult, ServiceResult } from '@/shared/types/common';
+import { AppLocale } from '@/shared/types/roles';
 
 type CarePlanResult = ServiceResult<CarePlanDocument>;
 
@@ -93,6 +94,69 @@ export async function updateCarePlanService(
 }
 
 /**
+ * Drop the plan's *pending* rows and insert freshly built ones. The half of activation that also
+ * has to run on its own, whenever the wall clock a plan was built against stops being the one the
+ * patient is living on.
+ *
+ * `sent` / `done` / `skipped` / `missed` rows are never touched: they record what actually
+ * happened, at the time it happened, and a patient who crossed a border does not retroactively
+ * take yesterday's dose at a different hour.
+ */
+async function rebuildPlanOccurrences(
+  plan: CarePlanDocument,
+  timezone: string,
+  locale: AppLocale
+): Promise<number> {
+  const clinicId = plan.clinicId.toString();
+  const planId = plan._id.toString();
+
+  const guide = await resolveGuideForProcedure(plan.procedureId.toString(), clinicId, locale);
+
+  const drafts = buildOccurrences(
+    plan,
+    timezone,
+    DEFAULT_HORIZON_DAYS,
+    defaultOccurrenceTranslator,
+    clock.now(),
+    guide
+  );
+
+  await reminderOccurrenceRepository.deletePendingByCarePlan(planId, clinicId);
+  if (drafts.length > 0) await reminderOccurrenceRepository.insertMany(drafts);
+
+  return drafts.length;
+}
+
+/**
+ * Re-materialises every active plan a patient has against a zone they have just moved into.
+ *
+ * Occurrence rows hold absolute instants, resolved from the prescribed wall clock at the moment
+ * they were generated. That is what makes dispatch a pure read — and it is also why a patient
+ * changing zone cannot be handled by the dispatcher or the portal alone: the rows themselves say
+ * 05:30 UTC, and only rebuilding them makes that mean 09:30 in the place the patient now is.
+ *
+ * Returns how many rows were written, which is what the caller logs. A patient with no active
+ * plan is not an error — their zone is still worth recording for the plan that comes next.
+ */
+export async function regeneratePlansForTimezoneService(
+  patientId: string,
+  clinicId: string,
+  timezone: string
+): Promise<ServiceResult<{ plans: number; occurrences: number }>> {
+  const clinic = await clinicRepository.findById(clinicId);
+  if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
+
+  const plans = await carePlanRepository.findActiveByPatient(patientId, clinicId);
+
+  let occurrences = 0;
+  for (const plan of plans) {
+    occurrences += await rebuildPlanOccurrences(plan, timezone, clinic.locale);
+  }
+
+  return { data: { plans: plans.length, occurrences }, status: 200 };
+}
+
+/**
  * PRD 03 §Activation: validate completeness → drop the plan's *pending* rows → insert the freshly
  * built ones → flip to `active`. `sent` / `done` / `skipped` / `missed` rows are never deleted, so
  * the adherence history of an edited plan survives intact.
@@ -120,22 +184,17 @@ export async function activateCarePlanService(
     return { data: { error: 'INVALID_CLINIC_TIMEZONE' }, status: 422 };
   }
 
-  const guide = await resolveGuideForProcedure(
-    plan.procedureId.toString(),
-    clinicId,
-    clinic.locale
-  );
+  /*
+    The patient's zone, not the clinic's, once the portal has learned it. A prescribed time is
+    wall clock where the *patient* is: someone operated on in Tbilisi and recovering at home in
+    Amsterdam takes their 09:30 dose at 09:30 Amsterdam, and generating against the clinic would
+    put every reminder two hours out for the rest of their recovery. It falls back to the clinic's
+    zone, which is the right answer until the patient has ever opened their portal.
+  */
+  const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
+  const timezone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
 
-  const drafts = buildOccurrences(
-    plan,
-    clinic.timezone,
-    DEFAULT_HORIZON_DAYS,
-    defaultOccurrenceTranslator,
-    clock.now(),
-    guide
-  );
-  await reminderOccurrenceRepository.deletePendingByCarePlan(id, clinicId);
-  if (drafts.length > 0) await reminderOccurrenceRepository.insertMany(drafts);
+  await rebuildPlanOccurrences(plan, timezone, clinic.locale);
 
   await carePlanRepository.updateById(id, clinicId, { status: 'active' });
 

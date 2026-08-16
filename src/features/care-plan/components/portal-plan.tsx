@@ -8,6 +8,7 @@ import { OccurrenceCard } from '@/features/care-plan/components/occurrence-card'
 import { usePortalPlan } from '@/features/care-plan/hooks/use-portal-plan';
 import { PortalDay } from '@/features/care-plan/types/portal.types';
 import { PushOptIn } from '@/features/notifications/components/push-opt-in';
+import { useTimezoneSync } from '@/features/patient/hooks/use-timezone-sync';
 import { PortalRatingCard } from '@/features/rating/components/portal-rating-card';
 import { RecoveryGuidePanel } from '@/features/recovery-guide/components/recovery-guide-panel';
 import { RecoveryLogForm } from '@/features/recovery-log/components/recovery-log-form';
@@ -20,6 +21,13 @@ export function PortalPlan() {
   const format = useFormatter();
   const { plan, isLoading, hasError, reload, complete } = usePortalPlan();
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  /*
+    Reports this device's zone and re-reads the plan when it turns out the patient has moved. The
+    reload is the visible half: the server has just rebuilt their pending reminders on the new wall
+    clock, so the times already on screen are the ones they left behind.
+  */
+  useTimezoneSync(reload);
 
   async function handleComplete(id: string, outcome: 'done' | 'skipped') {
     setBusyId(id);

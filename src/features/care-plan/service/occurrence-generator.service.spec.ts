@@ -415,3 +415,67 @@ describe('expected-sign reminders from the recovery guide', () => {
     expect(drafts).toHaveLength(0);
   });
 });
+
+/**
+ * Recovery outlives the stay. A patient operated on in Tbilisi and flying home to Amsterdam for
+ * the second week is the case the whole patient-timezone path exists for: `09:30` is a wall clock,
+ * and it has to mean 09:30 in whichever place the patient wakes up in.
+ *
+ * This is the generator's half of that — given the new zone, it resolves the same prescribed time
+ * to a different instant. Persisting the zone and re-running this is
+ * `syncPatientTimezoneService`'s half.
+ */
+describe('the same prescription, generated in two zones', () => {
+  const TBILISI = 'Asia/Tbilisi';
+  const AMSTERDAM = 'Europe/Amsterdam';
+
+  function planAt(timesOfDay: string[], remindMinutesBefore: number) {
+    return makePlan({
+      medications: [
+        medication({
+          startsOn: new Date('2025-06-02T00:00:00.000Z'),
+          endsOn: new Date('2025-06-02T00:00:00.000Z'),
+          timesOfDay,
+          remindMinutesBefore,
+        }),
+      ],
+    });
+  }
+
+  it('resolves 09:30 to a different instant in each', () => {
+    const plan = planAt(['09:30'], 0);
+
+    const [tbilisi] = buildOccurrences(plan, TBILISI, 90, defaultOccurrenceTranslator, GENERATED_AT);
+    const [amsterdam] = buildOccurrences(plan, AMSTERDAM, 90, defaultOccurrenceTranslator, GENERATED_AT);
+
+    // June: Tbilisi is UTC+4 year-round, Amsterdam is UTC+2 on summer time.
+    expect(tbilisi.scheduledAt?.toISOString()).toBe('2025-06-02T05:30:00.000Z');
+    expect(amsterdam.scheduledAt?.toISOString()).toBe('2025-06-02T07:30:00.000Z');
+  });
+
+  /**
+   * The reported bug, in the form it was seen: a 09:30 dose with a 5-minute lead displayed as
+   * 05:25 — the instant behind `dueAt`, printed in UTC. Both halves have to hold. `scheduledAt` is
+   * what the portal and the emails print, and the lead only ever moves `dueAt`.
+   */
+  it.each([
+    [TBILISI, '2025-06-02T05:30:00.000Z', '2025-06-02T05:25:00.000Z'],
+    [AMSTERDAM, '2025-06-02T07:30:00.000Z', '2025-06-02T07:25:00.000Z'],
+  ])('keeps a 5-minute lead off the intake time in %s', (zone, scheduled, due) => {
+    const plan = planAt(['09:30'], 5);
+
+    const [draft] = buildOccurrences(plan, zone, 90, defaultOccurrenceTranslator, GENERATED_AT);
+
+    expect(draft.scheduledAt?.toISOString()).toBe(scheduled);
+    expect(draft.dueAt.toISOString()).toBe(due);
+    // And the prescribed wall clock reads back identically in the zone it was built for.
+    expect(
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: zone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).format(draft.scheduledAt ?? draft.dueAt)
+    ).toBe('09:30');
+  });
+});

@@ -8,7 +8,7 @@ import { patientPortalLinkRepository } from '@/features/patient/repository/patie
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { mintAccessToken, tokenTag } from '@/features/patient/service/patient-access.service';
 import { PortalLinkRequestType } from '@/features/patient/validations/portal-link.validation';
-import { PORTAL_LOGIN_ROUTE } from '@/shared/const/routes.const';
+import { PATIENT_PORTAL_ROUTE, PORTAL_LOGIN_ROUTE } from '@/shared/const/routes.const';
 import { SITE_URL } from '@/shared/const/seo.const';
 import { DEFAULT_TIMEZONE } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
@@ -20,7 +20,7 @@ const TOKEN_BYTES = 32;
 const MS_PER_MINUTE = 60 * 1000;
 
 /**
- * How long an emailed portal link stays alive.
+ * How long the link a patient explicitly asked for stays alive.
  *
  * Longer than the staff password reset, because the recipient is a post-operative patient who may
  * not reach their phone for a while, and short enough that the message is not a standing key to a
@@ -28,7 +28,70 @@ const MS_PER_MINUTE = 60 * 1000;
  */
 export const PORTAL_LINK_TTL_MINUTES = 24 * 60;
 
+/**
+ * How long the link carried by an ordinary notification email stays alive.
+ *
+ * Longer than a requested one because nobody is waiting by their phone for it: it is the way back
+ * in from the reminder that happened to be in the inbox when the patient picked up a new device,
+ * opened the mail app's in-app browser, or cleared their cookies. A day-long window would mean the
+ * portal is reachable only from the newest email, which is the lockout this replaced.
+ *
+ * Still bounded, and still single-use, so an old message stops being a door once it is walked
+ * through or the month is out — the schema's TTL index then deletes the row.
+ */
+export const NOTIFICATION_LINK_TTL_MINUTES = 30 * 24 * 60;
+
 const linkOrigin = (): string => process.env.NEXTAUTH_URL || SITE_URL;
+
+/**
+ * Writes one single-use portal link and returns the URL to put in an email.
+ *
+ * Shared by the requested link and by the call to action on every notification email, so both are
+ * the same kind of credential with the same lifecycle — one place decides what an emailed link is.
+ *
+ * Issuing does **not** spend the patient's other outstanding links. Each email carries its own, and
+ * every one of them keeps working until it is used or its window closes: the whole point is that a
+ * patient reaching for whichever message is in front of them gets in.
+ */
+export async function issuePortalLink(
+  patientId: string,
+  clinicId: Types.ObjectId,
+  ttlMinutes: number
+): Promise<string> {
+  const rawToken = randomBytes(TOKEN_BYTES).toString('base64url');
+
+  await patientPortalLinkRepository.create({
+    patientId: new Types.ObjectId(patientId),
+    clinicId,
+    tokenHash: hashPassword(rawToken),
+    expiresAt: new Date(clock.now().getTime() + ttlMinutes * MS_PER_MINUTE),
+    usedAt: null,
+  });
+
+  console.warn('[portal-link] issued', { patientId, token: tokenTag(rawToken) });
+
+  return `${linkOrigin()}${PORTAL_LOGIN_ROUTE}/${rawToken}`;
+}
+
+/**
+ * The portal address for one patient's email, and the reason a patient email is worth opening at
+ * all on a device that has never redeemed a link.
+ *
+ * Falls back to the tokenless portal URL rather than failing the send: an email that lands with a
+ * link to the "ask for a new link" page is worth far more than an email that never leaves, and
+ * that page is the same fallback a patient reaches when a link is finally spent.
+ */
+export async function portalLinkForEmail(
+  patientId: string,
+  clinicId: Types.ObjectId
+): Promise<string> {
+  try {
+    return await issuePortalLink(patientId, clinicId, NOTIFICATION_LINK_TTL_MINUTES);
+  } catch (caught) {
+    console.error('[portal-link] could not mint an email link', patientId, caught);
+    return `${linkOrigin()}${PATIENT_PORTAL_ROUTE}`;
+  }
+}
 
 /**
  * Emails a patient a fresh way into their portal.
@@ -58,27 +121,14 @@ export async function requestPortalLinkService(
 
   const recipient = patient.email;
 
-  const now = clock.now();
   const patientId = patient._id.toString();
 
   /*
-    Outstanding requests die before the new one is written, not after — the other order would match
-    the row just created and kill the link about to be sent. Asking twice is the ordinary way
-    someone abandons a first attempt.
+    Asking again does not kill the earlier link. Someone who asks twice usually did so because the
+    first message was slow, and spending it on issue meant the email that finally arrived was the
+    dead one — while every reminder already sitting in the inbox died with it.
   */
-  await patientPortalLinkRepository.markAllUsedForPatient(patientId, now);
-
-  const rawToken = randomBytes(TOKEN_BYTES).toString('base64url');
-
-  await patientPortalLinkRepository.create({
-    patientId: new Types.ObjectId(patientId),
-    clinicId: patient.clinicId,
-    tokenHash: hashPassword(rawToken),
-    expiresAt: new Date(now.getTime() + PORTAL_LINK_TTL_MINUTES * MS_PER_MINUTE),
-    usedAt: null,
-  });
-
-  console.warn('[portal-link] issued', { patientId, token: tokenTag(rawToken) });
+  const portalUrl = await issuePortalLink(patientId, patient.clinicId, PORTAL_LINK_TTL_MINUTES);
 
   /*
     The send result is not surfaced, for the same reason the unknown address is not: a failure that
@@ -99,7 +149,7 @@ export async function requestPortalLinkService(
       email: clinic?.email ?? '',
       timezone: clinic?.timezone ?? DEFAULT_TIMEZONE,
     },
-    portalUrl: `${linkOrigin()}${PORTAL_LOGIN_ROUTE}/${rawToken}`,
+    portalUrl,
     ttlHours: PORTAL_LINK_TTL_MINUTES / 60,
   });
 
@@ -109,10 +159,12 @@ export async function requestPortalLinkService(
 /**
  * Spends an emailed link and mints the durable access token behind it.
  *
- * Single use, and every other outstanding request for that patient is spent with it: arriving in
- * the portal is the moment older copies of the invitation stop being needed. The access token that
- * comes out is additive, exactly as a staff-issued one is — a patient still holding a working link
- * on another device keeps it.
+ * Single use, and *only* the link that was followed. Every notification email carries its own link
+ * now, so spending the patient's whole outstanding set here would mean opening today's reminder
+ * silently killed every other message in the inbox — the lockout this flow exists to end.
+ *
+ * The access token that comes out is additive, exactly as a staff-issued one is: a patient still
+ * holding a working session on another device keeps it.
  */
 export async function redeemPortalLinkService(
   rawToken: string
@@ -150,7 +202,17 @@ export async function redeemPortalLinkService(
     return rejected;
   }
 
-  await patientPortalLinkRepository.markAllUsedForPatient(patientId, now);
+  /*
+    The claim is the write, not the `usedAt` check above: two taps on the same link — the ordinary
+    behaviour of a mail client prefetching a URL and the patient then following it — must not both
+    mint an access token.
+  */
+  const claimed = await patientPortalLinkRepository.markUsed(link._id.toString(), now);
+  if (!claimed) {
+    console.warn('[portal-link] rejected: lost the race to spend it', { token: tag });
+    return rejected;
+  }
+
   const accessToken = await mintAccessToken(patientId, clinicId);
 
   console.warn('[portal-link] redeemed', { patientId, token: tag });

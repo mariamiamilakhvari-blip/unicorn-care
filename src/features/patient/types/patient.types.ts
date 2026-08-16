@@ -52,6 +52,17 @@ export type AccessRevokeResult = {
   deactivatedSubscriptions: number;
 };
 
+/**
+ * The answer to "where is this patient right now".
+ *
+ * `changed` is what the portal acts on: a move means the plan it is holding was built against the
+ * zone the patient left, so the view has to be re-read rather than re-rendered.
+ */
+export type PatientTimezoneResult = {
+  timezone: string;
+  changed: boolean;
+};
+
 /** What a redeemed magic-link token resolves to — the portal's whole identity. */
 export type PatientAccessGrant = {
   patientId: string;

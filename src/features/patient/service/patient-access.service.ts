@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 
 import { pushSubscriptionRepository } from '@/features/notifications/repository/push-subscription.repository';
 import { patientAccessTokenRepository } from '@/features/patient/repository/patient-access-token.repository';
+import { patientPortalLinkRepository } from '@/features/patient/repository/patient-portal-link.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import {
   AccessLinkResult,
@@ -128,6 +129,11 @@ export async function redeemTokenService(
 /**
  * PRD 02 §B "Revoking". Push subscriptions die with the link — otherwise a revoked patient would
  * keep receiving reminders they can no longer open.
+ *
+ * The unspent portal links in the patient's inbox die with it too. Every notification email now
+ * carries one, and each is a standing offer to mint a fresh access token — so revoking only the
+ * tokens would leave a month of reminders in that mailbox, any one of which hands back exactly the
+ * access the clinic just withdrew.
  */
 export async function revokeAccessService(
   clinicId: string,
@@ -136,11 +142,16 @@ export async function revokeAccessService(
   const patient = await patientRepository.findById(patientId, clinicId);
   if (!patient) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
+  const now = clock.now();
+
   const revokedTokens = await patientAccessTokenRepository.revokeAllForPatient(
     patientId,
     clinicId,
-    clock.now()
+    now
   );
+
+  await patientPortalLinkRepository.markAllUsedForPatient(patientId, now);
+
   const deactivatedSubscriptions =
     await pushSubscriptionRepository.deactivateAllForPatient(patientId);
 

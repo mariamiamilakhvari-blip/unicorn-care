@@ -315,7 +315,12 @@
     "linkRequestSending": "Sending…",
     "linkRequestFailed": "Could not send the link. Please try again.",
     "linkRequestedTitle": "Check your email",
-    "linkRequestedHelp": "If that address belongs to a patient, a link to open your plan is on its way. It works once and stops working after 24 hours."
+    "linkRequestedHelp": "If that address belongs to a patient, a link to open your plan is on its way. It works once and stops working after 24 hours.",
+    "portalLoginTitle": "Open your recovery plan",
+    "portalLoginHelp": "Press the button to open your plan on this device. This link works once.",
+    "portalLoginSubmit": "Open my plan",
+    "portalLoginOpening": "Opening…",
+    "portalLoginFailed": "This link is no longer valid. Ask for a new one below."
   },
   "push": {
     "enableNotifications": "Enable notifications",

@@ -195,16 +195,14 @@ export function toPlainText(
 }
 
 /**
- * The one portal address every patient email points at.
+ * The tokenless portal address, and the fallback when a per-email link could not be minted.
  *
- * Built here rather than at each call site because three templates were computing it separately
- * and a fourth — the daily summary — simply forgot, so the email a patient receives most often
- * was the one with no way back into the portal.
- *
- * No token in the link, and that is deliberate. A portal credential in an inbox outlives the
- * message, and an old email in a compromised account would be a live door into that patient's
- * record. A patient on the device that redeemed their magic link lands straight in; anyone else
- * reaches the expired-link page, which points them back to their clinic.
+ * On its own it only opens for a browser that already holds the portal cookie — which is exactly
+ * the assumption that failed: a patient reading the email in their mail app's in-app browser, or
+ * on a new phone, or after clearing cookies, has no cookie and lands on the expired-link page.
+ * Every patient email therefore carries its own single-use link (`portalLinkForEmail`), and this
+ * remains only as the honest degradation when minting one fails — the page it reaches is where a
+ * patient can ask for a link, so even the fallback is not a dead end.
  */
 export const PORTAL_URL = `${SITE_URL}${PATIENT_PORTAL_ROUTE}`;
 
@@ -214,12 +212,15 @@ export const PORTAL_URL = `${SITE_URL}${PATIENT_PORTAL_ROUTE}`;
  * Every patient-facing template ends with this. Sharing it is what stops the templates drifting:
  * a new email gets the CTA by calling one function, rather than by whoever wrote it remembering
  * that emails are supposed to have one.
+ *
+ * `url` is the patient's own single-use link. It is defaulted rather than required so a template
+ * built without one still sends — a missing link is a worse email, not a failed send.
  */
-export function portalCta(copy: EmailCopy): string {
-  return section('', copy.openPortal, button(copy.openPortal, PORTAL_URL));
+export function portalCta(copy: EmailCopy, url: string = PORTAL_URL): string {
+  return section('', copy.openPortal, button(copy.openPortal, url));
 }
 
 /** The same call to action for the plain-text alternative, which must not be left behind. */
-export function portalCtaLines(copy: EmailCopy): string[] {
-  return ['', copy.openPortal, PORTAL_URL];
+export function portalCtaLines(copy: EmailCopy, url: string = PORTAL_URL): string[] {
+  return ['', copy.openPortal, url];
 }
