@@ -281,7 +281,8 @@
     "planSaved": "Plan saved",
     "error": {
       "INVALID_CLINIC_TIMEZONE": "Your clinic timezone is not valid. Fix it under Clinic, then activate the plan again.",
-      "INCOMPLETE_PLAN": "Add at least one medication, rehab task or checkup before activating."
+      "INCOMPLETE_PLAN": "Add at least one medication, rehab task or checkup before activating.",
+      "SUBSCRIPTION_INACTIVE": "Your subscription is not active, so care plans cannot be created or activated. Existing plans and their reminders are untouched."
     },
     "remindMinutesBefore": "Remind minutes before",
     "remindMinutesBeforeHint": "Send the reminder this many minutes before each dose or session. 0 = at the time itself.",
@@ -486,7 +487,28 @@
     "trialBanner": "{count, plural, one {# day left on your free trial} other {# days left on your free trial}}",
     "viewPlans": "View plans",
     "trialIncluded": "Included at sign-up",
-    "billedMonthly": "billed monthly ({yearly}/year)"
+    "billedMonthly": "billed monthly ({yearly}/year)",
+    "blocked": {
+      "trialing": "You are on the free trial.",
+      "past_due": "Your last payment did not go through, so new records cannot be added. Everything already saved is untouched.",
+      "expired": "Your free trial has ended. Adding patients, creating care plans and sending reminders are paused until you choose a plan — your existing records are untouched.",
+      "cancelled": "Your subscription is cancelled. Adding patients, creating care plans and sending reminders are paused until you choose a plan — your existing records are untouched."
+    },
+    "cancelTrial": "Cancel free trial",
+    "cancelPlan": "Cancel subscription",
+    "cancelTrialBlurb": "The trial ends straight away and nothing more is charged — there is no card on file. Your patients, care plans and records stay exactly as they are, and you can pick a plan again whenever you like.",
+    "cancelPlanBlurb": "Billing stops straight away and you will not be charged again. Your patients, care plans and records stay exactly as they are, and you can pick a plan again whenever you like.",
+    "cancelConfirm": "Yes, cancel",
+    "cancelKeep": "Keep it",
+    "cancelling": "Cancelling…",
+    "cancelError": {
+      "NOT_CANCELLABLE": "There is no active subscription left to cancel.",
+      "CANCEL_FAILED": "We could not cancel with the payment provider, so nothing was changed. Please try again in a moment."
+    },
+    "graceActive": "{count, plural, one {Your subscription has ended. Patient reminders keep going for # more day, then stop.} other {Your subscription has ended. Patient reminders keep going for # more days, then stop.}}",
+    "graceWarning": "{count, plural, one {Reminders to your patients stop in # day. Choose a plan to keep them running.} other {Reminders to your patients stop in # days. Choose a plan to keep them running.}}",
+    "remindersUntil": "{count, plural, one {Patient reminders are still being sent, for # more day.} other {Patient reminders are still being sent, for # more days.}}",
+    "remindersStopped": "Patient reminders have stopped. They resume as soon as you choose a plan."
   },
   "admin": {
     "title": "Admin",

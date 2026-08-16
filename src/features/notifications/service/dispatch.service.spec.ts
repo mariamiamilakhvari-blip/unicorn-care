@@ -46,10 +46,22 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
   patientRepository: { findById: vi.fn() },
 }));
 
+/*
+  The sweep also checks whether the clinic behind each occurrence may still have reminders sent —
+  which is true for fourteen days after a lapse, not just while the subscription is live. Mocked
+  at the service boundary rather than at `clinicRepository`, so these tests say nothing about how
+  the grace window is computed; that is `subscription.service.spec`'s subject. Defaults to a clinic
+  that may send, so only the suspension cases have to say anything about billing at all.
+*/
+vi.mock('@/features/clinic/service/subscription.service', () => ({
+  canClinicDispatch: vi.fn(),
+}));
+
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
+import { canClinicDispatch } from '@/features/clinic/service/subscription.service';
 import { pushSubscriptionRepository } from '@/features/notifications/repository/push-subscription.repository';
 import { PushSubscriptionDocument } from '@/features/notifications/schema/push-subscription.schema';
 import {
@@ -69,6 +81,7 @@ const plans = vi.mocked(carePlanRepository);
 const sendDigests = vi.mocked(sendDailyDigestsService);
 const makeReminderSender = vi.mocked(createReminderEmailSender);
 const patientRepo = vi.mocked(patientRepository);
+const clinicMaySend = vi.mocked(canClinicDispatch);
 
 /** The per-occurrence email sender the sweep builds once per run. */
 let sendReminderEmail: ReturnType<typeof createReminderEmailSender>;
@@ -152,6 +165,8 @@ describe('dispatchDueRemindersService', () => {
     makeReminderSender.mockReturnValue(sendReminderEmail);
     // A patient who still consents to automated messages, which is every case but the two below.
     patientRepo.findById.mockResolvedValue(buildPatient());
+    // A clinic whose reminders may still go out, which is every case but the suspension block.
+    clinicMaySend.mockResolvedValue(true);
   });
 
   it('queries the 6h window with the 500 cap and marks a delivered occurrence sent', async () => {
@@ -465,6 +480,8 @@ describe('dispatchDueRemindersService — timed reminder emails', () => {
     makeReminderSender.mockReturnValue(sendReminderEmail);
     // A patient who still consents to automated messages, which is every case but the two below.
     patientRepo.findById.mockResolvedValue(buildPatient());
+    // A clinic whose reminders may still go out, which is every case but the suspension block.
+    clinicMaySend.mockResolvedValue(true);
   });
 
   it('emails once per claimed occurrence and counts it', async () => {
@@ -552,6 +569,8 @@ describe('dispatchDueRemindersService — resilience', () => {
     makeReminderSender.mockReturnValue(sendReminderEmail);
     // A patient who still consents to automated messages, which is every case but the two below.
     patientRepo.findById.mockResolvedValue(buildPatient());
+    // A clinic whose reminders may still go out, which is every case but the suspension block.
+    clinicMaySend.mockResolvedValue(true);
   });
 
   it('keeps going after one occurrence throws', async () => {
@@ -615,5 +634,123 @@ describe('dispatchDueRemindersService — resilience', () => {
     await dispatchDueRemindersService();
 
     expect(occurrenceRepo.releaseClaim).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The subscription gate.
+ *
+ * A clinic whose trial ran out stops being able to send reminders, but the reminders themselves
+ * are clinical records that outlive the billing problem. So the gate drops the row *before* the
+ * claim rather than skipping it after: everything past the claim leaves the run marked `sent`,
+ * and marking an unsent dose reminder `sent` would retire it permanently — a clinic that
+ * subscribes an hour later would never learn the patient was not reminded, and neither would the
+ * patient.
+ */
+describe('dispatchDueRemindersService — subscription gate', () => {
+  const OTHER_CLINIC_ID = '507f1f77bcf86cd799439077';
+  const SECOND_ID = '507f1f77bcf86cd799439066';
+
+  /** The same occurrence, attributed to a different practice. */
+  const forClinic = (id: string, clinicId: string): ReminderOccurrenceDocument => ({
+    ...buildOccurrence(id),
+    clinicId: new mongoose.Types.ObjectId(clinicId),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    givenDue([]);
+    occurrenceRepo.releaseStaleClaims.mockResolvedValue(0);
+    occurrenceRepo.releaseClaim.mockResolvedValue(0);
+    occurrenceRepo.updateStatus.mockResolvedValue(true);
+    occurrenceRepo.markMissedBefore.mockResolvedValue(0);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([]);
+    extendPlans.mockResolvedValue(0);
+    plans.completeFinishedPlans.mockResolvedValue(0);
+    sendDigests.mockResolvedValue({
+      data: { considered: 0, sent: 0, failed: 0, skipped: 0 },
+      status: 200,
+    });
+    sendReminderEmail = vi.fn().mockResolvedValue(true);
+    makeReminderSender.mockReturnValue(sendReminderEmail);
+    patientRepo.findById.mockResolvedValue(buildPatient());
+    clinicMaySend.mockResolvedValue(true);
+  });
+
+  /*
+    "Lapsed" is not the gate. A clinic whose trial ended yesterday still has its reminders sent —
+    `canClinicDispatch` is what draws the line, fourteen days later, and the sweep asks it rather
+    than reading a status itself.
+  */
+  it('keeps sending for a clinic still inside its 14-day grace window', async () => {
+    givenDue([buildOccurrence()]);
+    subscriptionRepo.findActiveByPatient.mockResolvedValue([buildSubscription('https://fcm/a')]);
+    pushClient.send.mockResolvedValue({ ok: true });
+    // Lapsed, but inside the window — the gate says yes.
+    clinicMaySend.mockResolvedValue(true);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.claimForDispatch).toHaveBeenCalledWith(
+      [OCCURRENCE_ID],
+      expect.anything(),
+      NOW
+    );
+    expect('sent' in result.data && result.data.sent).toBe(1);
+    expect('suspended' in result.data && result.data.suspended).toBe(0);
+  });
+
+  it('never claims a row once the grace window has closed, so nothing is sent or retired', async () => {
+    givenDue([buildOccurrence()], []);
+    clinicMaySend.mockResolvedValue(false);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.claimForDispatch).toHaveBeenCalledWith([], expect.anything(), NOW);
+    expect(pushClient.send).not.toHaveBeenCalled();
+    expect(sendReminderEmail).not.toHaveBeenCalled();
+    // Not marked `sent` — the row stays pending and the next sweep can still pick it up.
+    expect(occurrenceRepo.updateStatus).not.toHaveBeenCalled();
+    expect('suspended' in result.data && result.data.suspended).toBe(1);
+  });
+
+  it('counts a suspended row apart from a withheld one', async () => {
+    // Withholding is the platform obeying a withdrawn consent; suspension is a billing wall.
+    // Folding them together would have a clinic chasing a consent problem that does not exist.
+    givenDue([buildOccurrence()], []);
+    clinicMaySend.mockResolvedValue(false);
+
+    const result = await dispatchDueRemindersService();
+
+    expect('withheld' in result.data && result.data.withheld).toBe(0);
+    expect('suspended' in result.data && result.data.suspended).toBe(1);
+  });
+
+  it('sends for a paying clinic in the same run that suspends another', async () => {
+    const live = forClinic(OCCURRENCE_ID, CLINIC_ID);
+    const lapsed = forClinic(SECOND_ID, OTHER_CLINIC_ID);
+    givenDue([live, lapsed], [live]);
+    clinicMaySend.mockImplementation(async clinicId => clinicId === CLINIC_ID);
+
+    const result = await dispatchDueRemindersService();
+
+    expect(occurrenceRepo.claimForDispatch).toHaveBeenCalledWith(
+      [OCCURRENCE_ID],
+      expect.anything(),
+      NOW
+    );
+    expect('processed' in result.data && result.data.processed).toBe(1);
+    expect('suspended' in result.data && result.data.suspended).toBe(1);
+  });
+
+  it('reads each clinic once however many rows it has in the run', async () => {
+    // A practice's whole caseload arrives together; a lookup per reminder would be a read storm.
+    givenDue([buildOccurrence(), buildOccurrence(SECOND_ID)]);
+
+    await dispatchDueRemindersService();
+
+    expect(clinicMaySend).toHaveBeenCalledTimes(1);
   });
 });

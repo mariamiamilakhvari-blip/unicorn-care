@@ -87,6 +87,22 @@ const ClinicSchema = new Schema(
       required: true,
     },
     planRenewsAt: { type: Date, required: false, default: null },
+    /*
+      When paid access ended, and the instant the 14-day reminder grace period is measured from.
+
+      Stored rather than derived because there is nothing to derive it from: a trial expiry is
+      readable off `trialEndsAt`, but a failed renewal or a cancellation leaves no timestamp of its
+      own, and `updatedAt` moves every time anyone edits the clinic's phone number. A grace period
+      anchored to that would silently restart itself.
+
+      Written by the webhook and by self-cancellation, and cleared the moment a subscription goes
+      active again — so a clinic that lapses, pays, and lapses again gets a fresh fourteen days
+      rather than the remains of the old window. Null while the subscription is live, and also null
+      on clinics that lapsed before this field existed; the grace helper treats that as a window
+      that has already closed, since a clinic in that state has been lapsed far longer than the
+      grace period anyway.
+    */
+    subscriptionEndedAt: { type: Date, required: false, default: null },
 
     /*
       Denormalised rating standing, recomputed from the ratings themselves on every submission —

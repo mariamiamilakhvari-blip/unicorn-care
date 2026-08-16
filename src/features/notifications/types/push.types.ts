@@ -38,6 +38,19 @@ export type DispatchSummary = {
    * Counting them together would have a clinic chasing a delivery fault that does not exist.
    */
   withheld: number;
+  /**
+   * Due occurrences left unclaimed because their clinic is past the 14-day grace window that
+   * follows a lapse — an expired trial, a cancellation, a card that stopped working, none of
+   * which were put right within a fortnight.
+   *
+   * A clinic that lapsed yesterday contributes nothing here: its reminders are still being sent.
+   *
+   * Counted apart from `withheld` because the rows end up somewhere else entirely: a withdrawn
+   * consent retires the occurrence, whereas this one is left `pending` and untouched, so a clinic
+   * that resubscribes inside the grace window has its reminders resume on the next sweep. A
+   * number that climbs here is a billing problem with a clinical cost attached, and reads as one.
+   */
+  suspended: number;
   /** Occurrences aged past the grace window and flipped to `missed`. */
   missed: number;
   /** Plans whose rehabilitation window closed on this run and were retired to `completed`. */

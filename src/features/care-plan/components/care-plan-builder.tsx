@@ -36,6 +36,9 @@ import { Input } from '@/shared/components/ui/input';
 import { Separator } from '@/shared/components/ui/separator';
 import { AppLocale } from '@/shared/types/roles';
 
+/** Server codes that have copy of their own under `carePlan.error`. Anything else shows raw. */
+const KNOWN_ERRORS = ['INVALID_CLINIC_TIMEZONE', 'INCOMPLETE_PLAN', 'SUBSCRIPTION_INACTIVE'];
+
 type CarePlanBuilderProps = {
   procedureId: string;
   patientId: string;
@@ -169,9 +172,7 @@ export function CarePlanBuilder({
         {/* Known error codes get a sentence the clinic can act on; anything else shows raw. */}
         {error && (
           <p className="text-sm font-medium text-destructive">
-            {error === 'INVALID_CLINIC_TIMEZONE' || error === 'INCOMPLETE_PLAN'
-              ? t(`error.${error}`)
-              : error}
+            {KNOWN_ERRORS.includes(error) ? t(`error.${error}`) : error}
           </p>
         )}
 

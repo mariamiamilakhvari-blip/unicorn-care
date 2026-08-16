@@ -4,6 +4,7 @@ import { carePlanRepository } from '@/features/care-plan/repository/care-plan.re
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder-occurrence.schema';
 import { extendActivePlansService } from '@/features/care-plan/service/dispatch-extension.service';
+import { canClinicDispatch } from '@/features/clinic/service/subscription.service';
 import {
   createReminderEmailSender,
   sendDailyDigestsService,
@@ -106,6 +107,35 @@ function createConsentGate() {
 }
 
 /**
+ * Whether the clinic behind an occurrence may still have reminders sent, memoised for one sweep.
+ *
+ * This is the *dispatch* gate, not the write gate, and the difference is the whole design. A
+ * clinic loses the ability to add patients and build care plans the instant its subscription
+ * lapses; its existing reminders keep going for a further fourteen days, because the patient
+ * halfway through a course of antibiotics had no part in the billing and a missed dose in that
+ * window is a clinical outcome, not an account state. See `DISPATCH_GRACE_DAYS`.
+ *
+ * A run's rows cluster by clinic — one practice's whole caseload arrives together — so this is one
+ * read per clinic per sweep rather than one per reminder.
+ *
+ * Fails closed, like the consent gate: a clinic that cannot be read is not a clinic we can send a
+ * message on behalf of. The difference is what happens to the row, and it is deliberate — see the
+ * filter in the sweep.
+ */
+function createSubscriptionGate() {
+  const allowed = new Map<string, boolean>();
+
+  return async function maySend(clinicId: string): Promise<boolean> {
+    const cached = allowed.get(clinicId);
+    if (cached !== undefined) return cached;
+
+    const may = await canClinicDispatch(clinicId);
+    allowed.set(clinicId, may);
+    return may;
+  };
+}
+
+/**
  * The sweep (PRD 04 §"The sweep"). Runs unscoped by clinic — the cron is the platform,
  * authorised by `CRON_SECRET`, and has no clinic session.
  *
@@ -130,11 +160,39 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
     new Date(now.getTime() - STALE_CLAIM_MINUTES * MS_PER_MINUTE)
   );
 
-  const candidates = await reminderOccurrenceRepository.findDueForDispatch(
+  const dueCandidates = await reminderOccurrenceRepository.findDueForDispatch(
     now,
     GRACE_HOURS,
     DISPATCH_LIMIT
   );
+
+  /*
+    Rows belonging to a clinic past its 14-day grace window are dropped *before* the claim, not
+    skipped after it.
+
+    That ordering is the whole point. Everything past the claim leaves the run marked `sent`, and
+    marking an unsent reminder `sent` would retire it for good — a clinic that upgrades an hour
+    later would never see the doses it missed, and neither would the patient. Left unclaimed the
+    row stays `pending`: it is picked up untouched by the next sweep, so resubscribing resumes the
+    reminders for anything still inside the six-hour dispatch grace, and past that window it ages
+    into `missed` like any other reminder nobody sent. Missed is the honest record here — nothing
+    was delivered.
+
+    Note the two unrelated windows sharing the word "grace": `GRACE_HOURS` is how late a single
+    reminder is still worth sending, and `DISPATCH_GRACE_DAYS` is how long a lapsed clinic's
+    reminders keep running at all. They are independent, and a row can be inside one and outside
+    the other.
+  */
+  const maySend = createSubscriptionGate();
+  const candidates = [];
+  let suspended = 0;
+  for (const candidate of dueCandidates) {
+    if (await maySend(candidate.clinicId.toString())) {
+      candidates.push(candidate);
+      continue;
+    }
+    suspended += 1;
+  }
 
   const claimId = randomUUID();
   await reminderOccurrenceRepository.claimForDispatch(
@@ -323,6 +381,7 @@ export async function dispatchDueRemindersService(): Promise<ServiceResult<Dispa
       failed,
       abandoned,
       withheld,
+      suspended,
     },
     status: 200,
   };

@@ -19,10 +19,12 @@ import {
   UpdateCarePlanType,
 } from '@/features/care-plan/validations/care-plan.validation';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { canClinicWrite, resolveStatus } from '@/features/clinic/service/subscription.service';
 import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
+import { WRITE_ALLOWED_STATUSES } from '@/shared/const/subscription.const';
 import { effectiveTimeZone, isValidTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { PaginatedResult, ServiceResult } from '@/shared/types/common';
@@ -44,6 +46,15 @@ export async function createCarePlanService(
   clinicId: string,
   input: CreateCarePlanType
 ): Promise<CarePlanResult> {
+  /*
+    A care plan is a clinical record like a patient is, so it is behind the same subscription wall
+    and answers with the same code — 402, because the request is valid and payment is what is
+    missing. Enforced in the service rather than the route so every caller is covered.
+  */
+  if (!(await canClinicWrite(clinicId))) {
+    return { data: { error: 'SUBSCRIPTION_INACTIVE' }, status: 402 };
+  }
+
   /*
     `procedureId` is unique on the schema — one plan per procedure. Without this check a second
     submit surfaced as a raw duplicate-key crash and a 500, which reads to the clinic as "the app
@@ -173,6 +184,18 @@ export async function activateCarePlanService(
 
   const clinic = await clinicRepository.findById(clinicId);
   if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
+
+  /*
+    Activation is the moment reminders are materialised and start being sent, so it is gated even
+    though the plan itself already exists — a clinic whose trial ran out mid-draft can finish
+    writing the plan, but cannot switch on the messaging it pays for.
+
+    Read off the clinic document already loaded above rather than through `canClinicWrite`, which
+    would fetch the same row a second time.
+  */
+  if (!WRITE_ALLOWED_STATUSES.includes(resolveStatus(clinic, clock.now()))) {
+    return { data: { error: 'SUBSCRIPTION_INACTIVE' }, status: 402 };
+  }
 
   /*
     Checked before generating anything. An invalid zone throws inside `Intl.DateTimeFormat`, which

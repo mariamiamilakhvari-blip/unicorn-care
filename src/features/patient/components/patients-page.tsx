@@ -3,8 +3,10 @@
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
+import { useSubscription } from '@/features/clinic/hooks/use-subscription';
 import { PatientForm } from '@/features/patient/components/patient-form';
 import { PatientList } from '@/features/patient/components/patient-list';
+import { PatientSeatNotice } from '@/features/patient/components/patient-seat-notice';
 import {
   PatientWriteError,
   PatientWriteErrorNotice,
@@ -23,6 +25,7 @@ export function PatientsPage() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const { patients, isLoading, hasError, create, archive } = usePatients(debouncedSearch || undefined);
+  const { subscription } = useSubscription();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [writeError, setWriteError] = useState<PatientWriteError | null>(null);
@@ -45,14 +48,27 @@ export function PatientsPage() {
     }
   }
 
+  /*
+    Blocked until the subscription says otherwise — but only once it has answered. Disabling the
+    button while the subscription is still loading would flicker it off on every visit, and a
+    clinic that clicks in that window is refused by the service anyway.
+  */
+  const canAddPatient = !subscription || (subscription.canWrite && !subscription.isAtPatientLimit);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-semibold">{t('plural')}</h1>
-        <Button onClick={() => setIsFormOpen(open => !open)}>
+        <Button
+          onClick={() => setIsFormOpen(open => !open)}
+          disabled={!canAddPatient && !isFormOpen}
+        >
           {isFormOpen ? tCommon('cancel') : t('createPatient')}
         </Button>
       </div>
+
+      {/* The wall before the form, so an intake is never typed out only to be refused. */}
+      {subscription && <PatientSeatNotice subscription={subscription} />}
 
       {writeError && <PatientWriteErrorNotice error={writeError} />}
 

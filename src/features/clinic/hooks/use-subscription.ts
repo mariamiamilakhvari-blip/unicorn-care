@@ -14,6 +14,7 @@ type SubscriptionState = {
   error: string | null;
   changePlan: (plan: PlanKey) => Promise<void>;
   startCheckout: (plan: 'standard' | 'premium', period: BillingPeriod) => Promise<void>;
+  cancelSubscription: () => Promise<void>;
 };
 
 export function useSubscription(): SubscriptionState {
@@ -68,5 +69,29 @@ export function useSubscription(): SubscriptionState {
     []
   );
 
-  return { subscription, isLoading, isPending, error, changePlan, startCheckout };
+  /**
+   * Ends the trial or the paid plan. The response is the refreshed subscription, so the card the
+   * button lives on re-renders into its cancelled state without a second request.
+   */
+  const cancelSubscription = useCallback(async () => {
+    setIsPending(true);
+    setError(null);
+    try {
+      setSubscription(await http.post<SubscriptionView>('/subscription/cancel'));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'ERROR');
+    } finally {
+      setIsPending(false);
+    }
+  }, []);
+
+  return {
+    subscription,
+    isLoading,
+    isPending,
+    error,
+    changePlan,
+    startCheckout,
+    cancelSubscription,
+  };
 }
