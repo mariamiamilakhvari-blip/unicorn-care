@@ -469,14 +469,13 @@
       },
       "premium": {
         "name": "Premium",
-        "bestFor": "Medium to large clinics, multi-doctor practices, clinic chains, 50+ patients/month."
+        "bestFor": "Unlimited patients per month"
       }
     },
     "feature": {
       "procedureRecords": "Procedure + medication records",
       "complicationsGuide": "Complications guide per patient",
       "checkupReminders": "Checkup date reminders",
-      "unlimitedPatients": "Unlimited patients",
       "customGuidePerProcedure": "Custom complications guide per procedure type",
       "noCreditCard": "No credit card required"
     },

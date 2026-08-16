@@ -132,12 +132,20 @@ describe('checkPatientSeat — limits', () => {
     });
   });
 
-  it('never limits Premium', async () => {
+  /*
+    Premium is uncapped, and the check exits before it counts anything. Asserting that the roster
+    is never read is the part that matters: a plan with no limit must have no cap check at all, not
+    a cap check that happens to pass. Counting would also put a 5000-row read in front of every
+    patient a large clinic adds, to reach a branch whose answer is already known.
+  */
+  it('never limits Premium, and does not even count the roster', async () => {
     clinics.findById.mockResolvedValue(
       clinicDoc({ plan: 'premium', subscriptionStatus: 'active' })
     );
     patients.findAllByClinic.mockResolvedValue(roster(5000));
+
     expect(await checkPatientSeat(CLINIC_ID)).toEqual({ ok: true });
+    expect(patients.findAllByClinic).not.toHaveBeenCalled();
   });
 
   /** Archiving is how a clinic frees a seat, so archived rows must not be counted. */
@@ -529,22 +537,19 @@ describe('canClinicDispatch', () => {
 describe('cancelSubscriptionService — period-end cancellation', () => {
   const DAY = 86_400_000;
 
-  const paidClinic = (renewsInDays: number) =>
-    clinicDoc({
+  it('keeps the paid period rather than clearing it', async () => {
+    const renewsAt = new Date(Date.now() + 20 * DAY);
+    clinics.findById.mockResolvedValue(clinicDoc({
       plan: 'standard',
       subscriptionStatus: 'active',
       trialEndsAt: null,
-      planRenewsAt: new Date(Date.now() + renewsInDays * DAY),
-    });
-
-  it('keeps the paid period rather than clearing it', async () => {
-    const clinic = paidClinic(20);
-    clinics.findById.mockResolvedValue(clinic);
+      planRenewsAt: renewsAt,
+    }));
 
     await cancelSubscriptionService(CLINIC_ID);
 
     const patch = clinics.updateById.mock.calls[0][1] as { planRenewsAt?: Date | null };
-    expect(patch.planRenewsAt).toEqual(clinic.planRenewsAt);
+    expect(patch.planRenewsAt).toEqual(renewsAt);
   });
 
   /*
@@ -553,13 +558,18 @@ describe('cancelSubscriptionService — period-end cancellation', () => {
     patients unreachable eleven and a half months early.
   */
   it('anchors the reminder grace to the end of the paid period, not to the click', async () => {
-    const clinic = paidClinic(20);
-    clinics.findById.mockResolvedValue(clinic);
+    const renewsAt = new Date(Date.now() + 20 * DAY);
+    clinics.findById.mockResolvedValue(clinicDoc({
+      plan: 'standard',
+      subscriptionStatus: 'active',
+      trialEndsAt: null,
+      planRenewsAt: renewsAt,
+    }));
 
     await cancelSubscriptionService(CLINIC_ID);
 
     const patch = clinics.updateById.mock.calls[0][1] as { subscriptionEndedAt?: Date };
-    expect(patch.subscriptionEndedAt).toEqual(clinic.planRenewsAt);
+    expect(patch.subscriptionEndedAt).toEqual(renewsAt);
   });
 
   it('still ends a trial immediately — nothing has been paid for', async () => {
@@ -664,5 +674,64 @@ describe('a cancellation that has not taken effect yet', () => {
 
     // Measured from two days ago, not thirty — so twelve of the fourteen days are left.
     expect(resolveGrace(clinic, new Date())).toMatchObject({ mayDispatch: true, daysLeft: 12 });
+  });
+});
+
+/**
+ * Premium's promises, asserted on the plan the clinic is actually on.
+ *
+ * The rules themselves are plan-agnostic and covered above; these exist because "unlimited" is a
+ * claim printed on a pricing page and sold, so the code backing it should fail loudly rather than
+ * quietly acquire a cap.
+ */
+describe('Premium — unlimited capacity', () => {
+  const DAY = 86_400_000;
+
+  const premium = (overrides = {}) =>
+    clinicDoc({ plan: 'premium', subscriptionStatus: 'active', trialEndsAt: null, ...overrides });
+
+  it('reports no patient limit at all, rather than a very large one', async () => {
+    clinics.findById.mockResolvedValue(premium());
+    patients.findAllByClinic.mockResolvedValue(roster(4000));
+
+    const { data } = await getSubscriptionService(CLINIC_ID);
+
+    expect(data).toMatchObject({ patientLimit: null, isAtPatientLimit: false });
+  });
+
+  it('admits another patient at four thousand', async () => {
+    clinics.findById.mockResolvedValue(premium());
+    patients.findAllByClinic.mockResolvedValue(roster(4000));
+
+    expect(await checkPatientSeat(CLINIC_ID)).toEqual({ ok: true });
+  });
+
+  /* Cancellation is plan-agnostic, but Premium is the annual plan where cutting early costs most. */
+  it('cancels at the end of the paid period like every other paid plan', async () => {
+    const renewsAt = new Date(Date.now() + 300 * DAY);
+    clinics.findById.mockResolvedValue(premium({ planRenewsAt: renewsAt }));
+
+    const { status } = await cancelSubscriptionService(CLINIC_ID);
+
+    expect(status).toBe(200);
+    const patch = clinics.updateById.mock.calls[0][1] as {
+      planRenewsAt?: Date | null;
+      subscriptionEndedAt?: Date;
+    };
+    expect(patch.planRenewsAt).toEqual(renewsAt);
+    expect(patch.subscriptionEndedAt).toEqual(renewsAt);
+  });
+
+  it('keeps full access for the rest of a cancelled annual period', async () => {
+    clinics.findById.mockResolvedValue(
+      premium({
+        subscriptionStatus: 'cancelled',
+        planRenewsAt: new Date(Date.now() + 300 * DAY),
+        subscriptionEndedAt: new Date(Date.now() + 300 * DAY),
+      })
+    );
+
+    await expect(canClinicWrite(CLINIC_ID)).resolves.toBe(true);
+    expect(await checkPatientSeat(CLINIC_ID)).toEqual({ ok: true });
   });
 });

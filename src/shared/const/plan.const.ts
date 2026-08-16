@@ -77,11 +77,14 @@ export const PLANS: Plan[] = [
     currency: 'USD',
     patientLimit: null,
     trialDays: null,
-    features: [
-      ...STANDARD_FEATURES,
-      { key: 'unlimitedPatients', status: 'available' },
-      { key: 'customGuidePerProcedure', status: 'available' },
-    ],
+    /*
+      No `unlimitedPatients` bullet. The card already states it twice — the seat line under the
+      price renders it from `patientLimit: null`, and the blurb underneath says it again — so a
+      third copy in the feature list read as three different promises rather than one. The seat
+      line is the one that cannot be dropped: it is derived from the limit itself, so it is the
+      only one that stays true if the plan is ever capped.
+    */
+    features: [...STANDARD_FEATURES, { key: 'customGuidePerProcedure', status: 'available' }],
   },
 ];
 

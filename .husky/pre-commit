@@ -1,7 +1,20 @@
 #!/usr/bin/env sh
 
+# Abort on the first failing gate.
+#
+# Without this the hook's exit status is whatever the *last* command returned, so a lint or build
+# failure was reported on screen and then quietly overwritten by a passing test run — the hook
+# printed the error and let the commit through anyway.
+set -e
+
 echo "---CHECK LINT---"
 npm run lint
+
+# Ahead of the build because it is the stricter of the two TypeScript passes: `next build` does not
+# check files outside the app graph, so a type error in a `.spec.ts` compiled clean and reached
+# main. Also the fastest gate to fail, which is the right place for it in the chain.
+echo "---CHECK TYPES---"
+npm run typecheck
 
 echo "---BUILD PROJECT---"
 npm run build
