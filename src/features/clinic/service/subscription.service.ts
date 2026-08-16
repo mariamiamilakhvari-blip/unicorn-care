@@ -17,11 +17,31 @@ import { ServiceResult } from '@/shared/types/common';
 const ROSTER_LIMIT = 5000;
 
 /**
+ * True when the subscription is cancelled but the period the clinic already paid for has not run
+ * out yet — the "cancels on 3 March" state, not the "cancelled" state.
+ *
+ * Read off the *stored* status rather than the resolved one, because the resolved status is
+ * precisely what this decides: while a cancellation is only scheduled, the clinic still reads as
+ * `active`.
+ *
+ * A cancelled trial is never scheduled. It has no `planRenewsAt`, and nothing has been paid for
+ * that would be unfair to take back — switching a trial off means switching it off.
+ */
+export function isCancellationScheduled(clinic: ClinicDocument, now: Date): boolean {
+  return (
+    clinic.subscriptionStatus === 'cancelled' &&
+    Boolean(clinic.planRenewsAt) &&
+    (clinic.planRenewsAt as Date).getTime() > now.getTime()
+  );
+}
+
+/**
  * Resolves the *effective* status.
  *
  * A trial does not expire because a scheduled job noticed — it expires because the date passed.
  * Deriving it on read means a clinic cannot keep trial access just because no cron ran, and there
- * is no background job to get out of step with reality.
+ * is no background job to get out of step with reality. Cancellation works the same way: the
+ * status flips when the paid period ends, not when someone clicked the button.
  */
 export function resolveStatus(clinic: ClinicDocument, now: Date): SubscriptionStatus {
   /*
@@ -31,6 +51,18 @@ export function resolveStatus(clinic: ClinicDocument, now: Date): SubscriptionSt
     date rather than to a broken, falsy status.
   */
   const status = clinic.subscriptionStatus ?? 'trialing';
+
+  /*
+    A cancellation does not take back the month already paid for. Until `planRenewsAt` passes the
+    clinic is still active in every sense that matters — it can add patients, build plans and send
+    reminders — and only then does the stored `cancelled` become the effective one.
+
+    Checked before the branch below so it covers a cancellation from either direction: our own
+    cancel endpoint, and a `subscription.cancelled` webhook fired when the owner cancels inside
+    Dodo's portal. Without it, cancelling on the second of the month deleted twenty-eight days the
+    clinic had already been charged for.
+  */
+  if (isCancellationScheduled(clinic, now)) return 'active';
 
   if (status !== 'trialing') return status;
   if (!clinic.trialEndsAt) return 'trialing';
@@ -60,7 +92,24 @@ export function lapsedAt(clinic: ClinicDocument, now: Date): Date | null {
     return clinic.trialEndsAt;
   }
 
-  return clinic.subscriptionEndedAt ?? null;
+  const stamp = clinic.subscriptionEndedAt ?? null;
+  const periodEnd = clinic.planRenewsAt ?? null;
+
+  /*
+    Access ended at the last moment the clinic was entitled to it, which is not always the moment
+    the status changed. Someone who cancels on the 2nd keeps the month they paid for, so their
+    fourteen days of reminders start when that month runs out — anchoring to the click would end
+    their patients' reminders while they were still a paying customer. The same applies to a
+    cancellation made inside Dodo's portal, where the webhook lands weeks before the period does.
+
+    So: the later of the two, ignoring a period end still in the future (which means the
+    cancellation is merely scheduled and this function has already returned `null` above).
+  */
+  if (periodEnd && periodEnd.getTime() <= now.getTime()) {
+    return stamp && stamp.getTime() > periodEnd.getTime() ? stamp : periodEnd;
+  }
+
+  return stamp;
 }
 
 /** Where a clinic stands in the 14-day reminder window. All fields are `null` while it is live. */
@@ -139,6 +188,7 @@ export async function getSubscriptionService(
     : null;
 
   const grace = resolveGrace(clinic, now);
+  const cancelScheduled = isCancellationScheduled(clinic, now);
 
   return {
     data: {
@@ -154,7 +204,10 @@ export async function getSubscriptionService(
         already-cancelled plan have nothing left to switch off, and offering the button there
         reads as a second, different action rather than as a no-op.
       */
-      canCancel: status === 'trialing' || status === 'active',
+      // A pending cancellation resolves to `active`, so it has to be excluded explicitly or the
+      // owner is offered a Cancel button for a subscription that is already cancelling.
+      canCancel: (status === 'trialing' || status === 'active') && !cancelScheduled,
+      cancelScheduled,
       /*
         The grace window, reported whether or not the clinic is in one, so the dashboard can say
         three different things: reminders are running normally, reminders are running on borrowed
@@ -251,6 +304,11 @@ export async function checkPatientSeat(clinicId: string): Promise<SeatCheck> {
  * The provider is cancelled first and a failure there aborts the whole thing, for the same reason
  * account deletion does it in that order: a clinic marked cancelled here while Dodo keeps charging
  * is the one outcome there is no way to notice from inside the app.
+ *
+ * A paid plan is cancelled *at the end of the period already paid for*, not on the spot. Cancelling
+ * on the 2nd used to delete the twenty-eight days the clinic had just been charged for, which is
+ * both wrong and the sort of thing that gets disputed with a card issuer. A trial has nothing paid
+ * for and ends immediately.
  */
 export async function cancelSubscriptionService(
   clinicId: string
@@ -258,7 +316,15 @@ export async function cancelSubscriptionService(
   const clinic = await clinicRepository.findById(clinicId);
   if (!clinic) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
-  const status = resolveStatus(clinic, clock.now());
+  const now = clock.now();
+
+  // Already scheduled. Caught before the status check below, which reports a pending cancellation
+  // as `active` by design and would otherwise let the owner cancel the same subscription twice.
+  if (isCancellationScheduled(clinic, now)) {
+    return { data: { error: 'ALREADY_CANCELLED' }, status: 409 };
+  }
+
+  const status = resolveStatus(clinic, now);
   // Nothing to end. Returned as a conflict rather than a silent success so a double submit does
   // not read as having cancelled something twice.
   if (status !== 'trialing' && status !== 'active') {
@@ -283,16 +349,31 @@ export async function cancelSubscriptionService(
     matters the moment anyone asks whether a clinic left before or after their seven days.
   */
   /*
+    `planRenewsAt` is kept, not cleared, and it changes meaning at this point: it stops being the
+    next charge date and becomes the date access ends. `resolveStatus` reads it to keep the clinic
+    active until then, so clearing it here would collapse the whole period-end grace back into an
+    instant cut-off.
+
+    Null on a trial, which has no paid period — a cancelled trial ends the moment it is cancelled.
+  */
+  const accessEndsAt = clinic.planRenewsAt ?? null;
+
+  /*
     `subscriptionEndedAt` is the anchor the 14-day reminder grace window is measured from, and this
     is one of only two places a lapse gets a timestamp — the other is the webhook. Without it a
     self-cancelled clinic has no readable lapse date, and `resolveGrace` would treat their window
     as already closed: every patient mid-recovery would stop being reminded the moment the owner
     clicked cancel, which is precisely what the grace period exists to prevent.
+
+    Stamped with the end of the paid period rather than with now, so the fourteen days start when
+    access actually ends. Anchoring to the click would run the reminder window down while the
+    clinic was still a paying customer, and a clinic cancelling on day two of an annual plan would
+    find its patients unreachable eleven and a half months early.
   */
   await clinicRepository.updateById(clinicId, {
     subscriptionStatus: 'cancelled',
-    planRenewsAt: null,
-    subscriptionEndedAt: clock.now(),
+    planRenewsAt: accessEndsAt,
+    subscriptionEndedAt: accessEndsAt ?? now,
   });
 
   return getSubscriptionService(clinicId);

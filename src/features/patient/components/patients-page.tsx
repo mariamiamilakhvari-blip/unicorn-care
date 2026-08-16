@@ -70,7 +70,9 @@ export function PatientsPage() {
       {/* The wall before the form, so an intake is never typed out only to be refused. */}
       {subscription && <PatientSeatNotice subscription={subscription} />}
 
-      {writeError && <PatientWriteErrorNotice error={writeError} />}
+      {writeError && (
+        <PatientWriteErrorNotice error={writeError} patientLimit={subscription?.patientLimit} />
+      )}
 
       {isFormOpen && (
         <Card>

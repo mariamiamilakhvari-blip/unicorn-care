@@ -20,7 +20,17 @@ export type PatientWriteError = 'SUBSCRIPTION_INACTIVE' | 'PATIENT_LIMIT_REACHED
 /** Both billing walls are fixed on the pricing page, so both get the same way out. */
 const BILLING_ERRORS: PatientWriteError[] = ['SUBSCRIPTION_INACTIVE', 'PATIENT_LIMIT_REACHED'];
 
-export function PatientWriteErrorNotice({ error }: { error: PatientWriteError }) {
+type PatientWriteErrorProps = {
+  error: PatientWriteError;
+  /**
+   * The plan's seat count, so the message names the wall the clinic actually hit — 5 on a trial,
+   * 50 on Standard. Falls back to 0 only when the subscription has not loaded, which cannot
+   * coincide with a limit refusal in practice: the refusal comes from a request the page made.
+   */
+  patientLimit?: number | null;
+};
+
+export function PatientWriteErrorNotice({ error, patientLimit }: PatientWriteErrorProps) {
   const t = useTranslations('patient');
 
   return (
@@ -29,7 +39,9 @@ export function PatientWriteErrorNotice({ error }: { error: PatientWriteError })
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <p className="text-sm font-medium text-destructive">{t(`writeError.${error}.title`)}</p>
-        <p className="text-sm text-muted-foreground">{t(`writeError.${error}.body`)}</p>
+        <p className="text-sm text-muted-foreground">
+          {t(`writeError.${error}.body`, { limit: patientLimit ?? 0 })}
+        </p>
 
         {BILLING_ERRORS.includes(error) && (
           <Button asChild size="sm" variant="outline" className="self-start">

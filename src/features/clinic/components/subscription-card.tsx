@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, BellRing, CreditCard } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { CancelSubscription } from '@/features/clinic/components/cancel-subscription';
 import { PricingTable } from '@/features/clinic/components/pricing-table';
@@ -9,16 +9,18 @@ import { useSubscription } from '@/features/clinic/hooks/use-subscription';
 import { Badge } from '@/shared/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { cn } from '@/shared/lib/utils';
+import { formatDate } from '@/shared/utils/format';
 
 const METER_CELLS = 24;
 
 /** Cancellation failures that have copy of their own. Everything else falls through raw. */
-const CANCEL_ERRORS = ['NOT_CANCELLABLE', 'CANCEL_FAILED'];
+const CANCEL_ERRORS = ['NOT_CANCELLABLE', 'CANCEL_FAILED', 'ALREADY_CANCELLED'];
 
 /** Seat usage and plan state, plus the switcher. Shown on the clinic page. */
 export function SubscriptionCard() {
   const t = useTranslations('pricing');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
   const { subscription, isLoading, isPending, error, startCheckout, cancelSubscription } =
     useSubscription();
 
@@ -48,6 +50,16 @@ export function SubscriptionCard() {
           {status === 'trialing' && trialDaysLeft !== null && (
             <span className="text-sm text-muted-foreground">
               {t('trialDaysLeft', { count: trialDaysLeft })}
+            </span>
+          )}
+          {/*
+            A cancelled plan still reads `active` until the paid period runs out, so without this
+            line the card is indistinguishable from one nobody cancelled — and the owner has no
+            way to confirm the cancellation went through, or to find out when it takes effect.
+          */}
+          {subscription.cancelScheduled && subscription.renewsAt && (
+            <span className="text-sm text-muted-foreground">
+              {t('cancelScheduled', { date: formatDate(subscription.renewsAt, locale) })}
             </span>
           )}
         </div>

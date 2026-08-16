@@ -35,7 +35,10 @@ export function PatientSeatNotice({ subscription }: { subscription: Subscription
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <p className="text-sm font-medium text-destructive">{t(`writeError.${reason}.title`)}</p>
-        <p className="text-sm text-muted-foreground">{t(`writeError.${reason}.body`)}</p>
+        <p className="text-sm text-muted-foreground">
+          {/* Names the number the clinic is up against: 5 on a trial, 50 on Standard. */}
+          {t(`writeError.${reason}.body`, { limit: subscription.patientLimit ?? 0 })}
+        </p>
         <Button asChild size="sm" variant="outline" className="self-start">
           <Link href={PRICING_ROUTE}>{t('writeError.action')}</Link>
         </Button>
