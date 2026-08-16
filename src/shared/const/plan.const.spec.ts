@@ -23,6 +23,22 @@ describe('plan pricing', () => {
     expect(standard.annualPriceMinor).toBe(23_900);
   });
 
+  /*
+    The Premium card states "unlimited patients" from `patientLimit: null` on the seat line and
+    again in the plan blurb. A third copy in the feature list read as three separate promises, so
+    the bullet was dropped — and this pins that, because re-adding it is a one-line change that
+    looks like an improvement.
+  */
+  it('does not repeat the unlimited claim as a Premium feature bullet', () => {
+    const keys = findPlan('premium').features.map(feature => feature.key);
+    expect(keys).not.toContain('unlimitedPatients');
+  });
+
+  it('still sells Premium on what Standard does not have', () => {
+    const keys = findPlan('premium').features.map(feature => feature.key);
+    expect(keys).toContain('customGuidePerProcedure');
+  });
+
   it('lists the premium plan at $59/mo and $489/yr', () => {
     const premium = findPlan('premium');
     expect(premium.monthlyPriceMinor).toBe(5_900);
