@@ -44,6 +44,23 @@ const SECURITY_HEADERS = [
   { key: 'Content-Security-Policy', value: CSP_DIRECTIVES.join('; ') },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  /*
+    Encryption in transit, enforced by the browser rather than hoped for.
+
+    The Law of Georgia on Personal Data Protection requires measures appropriate to the risk of
+    processing health data, and TLS at the edge alone leaves one request unprotected: the first
+    one, before any redirect. That matters more here than on most products because a portal link
+    carries a credential in its path — a single plaintext request would put it in the clear, and
+    no amount of correctness afterwards takes it back.
+
+    Two years, subdomains included, and `preload` so a browser that has never seen this host still
+    refuses to speak to it in plaintext. `preload` is a commitment: every subdomain must be able to
+    serve HTTPS before this ships.
+  */
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
 ];
 
 const nextConfig: NextConfig = {

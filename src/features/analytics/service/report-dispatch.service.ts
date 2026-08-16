@@ -20,7 +20,7 @@ export type ReportSendResult = {
  *
  * The address is the clinic's own contact email if it has set one, falling back to the owner's
  * login. That order matters: the contact address is the practice's shared inbox and the one the
- * BAA promises to reach them at, while the owner's login is a person who may have left. Falling
+ * DPA promises to reach them at, while the owner's login is a person who may have left. Falling
  * back rather than requiring either means a clinic that filled in neither is told so, instead of
  * the send failing silently somewhere in a queue.
  *

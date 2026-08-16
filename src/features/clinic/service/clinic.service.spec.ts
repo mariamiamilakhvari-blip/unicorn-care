@@ -21,7 +21,7 @@ vi.mock('@/features/auth/repository/user.repository', () => ({
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { ClinicProfile } from '@/features/clinic/types/clinic.types';
-import { BAA_VERSION, CONSENT_VERSION } from '@/shared/const/consent.const';
+import { CONSENT_VERSION, DPA_VERSION } from '@/shared/const/consent.const';
 
 import {
   createStaffService,
@@ -35,7 +35,7 @@ const mockUserRepo = vi.mocked(userRepository);
 
 const USER_ID = '507f1f77bcf86cd799439011';
 const CLINIC_ID = '507f1f77bcf86cd799439022';
-/** Every register call carries the caller's address; the BAA record is stamped with it. */
+/** Every register call carries the caller's address; the DPA record is stamped with it. */
 const IP = '203.0.113.9';
 
 const registerInput = {
@@ -60,7 +60,11 @@ const registerInput = {
     processingPurpose: true,
     remindersNotMedicalAdvice: true,
     regulatoryCompliance: true,
-    baa: false,
+    // Ticked like the rest. It carried `false` while it was a US-only Business Associate
+    // Agreement a Georgian clinic could decline; a body reaching this service with it unticked is
+    // now rejected by the schema before it gets here, so a fixture claiming otherwise would
+    // describe a request that cannot exist.
+    dataProcessing: true,
   },
 };
 
@@ -150,23 +154,25 @@ describe('registerClinicService', () => {
   });
 
   /**
-   * The BAA record is evidence of an executed contract, so what matters is that the service
+   * The DPA record is evidence of an executed contract, so what matters is that the service
    * writes it from its own clock, its own version constant and the request's address — never from
    * anything the body could have claimed.
+   *
+   * There is no "records a refusal" case any more, and there cannot be one. The agreement was a
+   * US-only Business Associate Agreement that a clinic elsewhere could decline; under the Law of
+   * Georgia on Personal Data Protection every controller engaging a processor needs it, so a
+   * registration that declines it is rejected by the schema and never reaches this service. See
+   * `clinic.validation.spec.ts`, which is where that refusal is now pinned.
    */
-  describe('the BAA record', () => {
-    const registerWith = async (baa: boolean, country = 'Georgia') => {
+  describe('the DPA record', () => {
+    const registerWith = async (country = 'Georgia') => {
       mockUserRepo.findByEmail.mockResolvedValueOnce(null);
       mockUserRepo.create.mockResolvedValueOnce(USER_ID);
       mockClinicRepo.create.mockResolvedValueOnce(CLINIC_ID);
       mockUserRepo.updateById.mockResolvedValueOnce(true);
 
       await registerClinicService(
-        {
-          ...registerInput,
-          clinic: { ...registerInput.clinic, country },
-          consents: { ...registerInput.consents, baa },
-        },
+        { ...registerInput, clinic: { ...registerInput.clinic, country } },
         IP
       );
 
@@ -174,30 +180,33 @@ describe('registerClinicService', () => {
     };
 
     it('stamps an acceptance with the version, the clock and the caller address', async () => {
-      const payload = await registerWith(true, 'United States');
+      const payload = await registerWith();
 
-      expect(payload.baa?.accepted).toBe(true);
-      expect(payload.baa?.version).toBe(BAA_VERSION);
-      expect(payload.baa?.ip).toBe(IP);
-      expect(payload.baa?.acceptedAt).toBeInstanceOf(Date);
+      expect(payload.dpa?.version).toBe(DPA_VERSION);
+      expect(payload.dpa?.ip).toBe(IP);
+      expect(payload.dpa?.acceptedAt).toBeInstanceOf(Date);
     });
 
-    it('records a refusal as a refusal, with nothing stamped on it', async () => {
-      const payload = await registerWith(false);
+    it('stores no acceptance flag — it could only ever read true', async () => {
+      const payload = await registerWith();
 
-      expect(payload.baa?.accepted).toBe(false);
-      expect(payload.baa?.version).toBe('');
-      expect(payload.baa?.acceptedAt).toBeNull();
-      // No acceptance means no address to attach one to. Keeping the IP here would record where
-      // someone was when they declined, which is a thing to hold and not a thing to prove.
-      expect(payload.baa?.ip).toBe('');
+      // A field with one reachable value is not evidence; it invites a reader to write a branch
+      // for a case the schema makes unreachable.
+      expect(payload.dpa).not.toHaveProperty('accepted');
     });
 
-    it('keeps the BAA version apart from the consent version', async () => {
-      const payload = await registerWith(true, 'United States');
+    it('stamps it for a clinic outside Georgia too — the agreement is not country-conditional', async () => {
+      const payload = await registerWith('Netherlands');
+
+      expect(payload.dpa?.version).toBe(DPA_VERSION);
+      expect(payload.dpa?.acceptedAt).toBeInstanceOf(Date);
+    });
+
+    it('keeps the DPA version apart from the consent version', async () => {
+      const payload = await registerWith();
 
       expect(payload.consent?.version).toBe(CONSENT_VERSION);
-      expect(payload.baa?.version).toBe(BAA_VERSION);
+      expect(payload.dpa?.version).toBe(DPA_VERSION);
     });
   });
 

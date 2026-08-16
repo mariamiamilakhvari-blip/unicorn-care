@@ -25,9 +25,9 @@ const PatientPhotoSchema = new Schema(
     size: { type: Number, required: true },
 
     /*
-      Evidence, not a checkbox. GDPR Art. 9 treats a photograph of a healing surgical site as
-      health data, so what matters afterwards is which wording was agreed and when — a bare
-      boolean answers neither.
+      Evidence, not a checkbox. The Law of Georgia on Personal Data Protection treats a
+      photograph of a healing surgical site as health data, so what matters afterwards is which
+      wording was agreed and when — a bare boolean answers neither.
     */
     consent: {
       version: { type: String, required: true },

@@ -16,8 +16,9 @@ import { FormControl, FormField, FormItem, useFormField } from '@/shared/compone
  * means adding a schema field and two strings — never JSX.
  *
  * Nothing here is pre-ticked and nothing is disabled. A pre-ticked consent box is not consent
- * under GDPR (Art. 4(11) requires a clear affirmative action), so the defaults live in the form's
- * `defaultValues` as `false` and the schema rejects anything that is not literally `true`.
+ * under the Law of Georgia on Personal Data Protection, which requires a clear affirmative action.
+ * So the defaults live in the form's `defaultValues` as `false`, and the schema rejects anything
+ * that is not literally `true`.
  */
 type ConsentChecklistProps<T extends FieldValues> = {
   control: Control<T>;
@@ -41,10 +42,11 @@ type ConsentChecklistProps<T extends FieldValues> = {
  * translating it means rendering the paragraph here. `formMessageId` is reused so the checkbox's
  * `aria-describedby` still resolves.
  *
- * `BAA_REQUIRED` gets its own line rather than the generic one. Every other box on the form is
- * mandatory for everyone, so "you must tick this to continue" is the whole story; the BAA is
- * mandatory only for US clinics, and a clinic that sees the same sentence there has no way to
- * tell why this box became required when it changed its country.
+ * One message for every box now. This used to branch on `BAA_REQUIRED`, because the Business
+ * Associate Agreement was the one consent required of US clinics only and a clinic seeing the
+ * generic sentence had no way to tell why that box became mandatory when it changed its country.
+ * The Data Processing Agreement that replaced it is mandatory everywhere, so "you must tick this
+ * to continue" is once again the whole story.
  */
 function ConsentMessage() {
   const t = useTranslations('consent');
@@ -54,7 +56,7 @@ function ConsentMessage() {
 
   return (
     <p id={formMessageId} className="text-sm font-medium text-destructive">
-      {error.message === 'BAA_REQUIRED' ? t('baaRequired') : t('required')}
+      {t('required')}
     </p>
   );
 }

@@ -124,7 +124,7 @@ export type PhotoDeleteResult =
 /**
  * Deletes a photograph: the bytes, the row, and every reference to it.
  *
- * Both the consent wording the patient agreed to and the BAA say a photograph can be removed on
+ * Both the consent wording the patient agreed to and the DPA say a photograph can be removed on
  * request. Until this existed, neither promise had an implementation behind it — which is worse
  * than not having made the promise.
  *

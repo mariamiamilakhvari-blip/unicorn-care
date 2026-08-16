@@ -147,23 +147,23 @@
     "clinicHeading": "Consents and confirmations",
     "patientHeading": "Patient consent confirmations",
     "required": "You must tick this box to continue.",
-    "baaRequired": "Clinics in the United States must accept the Business Associate Agreement to register.",
     "clinic": {
       "terms": "I have read and agree to the <link>Terms of Service</link>.",
       "privacy": "I have read and understand the <link>Privacy Policy</link>.",
-      "patientConsents": "I confirm that my clinic has obtained all legally required patient consents (including explicit consent for processing health and medical data under GDPR/applicable regulations) before entering any personal or health information into this platform.",
+      "patientConsents": "I confirm that my clinic has obtained all patient consents required by Georgian law — including the patient's explicit consent to the processing of health data as special category data under the Law of Georgia on Personal Data Protection — before entering any personal or health information into this platform.",
       "accuracy": "I confirm that all information entered into the platform will be accurate and kept up to date.",
       "credentials": "I understand that I am responsible for maintaining the confidentiality of my account credentials.",
       "processingPurpose": "I understand that this platform stores and processes patient information solely for post-operative care management and reminder services.",
       "remindersNotMedicalAdvice": "I understand that reminder emails are intended only to support post-operative care and do not replace professional medical advice or emergency medical services.",
-      "regulatoryCompliance": "I understand that my clinic is responsible for complying with all applicable privacy and healthcare regulations (including GDPR/HIPAA/local laws) in our jurisdiction.",
-      "baa": "I have read and agree to the <link>Business Associate Agreement (BAA)</link> for HIPAA compliance. Required for clinics in the United States."
+      "regulatoryCompliance": "I understand that my clinic is the data controller and is responsible for complying with the Law of Georgia on Personal Data Protection, the Law of Georgia on the Rights of the Patient and the Law of Georgia on Health Care.",
+      "dataProcessing": "I have read and agree to the <link>Data Processing Agreement</link>, under which this platform acts as data processor for my clinic in accordance with the Law of Georgia on Personal Data Protection."
     },
     "patient": {
-      "personalData": "I confirm that the patient has given explicit consent to the processing of their personal data for post-operative care.",
-      "healthData": "I confirm that the patient has given EXPLICIT CONSENT to the processing of their special category / health data for post-operative care management.",
+      "personalData": "I confirm that the patient has given explicit consent to the processing of their personal data for post-operative care, as required by the Law of Georgia on Personal Data Protection.",
+      "healthData": "I confirm that the patient has given EXPLICIT CONSENT to the processing of their health data as special category data under the Law of Georgia on Personal Data Protection.",
       "reminders": "I confirm that the patient has agreed to receive reminder emails and notifications.",
-      "informed": "I confirm that the patient has been fully informed about how their personal and health information will be used and stored.",
+      "portalAccess": "I confirm that the patient has consented to accessing their care plan through the patient portal, and understands they may withdraw this at any time.",
+      "informed": "I confirm that the patient has been informed of their rights under the Law of Georgia on the Rights of the Patient, including their right of access to their record, their right to have it corrected, and their right to withdraw consent at any time.",
       "accurate": "I confirm that the information entered is complete and accurate.",
       "corrections": "I understand that I must immediately correct or update any inaccurate patient information upon notice."
     }
@@ -640,5 +640,46 @@
     "noEntries": "Nothing reported yet",
     "photoAlt": "Photograph attached by the patient",
     "deletePhoto": "Delete"
+  },
+  "privacy": {
+    "title": "Privacy and your data",
+    "intro": "Under the Law of Georgia on Personal Data Protection and the Law of Georgia on the Rights of the Patient, you decide how your data is used. You can change your consent, take a copy of your record, or ask your clinic to correct or erase it.",
+    "consentHeading": "Your consent",
+    "consentHelp": "You can withdraw either of these at any time. Withdrawing takes effect immediately and does not change your treatment or your care plan.",
+    "consent_notifications": "Automated reminders",
+    "consent_portalAccess": "Access to this portal",
+    "grantedOn": "Given on {date}",
+    "notGranted": "Withdrawn — you are not receiving this",
+    "turnOn": "Turn on",
+    "turnOff": "Turn off",
+    "clinicalConsentNote": "Consent to hold your medical record cannot be withdrawn here. Georgian law requires your clinic to keep clinical records for a fixed period. Use the erasure request below and your clinic will tell you what can be removed and what must be kept.",
+    "exportHeading": "A copy of your record",
+    "exportHelp": "Download everything held about you — your details, your care plans, your reminders, your recovery logs and your consent history — as a single file you can keep or give to another clinic.",
+    "exportDownload": "Download my data",
+    "requestHeading": "Correct or erase your data",
+    "requestHelp": "Your clinic answers these requests. You will see their reply here, including their reason if they cannot do what you asked.",
+    "requestKind": "What are you asking for?",
+    "requestKind_correction": "Correct something that is wrong",
+    "requestKind_erasure": "Erase my data",
+    "requestDetail": "Details",
+    "requestDetailHint": "Tell your clinic what is wrong, or anything they should know.",
+    "detailRequired": "Please say what needs correcting.",
+    "requestSubmit": "Send request",
+    "requestSending": "Sending…",
+    "requestFailed": "That did not send. Please try again.",
+    "requestHistory": "Your requests",
+    "requestStatus_open": "Waiting for your clinic",
+    "requestStatus_completed": "Done",
+    "requestStatus_refused": "Declined — see the reason below"
+  },
+  "dataRequests": {
+    "heading": "Patient data requests",
+    "help": "Patients have asked you to correct or erase their data. Georgian law requires a written answer, including when the answer is no.",
+    "kind_correction": "Correction request",
+    "kind_erasure": "Erasure request",
+    "erasureNote": "Completing this erases the patient's name, phone number, email address and notes. Their clinical record — care plans, reminders, recovery logs — is retained for the period the Law of Georgia on Health Care requires, and their allergies are kept so the record stays safe to read.",
+    "resolutionHint": "Tell the patient what you did, or why you cannot.",
+    "markCompleted": "Mark completed",
+    "markRefused": "Decline with reason"
   }
 }

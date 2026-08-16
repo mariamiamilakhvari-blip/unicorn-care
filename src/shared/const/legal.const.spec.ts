@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { routing } from '@/i18n/routing';
-import { BAA_VERSION } from '@/shared/const/consent.const';
+import { DPA_VERSION } from '@/shared/const/consent.const';
 import { LEGAL_LAST_UPDATED } from '@/shared/const/legal-contact.const';
 import { LegalSlug, legalDocument } from '@/shared/const/legal.const';
 
-const SLUGS: LegalSlug[] = ['terms', 'privacy', 'baa'];
+const SLUGS: LegalSlug[] = ['terms', 'privacy', 'dpa'];
 
 /**
  * The pages are the product's legal footing, so the things a reader relies on are pinned rather
@@ -36,16 +36,16 @@ describe('the dates the pages display', () => {
   });
 
   /*
-    The BAA is the one document whose date is also recorded, on every clinic that accepts it. If
-    the page said one thing and `clinic.baa.version` another, there would be no answering "which
+    The DPA is the one document whose date is also recorded, on every clinic that accepts it. If
+    the page said one thing and `clinic.dpa.version` another, there would be no answering "which
     text did they agree to" — so the page reads its date from the same constant.
   */
-  it('dates the BAA from the version its acceptances are stamped with', () => {
-    expect(legalDocument('baa', 'en').lastUpdated).toBe(BAA_VERSION);
+  it('dates the DPA from the version its acceptances are stamped with', () => {
+    expect(legalDocument('dpa', 'en').lastUpdated).toBe(DPA_VERSION);
   });
 
-  it('does not re-date the Terms and Privacy Policy when the BAA moves', () => {
-    expect(legalDocument('terms', 'en').lastUpdated).not.toBe(BAA_VERSION);
-    expect(legalDocument('privacy', 'en').lastUpdated).not.toBe(BAA_VERSION);
+  it('does not re-date the Terms and Privacy Policy when the DPA moves', () => {
+    expect(legalDocument('terms', 'en').lastUpdated).not.toBe(DPA_VERSION);
+    expect(legalDocument('privacy', 'en').lastUpdated).not.toBe(DPA_VERSION);
   });
 });

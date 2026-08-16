@@ -13,6 +13,7 @@ import {
   CreateStaffSchema,
   CreateStaffType,
 } from '@/features/clinic/validations/clinic.validation';
+import { DataRequestQueue } from '@/features/data-protection/components/data-request-queue';
 import { DoctorList } from '@/features/procedure/components/doctor-list';
 import { ClinicRatingsPanel } from '@/features/rating/components/clinic-ratings-panel';
 import { Button } from '@/shared/components/ui/button';
@@ -70,6 +71,10 @@ export function ClinicPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Renders nothing while the queue is empty. High on the page when it is not: these carry a
+          statutory deadline, and a card the clinic has to scroll to find is one it answers late. */}
+      <DataRequestQueue />
 
       <SubscriptionCard />
 

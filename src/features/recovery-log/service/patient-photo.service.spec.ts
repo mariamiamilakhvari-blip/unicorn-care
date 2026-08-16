@@ -236,7 +236,7 @@ describe('listPhotoAccessService', () => {
 });
 
 /**
- * The consent wording a patient agreed to at upload, and the BAA, both say a photograph can be
+ * The consent wording a patient agreed to at upload, and the DPA, both say a photograph can be
  * removed on request. Before this existed neither promise had an implementation behind it, which
  * is worse than not having made it.
  */

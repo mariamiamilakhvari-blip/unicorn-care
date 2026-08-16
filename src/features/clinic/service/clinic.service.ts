@@ -16,11 +16,10 @@ import {
   RegisterClinicType,
   UpdateClinicType,
 } from '@/features/clinic/validations/clinic.validation';
-import { BAA_VERSION, CONSENT_VERSION } from '@/shared/const/consent.const';
+import { CONSENT_VERSION, DPA_VERSION } from '@/shared/const/consent.const';
 import { TRIAL_DAYS } from '@/shared/const/plan.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
-import { requiresBaa } from '@/shared/utils/baa';
 import { hashPassword } from '@/shared/utils/password';
 
 const SLUG_SUFFIX_BYTES = 4;
@@ -68,26 +67,29 @@ function recordConsent() {
 }
 
 /**
- * The Business Associate Agreement record written beside a new clinic.
+ * The Data Processing Agreement record written beside a new clinic.
  *
- * Unlike the block above, the boolean *is* stored. The other consents are all mandatory, so their
- * value carries no information; this one is required of US clinics and optional everywhere else,
- * which makes "did they accept" a real question with a real answer.
+ * Takes no boolean, unlike the Business Associate Agreement it replaced. That one was required of
+ * US clinics and merely offered to everyone else, so "did they accept" was a real question with a
+ * real answer worth storing. The Law of Georgia on Personal Data Protection requires a written
+ * processor agreement from every controller that engages one, so acceptance is mandatory, the
+ * schema rejects a registration without it, and a stored flag could only ever read `true` — a
+ * field with one possible value is not evidence, it is noise that invites a reader to believe the
+ * other value is reachable.
+ *
+ * What remains is what a countersigned copy would show: which version, when, and from where.
  *
  * Version, clock and IP are all taken here rather than from the request body. A client-supplied
  * timestamp is not evidence, and a client-supplied version would let a caller claim it accepted
  * wording that was never shown to it. The IP comes from the request headers via the route; it is
  * supporting provenance for an executed contract, not an identity, and nothing authorises off it.
- *
- * `acceptedAt` and `ip` stay empty when the box was not ticked — there is no acceptance to stamp.
  */
-function recordBaa(accepted: boolean, ip: string) {
+function recordDataProcessingAgreement(ip: string) {
   return {
-    baa: {
-      accepted,
-      version: accepted ? BAA_VERSION : '',
-      acceptedAt: accepted ? clock.now() : null,
-      ip: accepted ? ip : '',
+    dpa: {
+      version: DPA_VERSION,
+      acceptedAt: clock.now(),
+      ip,
     },
   };
 }
@@ -146,7 +148,7 @@ export async function registerClinicService(
       ...startTrial(),
       ...blankRatings(),
       ...recordConsent(),
-      ...recordBaa(input.consents.baa, ip),
+      ...recordDataProcessingAgreement(ip),
     });
 
     const linked = await userRepository.updateById(userId, {
@@ -188,17 +190,15 @@ export async function createClinicForUserService(
     future caller skips validation.
   */
   const { consents, ...profile } = input;
-  const { baa, ...mandatory } = consents;
-  if (Object.values(mandatory).some(given => given !== true)) {
-    return { data: { error: 'CONSENT_REQUIRED' }, status: 400 };
-  }
   /*
-    The BAA is checked apart from the rest because it is the one consent that is not mandatory
-    everywhere. Folding it into the loop above would reject every non-US clinic that legitimately
-    left it unticked; leaving it out entirely would let a US clinic through without one.
+    One loop over all of them now. The Data Processing Agreement used to be checked separately
+    because it was a US-only Business Associate Agreement, mandatory for some clinics and merely
+    offered to the rest. Under the Law of Georgia on Personal Data Protection every controller
+    engaging a processor needs a written agreement, so it is mandatory for everyone and there is
+    nothing left to special-case.
   */
-  if (requiresBaa(profile.country) && baa !== true) {
-    return { data: { error: 'BAA_REQUIRED' }, status: 400 };
+  if (Object.values(consents).some(given => given !== true)) {
+    return { data: { error: 'CONSENT_REQUIRED' }, status: 400 };
   }
   const clinicId = await clinicRepository.create({
     ...profile,
@@ -209,7 +209,7 @@ export async function createClinicForUserService(
     ...startTrial(),
     ...blankRatings(),
     ...recordConsent(),
-    ...recordBaa(baa, ip),
+    ...recordDataProcessingAgreement(ip),
   });
 
   const linked = await userRepository.updateById(userId, {

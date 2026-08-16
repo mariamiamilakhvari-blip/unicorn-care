@@ -24,12 +24,24 @@ function input(overrides: Partial<ReminderEmailInput> = {}): ReminderEmailInput 
 }
 
 describe('buildReminderEmail', () => {
-  it('names the medication and dose, so the email is actionable without opening anything', () => {
+  it('names the medication and dose in the body, so the email is actionable once opened', () => {
     const email = buildReminderEmail(input());
 
-    expect(email.subject).toContain('citramoni — 500');
     expect(email.html).toContain('citramoni');
     expect(email.html).toContain('with food');
+  });
+
+  /*
+    The subject carried `citramoni — 500 mg` until data minimisation was applied to it. A subject
+    line shows in an inbox preview over someone's shoulder and survives in provider and transport
+    logs whatever the body does, so a prescription in one is health data disclosed to more parties
+    than the purpose needs. The time is what makes the email actionable; the drug name does not.
+  */
+  it('keeps the medication out of the subject line, which carries only the time', () => {
+    const email = buildReminderEmail(input());
+
+    expect(email.subject).toBe('Reminder — 17:30');
+    expect(email.subject).not.toContain('citramoni');
   });
 
   it('shows the time in the clinic zone, not UTC', () => {

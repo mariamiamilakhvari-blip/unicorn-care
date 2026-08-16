@@ -14,7 +14,7 @@ const ClinicSchema = new Schema(
     /*
       The clinic's contact address — where the platform writes to the practice, as distinct from
       `User.email`, which is a person's sign-in credential and is not safe to edit from a profile
-      form. The BAA undertakes to send breach notices "to the contact address the clinic holds on
+      form. The DPA undertakes to send breach notices "to the contact address the clinic holds on
       its account", and until this existed there was no such address to send them to.
 
       Optional, like the rest of the profile: it is needed to reach a clinic, not to open an
@@ -33,29 +33,36 @@ const ClinicSchema = new Schema(
     // All reminder wall-clock times are resolved in this IANA zone; instants are stored in UTC.
     timezone: { type: String, required: true, default: 'Asia/Tbilisi' },
     /*
-      Evidence, not a flag. GDPR Art. 7(1) asks the controller to demonstrate that consent was
-      given, which a bare boolean cannot do: it says nothing about when, or to which wording.
-      Written server-side at creation from `clock.now()` — a timestamp the browser supplies is
-      not evidence of anything. Optional so clinics created before this shipped still load.
+      Evidence, not a flag. The Law of Georgia on Personal Data Protection puts the burden of
+      proof on the controller, who has to demonstrate that consent was given — which a bare boolean
+      cannot do: it says nothing about when, or to which wording. Written server-side at creation
+      from `clock.now()` — a timestamp the browser supplies is not evidence of anything. Optional so clinics created before this shipped still load.
     */
     consent: {
       version: { type: String, required: false, default: '' },
       acceptedAt: { type: Date, required: false, default: null },
     },
     /*
-      The HIPAA Business Associate Agreement, recorded separately from the consent block above.
+      The Data Processing Agreement, recorded separately from the consent block above.
 
-      `accepted` is stored here where the other consents' booleans are not, and the difference is
-      deliberate: those are all mandatory, so a row of `true` says nothing, while this one is only
-      required of US clinics. Whether it was given is therefore real information.
+      Separate because it is a contract rather than a checkbox: the Law of Georgia on Personal Data
+      Protection requires the controller–processor relationship to be governed by a written
+      agreement, so what has to survive is which version was executed and when — the same things a
+      countersigned copy would show.
+
+      There is no `accepted` boolean, and its absence is the point. This replaced a US-only
+      Business Associate Agreement that a clinic outside the United States could decline, which
+      made "did they accept" worth recording. Under Georgian law every controller engaging a
+      processor needs this agreement, so it is mandatory, the schema rejects a registration without
+      it, and a stored flag could only ever read `true`. A field with one reachable value is not
+      evidence — it is an invitation to write a branch for a case that cannot occur.
 
       The IP is supporting evidence for an executed contract, taken from the request headers
       server-side. It is not proof of identity — a header can be forged — and nothing authorises
       off it; it exists so an acceptance has a provenance beyond a bare timestamp. Optional
       throughout so clinics created before this shipped still load.
     */
-    baa: {
-      accepted: { type: Boolean, required: false, default: false },
+    dpa: {
       version: { type: String, required: false, default: '' },
       acceptedAt: { type: Date, required: false, default: null },
       ip: { type: String, required: false, default: '' },

@@ -47,6 +47,36 @@ const PatientSchema = new Schema(
       confirmedAt: { type: Date, required: false, default: null },
     },
     /*
+      Consent state, denormalised from the `ConsentRecord` audit trail onto the record every send
+      already loads.
+
+      The audit collection is the evidence and the history; these two are the decision. A dispatch
+      sweep carries hundreds of occurrences and cannot afford an audit query per row — it has this
+      document in hand anyway to check email suppression, which is the same argument the delivery
+      fields above are built on.
+
+      Null means the consent stands. The date is when it was withdrawn, kept rather than reduced to
+      a boolean because "since when" is the first thing a clinic asks when a patient says they
+      stopped receiving reminders.
+
+      `notificationsRevokedAt` halts every automated message: reminders, the daily summary, the
+      portal link. It does not touch the clinical record behind them — under the Law of Georgia on
+      Personal Data Protection a patient withdrawing consent to be messaged has not asked to be
+      untreated. `portalAccessRevokedAt` closes the portal itself, which is a heavier thing and why
+      it is separate.
+    */
+    notificationsRevokedAt: { type: Date, required: false, default: null },
+    portalAccessRevokedAt: { type: Date, required: false, default: null },
+    /*
+      When an erasure request was applied to this record, and what could not be erased with it.
+
+      Set by `applyErasureService`, which clears the contact and identity fields listed in
+      `ERASABLE_PATIENT_FIELDS` and leaves the clinical log intact — the Law of Georgia on Health
+      Care requires that log to be retained for a fixed period whatever the patient would prefer.
+      The date is what lets a clinic tell an erased record from a badly entered one.
+    */
+    erasedAt: { type: Date, required: false, default: null },
+    /*
       Email deliverability state for this patient's address.
 
       Held on the patient rather than in a lookup table because every send already loads this

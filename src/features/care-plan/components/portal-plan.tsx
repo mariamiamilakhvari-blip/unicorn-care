@@ -1,6 +1,7 @@
 'use client';
 
-import { CalendarCheck, CircleCheck } from 'lucide-react';
+import { CalendarCheck, CircleCheck, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -14,6 +15,7 @@ import { RecoveryGuidePanel } from '@/features/recovery-guide/components/recover
 import { RecoveryLogForm } from '@/features/recovery-log/components/recovery-log-form';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { PORTAL_PRIVACY_ROUTE } from '@/shared/const/routes.const';
 
 export function PortalPlan() {
   const t = useTranslations('portal');
@@ -114,7 +116,30 @@ export function PortalPlan() {
       {/* Renders nothing until a plan has actually finished, so it never competes with today's
           doses. Last on the page for the same reason. */}
       <PortalRatingCard />
+
+      {/* The way to consent settings, the data export and the correction/erasure form. A quiet
+          footer link on purpose: it has to be findable without asking, and it is not what a
+          patient two days out of surgery opened this page for. */}
+      <PrivacyLink label={t('privacyLink')} />
     </div>
+  );
+}
+
+/**
+ * Standing rights are not much use if nobody can find them, so this is on every portal visit
+ * rather than behind a menu — the portal has no menu, by design.
+ */
+function PrivacyLink({ label }: { label: string }) {
+  return (
+    <nav className="border-t border-border pt-4">
+      <Link
+        href={PORTAL_PRIVACY_ROUTE}
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+      >
+        <ShieldCheck className="size-4" aria-hidden />
+        {label}
+      </Link>
+    </nav>
   );
 }
 
