@@ -518,3 +518,151 @@ describe('canClinicDispatch', () => {
     await expect(canClinicDispatch(CLINIC_ID)).resolves.toBe(false);
   });
 });
+
+/**
+ * Cancelling a paid plan takes effect at the end of the period already charged for.
+ *
+ * Cancelling on the 2nd used to delete the twenty-eight days the clinic had just paid for, which
+ * is both wrong and the kind of thing that comes back as a card dispute. A trial has nothing paid
+ * for and still ends on the spot.
+ */
+describe('cancelSubscriptionService — period-end cancellation', () => {
+  const DAY = 86_400_000;
+
+  const paidClinic = (renewsInDays: number) =>
+    clinicDoc({
+      plan: 'standard',
+      subscriptionStatus: 'active',
+      trialEndsAt: null,
+      planRenewsAt: new Date(Date.now() + renewsInDays * DAY),
+    });
+
+  it('keeps the paid period rather than clearing it', async () => {
+    const clinic = paidClinic(20);
+    clinics.findById.mockResolvedValue(clinic);
+
+    await cancelSubscriptionService(CLINIC_ID);
+
+    const patch = clinics.updateById.mock.calls[0][1] as { planRenewsAt?: Date | null };
+    expect(patch.planRenewsAt).toEqual(clinic.planRenewsAt);
+  });
+
+  /*
+    Anchoring the reminder grace to the click would run the fourteen days down while the clinic was
+    still a paying customer — a clinic cancelling on day two of an annual plan would find its
+    patients unreachable eleven and a half months early.
+  */
+  it('anchors the reminder grace to the end of the paid period, not to the click', async () => {
+    const clinic = paidClinic(20);
+    clinics.findById.mockResolvedValue(clinic);
+
+    await cancelSubscriptionService(CLINIC_ID);
+
+    const patch = clinics.updateById.mock.calls[0][1] as { subscriptionEndedAt?: Date };
+    expect(patch.subscriptionEndedAt).toEqual(clinic.planRenewsAt);
+  });
+
+  it('still ends a trial immediately — nothing has been paid for', async () => {
+    await cancelSubscriptionService(CLINIC_ID);
+
+    const patch = clinics.updateById.mock.calls[0][1] as {
+      planRenewsAt?: Date | null;
+      subscriptionEndedAt?: Date;
+    };
+    expect(patch.planRenewsAt).toBeNull();
+    expect(patch.subscriptionEndedAt).toBeInstanceOf(Date);
+  });
+
+  it('refuses a second cancellation while the first is still pending', async () => {
+    clinics.findById.mockResolvedValue(
+      clinicDoc({
+        plan: 'standard',
+        subscriptionStatus: 'cancelled',
+        trialEndsAt: null,
+        planRenewsAt: new Date(Date.now() + 10 * DAY),
+      })
+    );
+
+    const { data, status } = await cancelSubscriptionService(CLINIC_ID);
+
+    expect(status).toBe(409);
+    expect(data).toEqual({ error: 'ALREADY_CANCELLED' });
+    expect(clinics.updateById).not.toHaveBeenCalled();
+  });
+});
+
+describe('a cancellation that has not taken effect yet', () => {
+  const DAY = 86_400_000;
+
+  /** Cancelled, ten days of paid access left. Either our endpoint or Dodo's portal gets here. */
+  const pending = () =>
+    clinicDoc({
+      plan: 'standard',
+      subscriptionStatus: 'cancelled',
+      trialEndsAt: null,
+      planRenewsAt: new Date(Date.now() + 10 * DAY),
+      subscriptionEndedAt: new Date(Date.now() + 10 * DAY),
+    });
+
+  it('still reads as active', () => {
+    expect(resolveStatus(pending(), new Date())).toBe('active');
+  });
+
+  it('can still add patients', async () => {
+    clinics.findById.mockResolvedValue(pending());
+
+    await expect(canClinicWrite(CLINIC_ID)).resolves.toBe(true);
+    expect(await checkPatientSeat(CLINIC_ID)).toEqual({ ok: true });
+  });
+
+  it('is not in a grace window, because nothing has lapsed yet', () => {
+    const grace = resolveGrace(pending(), new Date());
+
+    expect(grace).toMatchObject({ isActive: false, endsAt: null });
+    expect(grace.mayDispatch).toBe(true);
+  });
+
+  /* The owner needs to see the cancellation landed, and when it bites. */
+  it('is reported to the dashboard, with the Cancel button withdrawn', async () => {
+    clinics.findById.mockResolvedValue(pending());
+
+    const { data } = await getSubscriptionService(CLINIC_ID);
+
+    expect(data).toMatchObject({ status: 'active', cancelScheduled: true, canCancel: false });
+  });
+
+  it('takes effect once the paid period runs out', async () => {
+    clinics.findById.mockResolvedValue(
+      clinicDoc({
+        plan: 'standard',
+        subscriptionStatus: 'cancelled',
+        trialEndsAt: null,
+        planRenewsAt: new Date(Date.now() - DAY),
+        subscriptionEndedAt: new Date(Date.now() - DAY),
+      })
+    );
+
+    const { data } = await getSubscriptionService(CLINIC_ID);
+
+    expect(data).toMatchObject({ status: 'cancelled', canWrite: false, cancelScheduled: false });
+  });
+
+  /*
+    A cancellation made inside Dodo's portal stamps `subscriptionEndedAt` when the webhook lands,
+    which can be weeks before the period ends. The grace window has to run from the later of the
+    two or the clinic loses reminder days it paid for.
+  */
+  it('runs the grace from the period end even when the webhook stamped it earlier', () => {
+    const periodEnded = new Date(Date.now() - 2 * DAY);
+    const clinic = clinicDoc({
+      plan: 'standard',
+      subscriptionStatus: 'cancelled',
+      trialEndsAt: null,
+      planRenewsAt: periodEnded,
+      subscriptionEndedAt: new Date(Date.now() - 30 * DAY),
+    });
+
+    // Measured from two days ago, not thirty — so twelve of the fourteen days are left.
+    expect(resolveGrace(clinic, new Date())).toMatchObject({ mayDispatch: true, daysLeft: 12 });
+  });
+});

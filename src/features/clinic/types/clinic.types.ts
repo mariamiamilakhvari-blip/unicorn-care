@@ -48,6 +48,11 @@ export type SubscriptionView = {
   /** Whether there is a live subscription left to switch off — trialing or active, nothing else. */
   canCancel: boolean;
   /**
+   * Cancelled, but still inside the period already paid for. `status` still reads `active` and
+   * `renewsAt` is when access ends rather than when the next charge lands.
+   */
+  cancelScheduled: boolean;
+  /**
    * Whether reminders are still going out. True on a live subscription, and true on a lapsed one
    * until the 14-day grace window closes — writing and sending stop at different moments.
    */

@@ -343,6 +343,32 @@ describe('createStaffService', () => {
     expect(data.temporaryPassword.length).toBeGreaterThanOrEqual(20);
   });
 
+  /*
+    Doctor accounts are deliberately uncapped on every plan — the seat limit is on patients, and
+    only on patients. A clinic that has to choose which of its surgeons gets a login is a clinic
+    where someone shares a password, which defeats the point of per-doctor accounts and of the
+    audit trail hanging off them.
+
+    Written as a test rather than a comment because the failure mode is a well-meaning future
+    change: adding a doctor limit "for consistency" with the patient one.
+  */
+  it('never consults the subscription — doctor accounts are unlimited on every plan', async () => {
+    mockUserRepo.findByEmail.mockResolvedValue(null);
+    mockUserRepo.create.mockResolvedValue(USER_ID);
+
+    for (let index = 0; index < 60; index += 1) {
+      const result = await createStaffService(CLINIC_ID, {
+        name: `Doctor ${index}`,
+        email: `doctor${index}@clinic.ge`,
+        jobTitle: 'Surgeon',
+      });
+      expect(result.status).toBe(201);
+    }
+
+    // The clinic row is never even read: there is no plan state that could refuse a doctor.
+    expect(mockClinicRepo.findById).not.toHaveBeenCalled();
+  });
+
   it('stores only the hash of the temporary password', async () => {
     mockUserRepo.findByEmail.mockResolvedValueOnce(null);
     mockUserRepo.create.mockResolvedValueOnce(USER_ID);
