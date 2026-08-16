@@ -312,16 +312,29 @@ Ask these exact axes; each meaningfully changes the design:
 ```
 STATUS: locked
 Product:    SaaS dashboard / B2B — clinical, calm, trustworthy
-Palette:    Two brand colours, no third.
-            Midnight Indigo #092B4D — primary: actions, focus rings, brand chrome
-              tokens: --primary oklch(0.286 0.073 252.1) light / oklch(0.62 0.105 251.5) dark
-            Sage Green    #79947E — second brand colour: mark, accents, chart series 2/4
-              tokens: --moss / --primary oklch(0.639 0.045 150.5), identical in both themes
+Palette:    Three colours: a surface, an ink and an action. No fourth.
+            Ivory         #F5F2E8 — the light theme's surface
+              token: --background oklch(0.961 0.014 91.9). Light theme only; the dark theme
+              drops it entirely, because darkening a paper tone yields mud, not a night version.
+            Midnight Indigo #092B4D / #0c2a4a — ink on the ivory, surface at night, and the
+              filled `Sign in` button (--secondary oklch(0.282 0.069 253.0), white label, 14:1)
+              tokens: --foreground oklch(0.25 0.062 252.1) light / --background at night
+            Sage Green    #79947E — the action colour: primary buttons, mark, focus, chart 1/3/5
+              token: --primary / --moss oklch(0.639 0.045 150.5), identical in both themes
               on-sage text is ink oklch(0.20 0.05 252.1), NEVER white — white is 3.31:1
-              edge/ring lifts to oklch(0.72 0.048 150.5) light / oklch(0.745 0.048 150.5) dark
-            Neutrals carry a trace of the indigo hue so the palette reads as one system.
-            #092B4D is unreadable on dark surfaces — the dark theme lifts the hue, never reuses
-            the raw hex. Sage is a brand colour, NEVER a success/status signal.
+            Neutrals carry the SURFACE's hue, not the ink's: warm (~92) in light, indigo (~252)
+            in dark. Cool grey panels on a cream field read as a rendering fault.
+            The surface is near-white, so panels cannot lift by lightness — cards are plain white
+            and --border carries the separation. This inverts the dark theme, where a card can
+            step up off a dark field and be seen with no border at all.
+            The sage edge/ring INVERTS by theme and must never be flattened to one value: sage is
+            2.95:1 on the ivory and 4.34:1 on indigo, so the edge DROPS to oklch(0.50 0.048 150.5)
+            in light and LIFTS to oklch(0.745 0.048 150.5) in dark. Without it a sage button has
+            no readable boundary on the light surface — and 2.95:1 is the dangerous kind of fail,
+            close enough to look right and still short of the 3:1 floor.
+            Borders are indigo at low alpha in light, white at low alpha in dark — a white border
+            is invisible the moment the surface stops being dark.
+            Sage is a brand colour, NEVER a success/status signal.
             The `--moss` token name is kept: it is referenced across the feature components, and
             renaming it is a separate change from re-colouring it.
 Type:       Geometric sans — Space Grotesk (display, 500/600/700) + Inter (body) + Geist Mono (data)
