@@ -681,5 +681,10 @@
     "resolutionHint": "Tell the patient what you did, or why you cannot.",
     "markCompleted": "Mark completed",
     "markRefused": "Decline with reason"
+  },
+  "footer": {
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "dpa": "Data Processing"
   }
 }
