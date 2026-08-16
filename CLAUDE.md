@@ -9,6 +9,7 @@ npm run dev          # start dev server (localhost:3001, matches NEXTAUTH_URL)
 npm run build        # production build
 npm run lint         # ESLint check
 npm run lint:fix     # ESLint auto-fix
+npm run typecheck    # tsc --noEmit — stricter than the build, which skips files outside the app graph
 npm run test         # Vitest watch mode
 npm run test:cov     # Vitest with coverage report
 ```
@@ -18,7 +19,9 @@ Run a single test file:
 npx vitest run src/features/auth/service/auth.service.spec.ts
 ```
 
-Pre-commit hook (Husky) runs `lint → build → test` in sequence and blocks the commit on failure.
+Pre-commit hook (Husky) runs `lint → typecheck → build → test` in sequence and blocks the commit on
+the first failure. `typecheck` sits ahead of the build on purpose: `next build` does not check files
+outside the app graph, so a type error in a `.spec.ts` compiles clean without it.
 
 Required env vars (see `.env.example`):
 - `NEXTAUTH_URL`, `NEXTAUTH_SECRET` — NextAuth
