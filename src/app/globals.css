@@ -7,9 +7,22 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-space-grotesk);
+  /*
+    Georgian is second in each stack, and that ordering is the whole mechanism.
+
+    A browser resolves `font-family` per glyph, not per element: it takes each character from the
+    first listed family that actually contains it. Neither Inter nor Space Grotesk has a single
+    Mkhedruli glyph, so Latin is drawn from the Latin face and every Georgian character falls
+    through to Noto — from one declaration, with no `:lang()` rule, no locale-conditional class and
+    nothing for a translator to keep in sync.
+
+    Do not reorder these. Putting the Georgian family first would hand it the Latin text too, and
+    the product would silently lose both display faces on a page of English copy.
+  */
+  --font-sans: var(--font-inter), var(--font-georgian), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-space-grotesk), var(--font-georgian), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

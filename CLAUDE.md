@@ -337,7 +337,16 @@ Palette:    Three colours: a surface, an ink and an action. No fourth.
             Sage is a brand colour, NEVER a success/status signal.
             The `--moss` token name is kept: it is referenced across the feature components, and
             renaming it is a separate change from re-colouring it.
-Type:       Geometric sans — Space Grotesk (display, 500/600/700) + Inter (body) + Geist Mono (data)
+Type:       Geometric sans — Space Grotesk (display) + Inter (body) + Geist Mono (data),
+            with Noto Sans Georgian carrying every Mkhedruli glyph on the product.
+            SELF-HOSTED via `next/font/local` from `src/app/fonts/` — variable woff2, one file per
+            family. Never reintroduce `next/font/google`: it fetches at build time, and a failed
+            fetch kills the build with a `module-not-found` on a file nobody wrote. That took a
+            production deploy down on a commit that had built minutes earlier.
+            Georgian is SECOND in each stack in `globals.css`, never first. A browser resolves
+            font-family per glyph, so Latin comes from Inter/Space Grotesk and Georgian falls
+            through to Noto with no `:lang()` rule. Leading with the Georgian face would hand it
+            the Latin text too and silently drop both display faces on English copy.
 Feel:       Balanced — CSS load-rise stagger + hover micro-interactions; reduced-motion respected
 Logo:       Sitting unicorn, hand-drawn line style — `public/unicorn.svg`, rendered via
             `<BrandMark />` in `src/shared/components/layout/brand-mark.tsx`. Sage horn/mane/tail/
