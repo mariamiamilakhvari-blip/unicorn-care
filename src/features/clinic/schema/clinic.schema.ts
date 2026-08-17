@@ -6,6 +6,20 @@ import { SUBSCRIPTION_STATUSES } from '@/shared/const/subscription.const';
 const ClinicSchema = new Schema(
   {
     name: { type: String, required: true },
+    /*
+      The public-facing name, when it differs from the registered one.
+
+      Registration can now pre-fill `name` from the Public Registry, and what the registry holds is
+      the legal entity — "შპს მედალფა ჯგუფი" — which is not what the practice calls itself or what
+      a patient would recognise on a reminder. Before autofill the clinic simply typed its trading
+      name into `name` and the distinction never arose; filling `name` from the registry is what
+      creates the need for somewhere else to put it.
+
+      Optional, and empty for every clinic that has no separate trading name — which is most of
+      them. `name` stays the one required, invoiced, slug-generating field so nothing downstream
+      has to decide which of the two it wants.
+    */
+    brandName: { type: String, required: false, default: '' },
     slug: { type: String, required: true, unique: true },
     country: { type: String, required: false, default: '' },
     city: { type: String, required: false, default: '' },

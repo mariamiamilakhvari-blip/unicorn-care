@@ -3,6 +3,8 @@
 import { useTranslations } from 'next-intl';
 import { Control, FieldValues, Path } from 'react-hook-form';
 
+import { ClinicPreferenceFields } from '@/features/clinic/components/clinic-preference-fields';
+import { ClinicTaxIdField } from '@/features/clinic/components/clinic-tax-id-field';
 import { CodedFormMessage } from '@/shared/components/coded-form-message';
 import {
   FormControl,
@@ -13,15 +15,6 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
-import { TAX_ID_MESSAGE_KEYS } from '@/shared/const/tax-id.const';
-import { COMMON_TIMEZONES } from '@/shared/const/timezone.const';
 
 /** The email rule raises one code; the tax ID rule's map is data and lives in its const file. */
 const EMAIL_MESSAGE_KEYS = { INVALID_EMAIL: 'emailInvalid' };
@@ -39,6 +32,16 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
     leaves this unset. Onboarding and settings still pass it and get it in place.
   */
   nameField?: Path<T>;
+  /*
+    Where the registry's legal name is written when a lookup succeeds.
+
+    Separate from `nameField` because the sign-up form renders the clinic name itself, above the
+    credentials, and calls it `clinicName` — so the field this component fills is not always a
+    field this component draws.
+  */
+  legalNameField: Path<T>;
+  /** The optional public-facing name. Drawn under the legal name, since it qualifies it. */
+  brandNameField: Path<T>;
   phoneField: Path<T>;
   /*
     Optional for the same reason `nameField` is: the registration form asks for the owner's login
@@ -57,6 +60,8 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
 export function ClinicProfileFields<T extends FieldValues>({
   control,
   nameField,
+  legalNameField,
+  brandNameField,
   phoneField,
   emailField,
   cityField,
@@ -85,6 +90,29 @@ export function ClinicProfileFields<T extends FieldValues>({
           )}
         />
       )}
+      {/*
+        Directly under the legal name it qualifies.
+
+        Optional, and it exists because the lookup made it necessary: the name field now fills
+        itself from the Public Registry, and what the registry holds is the legal entity —
+        "შპს მედალფა ჯგუფი" — which is not what the practice puts on its door or what a patient
+        would recognise on a reminder. Before autofill a clinic simply typed its trading name into
+        the name field and no second field was wanted.
+      */}
+      <FormField
+        control={control}
+        name={brandNameField}
+        render={({ field }) => (
+          <FormItem className="sm:col-span-2">
+            <FormLabel>{t('brandName')}</FormLabel>
+            <FormControl>
+              <Input placeholder={t('brandNamePlaceholder')} {...field} />
+            </FormControl>
+            <FormDescription>{t('brandNameHelp')}</FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
       {/*
         Directly under the clinic name, above the address block: it is how the practice is
         reached, which belongs with what the practice is called rather than with where it is.
@@ -157,68 +185,17 @@ export function ClinicProfileFields<T extends FieldValues>({
           </FormItem>
         )}
       />
-      {/*
-        Spans both columns: the label is long in either language, and the value it holds is what
-        an invoice is raised against, so it should not read as an afterthought beside the phone.
-      */}
-      <FormField
+      <ClinicTaxIdField
         control={control}
-        name={taxIdField}
-        render={({ field }) => (
-          <FormItem className="sm:col-span-2">
-            <FormLabel>{t('taxId')}</FormLabel>
-            <FormControl>
-              <Input placeholder={t('taxIdPlaceholder')} autoComplete="off" {...field} />
-            </FormControl>
-            <CodedFormMessage namespace="clinic" keys={TAX_ID_MESSAGE_KEYS} />
-          </FormItem>
-        )}
+        taxIdField={taxIdField}
+        legalNameField={legalNameField}
+        addressField={addressField}
+        cityField={cityField}
       />
-      {/* A picker, not free text: "Tbilisi" reads as correct and is not a valid IANA zone. */}
-      <FormField
+      <ClinicPreferenceFields
         control={control}
-        name={timezoneField}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('timezone')}</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {COMMON_TIMEZONES.map(zone => (
-                  <SelectItem key={zone} value={zone}>
-                    {zone.replace('_', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={localeField}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('locale')}</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="ka">ქართული</SelectItem>
-                <SelectItem value="en">English</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
+        timezoneField={timezoneField}
+        localeField={localeField}
       />
     </div>
   );

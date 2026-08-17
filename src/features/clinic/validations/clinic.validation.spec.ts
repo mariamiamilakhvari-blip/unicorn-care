@@ -89,9 +89,12 @@ describe('ClinicProfileSchema.taxId', () => {
   it.each([
     ['8 digits', '20456789'],
     ['10 digits', '2045678912'],
-    ['a letter prefix', 'GE204567891'],
-  ])('rejects %s for a Georgian clinic', (_label, value) => {
-    expect(taxIdError(parseTaxId(value))?.message).toBe('INVALID_TAX_ID_GE');
+  ])('rejects %s for a Georgian clinic as a length problem', (_label, value) => {
+    expect(taxIdError(parseTaxId(value))?.message).toBe('INVALID_TAX_ID_GE_LENGTH');
+  });
+
+  it('rejects a letter prefix for a Georgian clinic as a character problem', () => {
+    expect(taxIdError(parseTaxId('GE204567891'))?.message).toBe('INVALID_TAX_ID_GE_DIGITS');
   });
 
   it('rejects a VAT number that does not match the selected country', () => {
@@ -138,7 +141,7 @@ describe('the tax ID rule across every schema that carries the field', () => {
   it('blocks registration with a Georgian tax ID of the wrong length', () => {
     const result = ClinicSignUpSchema.safeParse({ ...signUp, taxId: '2045678' });
     expect(result.success).toBe(false);
-    expect(!result.success && result.error.issues[0].message).toBe('INVALID_TAX_ID_GE');
+    expect(!result.success && result.error.issues[0].message).toBe('INVALID_TAX_ID_GE_LENGTH');
   });
 
   it('registers a valid one and stores it sanitised', () => {
@@ -150,7 +153,7 @@ describe('the tax ID rule across every schema that carries the field', () => {
   it('blocks a settings PATCH that would save an invalid number', () => {
     const result = UpdateClinicSchema.safeParse({ country: 'Georgia', taxId: '20456789' });
     expect(result.success).toBe(false);
-    expect(!result.success && result.error.issues[0].message).toBe('INVALID_TAX_ID_GE');
+    expect(!result.success && result.error.issues[0].message).toBe('INVALID_TAX_ID_GE_LENGTH');
   });
 
   it('lets a PATCH that does not touch the tax ID through untouched', () => {

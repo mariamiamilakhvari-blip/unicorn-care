@@ -26,6 +26,7 @@ import {
 export const ClinicSignUpSchema = withTaxIdRule(
   ClinicOwnerSchema.omit({ name: true }).extend({
     clinicName: ClinicProfileSchema.shape.name,
+    brandName: ClinicProfileSchema.shape.brandName,
     country: ClinicProfileSchema.shape.country,
     city: ClinicProfileSchema.shape.city,
     addressLine: ClinicProfileSchema.shape.addressLine,

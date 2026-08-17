@@ -15,6 +15,12 @@ import { normaliseTaxId, taxIdIssue } from '@/shared/utils/tax-id';
  */
 const ClinicProfileBase = z.object({
   name: z.string().min(2).max(120),
+  /*
+    The public-facing name, when the registered one is not what the practice goes by. Optional, so
+    the empty string has to pass — hence `.default('')` and no `.min()`, which would otherwise
+    reject every clinic that trades under its own legal name.
+  */
+  brandName: z.string().max(120).default(''),
   country: z.string().max(80).default(''),
   city: z.string().max(80).default(''),
   addressLine: z.string().max(200).default(''),

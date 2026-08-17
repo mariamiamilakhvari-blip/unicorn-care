@@ -42,6 +42,7 @@ const registerInput = {
   owner: { name: 'Nino Owner', email: 'nino@clinic.ge', password: 'password123' },
   clinic: {
     name: 'Unicorn Clinic!',
+    brandName: '',
     country: 'Georgia',
     city: 'Tbilisi',
     addressLine: '12 Rustaveli',
@@ -263,6 +264,7 @@ describe('getClinicService', () => {
     expect(result.data).toEqual({
       id: CLINIC_ID,
       name: 'Unicorn Clinic',
+      brandName: '',
       slug: 'unicorn-clinic-abcd1234',
       country: 'Georgia',
       city: 'Tbilisi',

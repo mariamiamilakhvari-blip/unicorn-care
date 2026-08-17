@@ -40,6 +40,7 @@ export function ClinicProfileForm({
     resolver: zodResolver(ClinicProfileSchema),
     defaultValues: {
       name: clinic.name,
+      brandName: clinic.brandName,
       country: clinic.country,
       city: clinic.city,
       addressLine: clinic.addressLine,
@@ -59,6 +60,8 @@ export function ClinicProfileForm({
         <ClinicProfileFields
           control={form.control}
           nameField="name"
+          legalNameField="name"
+          brandNameField="brandName"
           phoneField="phone"
           emailField="email"
           cityField="city"

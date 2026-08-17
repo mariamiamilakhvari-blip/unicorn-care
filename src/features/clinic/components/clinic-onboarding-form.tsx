@@ -35,6 +35,7 @@ export function ClinicOnboardingForm() {
     resolver: zodResolver(ClinicOnlySchema),
     defaultValues: {
       name: '',
+      brandName: '',
       country: '',
       city: '',
       addressLine: '',
@@ -70,6 +71,8 @@ export function ClinicOnboardingForm() {
             <ClinicProfileFields
               control={form.control}
               nameField="name"
+              legalNameField="name"
+              brandNameField="brandName"
               phoneField="phone"
               emailField="email"
               cityField="city"

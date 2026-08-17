@@ -35,6 +35,7 @@ export function useRegisterClinic(): RegisterClinicState {
           owner: { name: values.clinicName, email: values.email, password: values.password },
           clinic: {
             name: values.clinicName,
+            brandName: values.brandName,
             country: values.country,
             city: values.city,
             addressLine: values.addressLine,

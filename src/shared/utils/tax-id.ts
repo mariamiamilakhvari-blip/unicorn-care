@@ -1,5 +1,6 @@
 import {
   EU_VAT_RULES,
+  GEORGIAN_DIGITS_ONLY,
   GEORGIAN_TAX_ID,
   TAX_ID_ALPHANUMERIC,
   TAX_ID_ISSUES,
@@ -53,7 +54,16 @@ export function taxIdIssue(taxId: string, country: string): TaxIdIssue | null {
 
   const code = toCountryCode(country);
   if (code === 'GE') {
-    return GEORGIAN_TAX_ID.test(taxId) ? null : TAX_ID_ISSUES.georgian;
+    /*
+      Character class first, then length. Checking length first would tell a clinic that typed
+      `GE204567891` that its number is the wrong length, when the real problem is the two letters
+      in front of it — and the fix it would then try is deleting digits.
+
+      Length is where this stops. There is no check digit to verify; the evidence for that, and for
+      why adding one would lock legitimate clinics out, is on `GEORGIAN_TAX_ID`.
+    */
+    if (!GEORGIAN_DIGITS_ONLY.test(taxId)) return TAX_ID_ISSUES.georgianDigits;
+    return GEORGIAN_TAX_ID.test(taxId) ? null : TAX_ID_ISSUES.georgianLength;
   }
 
   const vat = code ? EU_VAT_RULES[code] : undefined;

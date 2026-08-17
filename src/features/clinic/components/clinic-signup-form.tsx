@@ -48,6 +48,7 @@ export function ClinicSignUpForm() {
       email: '',
       password: '',
       clinicName: '',
+      brandName: '',
       country: '',
       city: '',
       addressLine: '',
@@ -130,6 +131,9 @@ export function ClinicSignUpForm() {
 
             <ClinicProfileFields
               control={form.control}
+              // The name lives above the credentials on this form, so it is filled but not drawn here.
+              legalNameField="clinicName"
+              brandNameField="brandName"
               phoneField="clinicPhone"
               cityField="city"
               countryField="country"

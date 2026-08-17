@@ -50,9 +50,34 @@ describe('taxIdIssue', () => {
     ['8 digits', '20456789'],
     ['10 digits', '2045678912'],
     ['12 digits', '204567891234'],
-    ['letters', 'GE20456789'],
-  ])('rejects %s for Georgia', (_label, value) => {
-    expect(taxIdIssue(value, 'Georgia')).toBe(TAX_ID_ISSUES.georgian);
+  ])('rejects %s for Georgia as a length problem', (_label, value) => {
+    expect(taxIdIssue(value, 'Georgia')).toBe(TAX_ID_ISSUES.georgianLength);
+  });
+
+  /*
+    Reported as the wrong kind of character, not the wrong length. `GE204567891` is eleven
+    characters, so a length message would send the clinic deleting digits from a number that is
+    already correct once the prefix comes off.
+  */
+  it.each([
+    ['a country prefix', 'GE204567891'],
+    ['a letter mid-number', '20456789A'],
+  ])('rejects %s for Georgia as a character problem', (_label, value) => {
+    expect(taxIdIssue(value, 'Georgia')).toBe(TAX_ID_ISSUES.georgianDigits);
+  });
+
+  /**
+   * Neither Georgian number carries a check digit — see `GEORGIAN_TAX_ID` for the evidence. These
+   * are real, active codes taken from the Public Registry, and every one of them fails Luhn. They
+   * are here so that anyone who later adds a checksum sees exactly which real clinics it locks out.
+   */
+  it.each([
+    ['Bank of Georgia', '204378869'],
+    ['TBC Bank', '204854595'],
+    ['a registry-listed entity', '402376656'],
+    ['another registry-listed entity', '445854567'],
+  ])('accepts %s, which no checksum would admit', (_label, value) => {
+    expect(taxIdIssue(value, 'Georgia')).toBeNull();
   });
 
   it.each([

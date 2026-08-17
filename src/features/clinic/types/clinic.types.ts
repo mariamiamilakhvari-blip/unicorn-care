@@ -1,3 +1,4 @@
+import { CompanyStatus } from '@/shared/const/napr.const';
 import { PlanKey } from '@/shared/const/plan.const';
 import { SubscriptionStatus } from '@/shared/const/subscription.const';
 import { AppLocale } from '@/shared/types/roles';
@@ -6,6 +7,8 @@ import { AppLocale } from '@/shared/types/roles';
 export type ClinicProfile = {
   id: string;
   name: string;
+  /** Public-facing name where it differs from the registered one. Empty when there is no separate one. */
+  brandName: string;
   slug: string;
   country: string;
   city: string;
@@ -24,6 +27,30 @@ export type ClinicProfile = {
 export type RegisterClinicResult = {
   userId: string;
   clinicId: string;
+};
+
+/**
+ * What `GET /api/company/lookup` fills a registration form from.
+ *
+ * `address` and `city` are part of the shape but always empty: the Georgian Public Registry serves
+ * an entity's address only on a CAPTCHA-gated detail page, which we do not automate. They are kept
+ * rather than dropped so the client has one shape to bind to — and so that if a registry (or a
+ * second provider for another country) ever does supply them, filling them in is a change to this
+ * service alone. The form treats an empty string as "type it yourself", which is what it does
+ * today for every lookup.
+ */
+export type CompanyLookup = {
+  taxId: string;
+  legalName: string;
+  address: string;
+  city: string;
+  status: CompanyStatus;
+};
+
+/** The wire envelope. `success` is explicit so a miss and an outage are distinguishable. */
+export type CompanyLookupResponse = {
+  success: true;
+  data: CompanyLookup;
 };
 
 /**
