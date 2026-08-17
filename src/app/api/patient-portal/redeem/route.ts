@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     // A valid redemption clears the window so a patient re-opening their portal is never throttled
     // by someone else sharing their egress IP.
-    rateLimit.reset(`portal-login:${ip}`);
+    await rateLimit.reset(`portal-login:${ip}`);
 
     const response = NextResponse.json({ message: 'PORTAL_SESSION_STARTED' }, { status: 200 });
     response.cookies.set({

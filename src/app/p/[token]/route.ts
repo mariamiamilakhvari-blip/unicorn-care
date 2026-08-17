@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
     // A valid redemption clears the window so a patient re-opening their link is never throttled
     // by someone else sharing their egress IP.
-    rateLimit.reset(`redeem:${ip}`);
+    await rateLimit.reset(`redeem:${ip}`);
 
     const response = NextResponse.redirect(new URL(PATIENT_PORTAL_ROUTE, req.url));
     response.cookies.set({

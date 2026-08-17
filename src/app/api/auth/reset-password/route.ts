@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (validated instanceof NextResponse) return validated;
 
     const { data, status } = await resetPasswordService(validated.data);
-    if (status === 200) rateLimit.reset(`reset-submit:${ip}`);
+    if (status === 200) await rateLimit.reset(`reset-submit:${ip}`);
 
     return NextResponse.json(data, { status });
   } catch {
