@@ -20,6 +20,9 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
 vi.mock('@/features/care-plan/service/occurrence-generator.service', () => ({
   buildOccurrences: vi.fn(),
 }));
+vi.mock('@/features/recovery-guide/service/resolve-guide.service', () => ({
+  resolveGuideForProcedure: vi.fn(),
+}));
 
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
@@ -30,12 +33,14 @@ import { clinicRepository } from '@/features/clinic/repository/clinic.repository
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PatientDocument } from '@/features/patient/schema/patient.schema';
+import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 
 const plans = vi.mocked(carePlanRepository);
 const occurrences = vi.mocked(reminderOccurrenceRepository);
 const clinics = vi.mocked(clinicRepository);
 const patients = vi.mocked(patientRepository);
 const generate = vi.mocked(buildOccurrences);
+const resolveGuide = vi.mocked(resolveGuideForProcedure);
 
 const NOW = new Date('2026-08-09T00:00:00.000Z');
 const PLAN_ID = '507f1f77bcf86cd799439011';
@@ -43,6 +48,7 @@ const PLAN_ID = '507f1f77bcf86cd799439011';
 const plan = (rehabEndsAt: string): CarePlanDocument =>
   ({
     _id: new mongoose.Types.ObjectId(PLAN_ID),
+    procedureId: new mongoose.Types.ObjectId('507f1f77bcf86cd799439044'),
     patientId: new mongoose.Types.ObjectId('507f1f77bcf86cd799439022'),
     clinicId: new mongoose.Types.ObjectId('507f1f77bcf86cd799439033'),
     startsAt: new Date('2026-07-27T00:00:00.000Z'),
@@ -57,7 +63,8 @@ const inserted = () => occurrences.insertMany.mock.calls[0]?.[0] ?? [];
 describe('extendActivePlansService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi' } as ClinicDocument);
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'ka' } as ClinicDocument);
+    resolveGuide.mockResolvedValue(null);
     patients.findById.mockResolvedValue({ timezone: '' } as PatientDocument);
     occurrences.findByPatientAndRange.mockResolvedValue([]);
     occurrences.deletePendingByCarePlan.mockResolvedValue(0);
@@ -172,7 +179,8 @@ describe('extendActivePlansService', () => {
 describe('the zone an extension rebuilds against', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi' } as ClinicDocument);
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'ka' } as ClinicDocument);
+    resolveGuide.mockResolvedValue(null);
     occurrences.findByPatientAndRange.mockResolvedValue([]);
     occurrences.deletePendingByCarePlan.mockResolvedValue(0);
     occurrences.insertMany.mockResolvedValue(0);
@@ -188,7 +196,10 @@ describe('the zone an extension rebuilds against', () => {
     expect(generate).toHaveBeenCalledWith(
       expect.anything(),
       'Europe/Amsterdam',
-      expect.any(Number)
+      expect.any(Number),
+      expect.any(Function),
+      expect.any(Date),
+      null
     );
   });
 
@@ -198,7 +209,14 @@ describe('the zone an extension rebuilds against', () => {
 
     await extendActivePlansService(NOW);
 
-    expect(generate).toHaveBeenCalledWith(expect.anything(), 'Asia/Tbilisi', expect.any(Number));
+    expect(generate).toHaveBeenCalledWith(
+      expect.anything(),
+      'Asia/Tbilisi',
+      expect.any(Number),
+      expect.any(Function),
+      expect.any(Date),
+      null
+    );
   });
 
   /** A patient row that cannot be read must not take the extension down with it. */
@@ -207,6 +225,61 @@ describe('the zone an extension rebuilds against', () => {
 
     await extendActivePlansService(NOW);
 
-    expect(generate).toHaveBeenCalledWith(expect.anything(), 'Asia/Tbilisi', expect.any(Number));
+    expect(generate).toHaveBeenCalledWith(
+      expect.anything(),
+      'Asia/Tbilisi',
+      expect.any(Number),
+      expect.any(Function),
+      expect.any(Date),
+      null
+    );
+  });
+});
+
+/**
+ * P7 — this call passed neither a guide nor a translator, so `buildGuideOccurrences` got `null` and
+ * returned nothing. On the first rolling extension every expected-sign notice stopped being
+ * generated, permanently, for any plan running past the 90-day horizon — and the whole regenerated
+ * window reverted to English regardless of who the patient was.
+ */
+describe('what an extension carries besides the dates', () => {
+  const guide = { expected: [{ _id: new mongoose.Types.ObjectId(), title: 'Swelling', fromDay: 3 }] };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'ka' } as ClinicDocument);
+    patients.findById.mockResolvedValue({ timezone: '' } as PatientDocument);
+    occurrences.findByPatientAndRange.mockResolvedValue([]);
+    occurrences.deletePendingByCarePlan.mockResolvedValue(0);
+    occurrences.insertMany.mockResolvedValue(0);
+    plans.findActivePlansNeedingExtension.mockResolvedValue([plan('2026-12-31T00:00:00.000Z')]);
+    generate.mockReturnValue([draft('2026-09-01T06:00:00.000Z')] as never);
+    resolveGuide.mockResolvedValue(guide as never);
+  });
+
+  it('resolves the guide for the plan procedure and hands it to the generator', async () => {
+    await extendActivePlansService(NOW);
+
+    expect(resolveGuide).toHaveBeenCalledWith('507f1f77bcf86cd799439044', '507f1f77bcf86cd799439033', 'ka');
+    expect(generate.mock.calls[0][5]).toBe(guide);
+  });
+
+  it('translates the regenerated window into the patient language, not English', async () => {
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'ka' } as PatientDocument);
+
+    await extendActivePlansService(NOW);
+
+    const translate = generate.mock.calls[0][3] as (key: 'withFood') => string;
+    expect(translate('withFood')).toBe('საკვებთან ერთად');
+  });
+
+  it('prefers the patient language over the clinic default', async () => {
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'en' } as PatientDocument);
+
+    await extendActivePlansService(NOW);
+
+    expect(resolveGuide).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'en');
+    const translate = generate.mock.calls[0][3] as (key: 'withFood') => string;
+    expect(translate('withFood')).toBe('Take with food.');
   });
 });

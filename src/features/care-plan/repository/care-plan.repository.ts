@@ -75,9 +75,21 @@ export const carePlanRepository = {
    * Cron-scoped — deliberately NOT clinic-scoped, like the dispatch sweep. The digest runs as the
    * platform under `CRON_SECRET` and has no clinic session.
    */
+  /**
+   * The next plans owed a daily digest, least-recently-sent first.
+   *
+   * The sort is what makes the limit a batch rather than a wall. Unsorted, MongoDB returns natural
+   * order, so every sweep saw the same first `limit` documents: once those were claimed for the
+   * day the remaining sweeps did nothing, and any plan past the limit never received a digest at
+   * all — silently, with no error and no counter, for as long as it stayed active.
+   *
+   * `lastDigestOn` is a `YYYY-MM-DD` string, so ascending order puts plans that have gone longest
+   * without an email at the front; a plan already sent today sorts last and is skipped by the
+   * per-patient date check anyway. Plans that have never had one carry `''` and sort first.
+   */
   async findActiveForDigest(limit: number): Promise<CarePlanDocument[]> {
     await mongo.connect();
-    return CarePlanModel.find({ status: 'active' }, null, { limit })
+    return CarePlanModel.find({ status: 'active' }, null, { limit, sort: { lastDigestOn: 1 } })
       .lean<CarePlanDocument[]>()
       .exec();
   },

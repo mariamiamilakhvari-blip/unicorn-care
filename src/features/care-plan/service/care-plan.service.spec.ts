@@ -590,3 +590,69 @@ describe('the welcome email is sent on activation, not on every edit', () => {
     expect(sendWelcomeEmailService).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * P2 — every occurrence ever generated carried the English copy table. Georgian is the product's
+ * default locale, so `Take with food. 08:00` was landing on the phone of a patient whose portal,
+ * emails and clinic are all Georgian. The translator plumbing existed from the start; there was
+ * simply no non-English table for it to reach.
+ */
+describe('occurrence copy follows the patient language', () => {
+  /** Reads the body the generator actually wrote onto a row, rather than the translator it was handed. */
+  function medicationBody(): string {
+    const inserted = occurrences.insertMany.mock.calls[0][0];
+    return inserted.find(draft => draft.kind === 'medication')?.body ?? '';
+  }
+
+  it('writes Georgian copy for a Georgian patient', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'ka' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(medicationBody()).toContain('საკვებთან ერთად');
+  });
+
+  it('lets the patient language win over the clinic default', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(medicationBody()).toContain('Take with food.');
+  });
+
+  /** A record written before the patient had a language of their own inherits the clinic's. */
+  it('falls back to the clinic language when the patient has none', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(medicationBody()).toContain('საკვებთან ერთად');
+  });
+
+  it('uses the same language for the guide lookup as for the copy', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(resolveGuide).toHaveBeenCalledWith(PROCEDURE_ID, CLINIC_ID, 'en');
+  });
+
+  /** The portal-triggered rebuild reads the patient too, rather than assuming the clinic's tongue. */
+  it('translates the timezone rebuild in the patient language', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'en' } as never);
+    patients.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'ka' } as never);
+    plans.findActiveByPatient.mockResolvedValue([planDoc({ status: 'active' })]);
+
+    await regeneratePlansForTimezoneService(PATIENT_ID, CLINIC_ID, 'Asia/Tbilisi');
+
+    expect(medicationBody()).toContain('საკვებთან ერთად');
+  });
+});

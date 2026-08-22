@@ -23,7 +23,7 @@ import { canClinicWrite, resolveStatus } from '@/features/clinic/service/subscri
 import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
-import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
+import { occurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { WRITE_ALLOWED_STATUSES } from '@/shared/const/subscription.const';
 import { effectiveTimeZone, isValidTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
@@ -146,7 +146,7 @@ async function rebuildPlanOccurrences(
     plan,
     timezone,
     DEFAULT_HORIZON_DAYS,
-    defaultOccurrenceTranslator,
+    occurrenceTranslator(locale),
     now,
     guide
   ).filter(draft => draft.dueAt.getTime() >= now.getTime());
@@ -177,10 +177,12 @@ export async function regeneratePlansForTimezoneService(
   if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
 
   const plans = await carePlanRepository.findActiveByPatient(patientId, clinicId);
+  const patient = await patientRepository.findById(patientId, clinicId);
+  const locale = (patient?.locale ?? clinic.locale) as AppLocale;
 
   let occurrences = 0;
   for (const plan of plans) {
-    occurrences += await rebuildPlanOccurrences(plan, timezone, clinic.locale);
+    occurrences += await rebuildPlanOccurrences(plan, timezone, locale);
   }
 
   return { data: { plans: plans.length, occurrences }, status: 200 };
@@ -236,7 +238,9 @@ export async function activateCarePlanService(
   const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
   const timezone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
 
-  await rebuildPlanOccurrences(plan, timezone, clinic.locale);
+  // Same rule the emails follow: the patient's own language wins, the clinic's is the fallback for
+  // a record written before the field existed.
+  await rebuildPlanOccurrences(plan, timezone, (patient?.locale ?? clinic.locale) as AppLocale);
 
   await carePlanRepository.updateById(id, clinicId, { status: 'active' });
 
