@@ -53,4 +53,18 @@ export const patientAccessTokenRepository = {
       .lean<PatientAccessTokenDocument[]>()
       .exec();
   },
+
+  /** Purges every row this clinic owns. Only the cascade-deletion services call this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await PatientAccessTokenModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
+  /** Purges every row for one patient, scoped to their clinic so it can never reach another's. */
+  async deleteAllByPatient(patientId: string, clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await PatientAccessTokenModel.deleteMany({ patientId, clinicId });
+    return result.deletedCount;
+  },
 };

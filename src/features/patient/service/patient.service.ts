@@ -197,12 +197,3 @@ async function retimePlansForPatient(
     console.error('[patient] could not re-time plans after a timezone edit', patientId, caught);
   }
 }
-
-export async function archivePatientService(
-  clinicId: string,
-  patientId: string
-): Promise<ServiceResult<{ id: string; isArchived: boolean }>> {
-  const archived = await patientRepository.archiveById(patientId, clinicId);
-  if (!archived) return { data: { error: 'NOT_FOUND' }, status: 404 };
-  return { data: { id: patientId, isArchived: true }, status: 200 };
-}

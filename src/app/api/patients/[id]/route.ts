@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { deletePatientService } from '@/features/patient/service/delete-patient.service';
 import {
-  archivePatientService,
   getPatientService,
   updatePatientService,
 } from '@/features/patient/service/patient.service';
@@ -40,14 +40,19 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   }
 }
 
-/** Archive, never hard delete — a patient record is the clinic's clinical history. */
+/**
+ * A full erasure, not the archive this replaced. Archiving only set `isArchived` and hid the row,
+ * which is the right default for tidying a caseload and the wrong one for a patient asking to be
+ * erased — a hidden record is still a held record. The service cascades every collection the
+ * clinic holds about them.
+ */
 export async function DELETE(_req: NextRequest, { params }: RouteContext) {
   try {
     const session = await clinicGuard.requireClinicUser();
     if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 
     const { id } = await params;
-    const { data, status } = await archivePatientService(session.clinicId, id);
+    const { data, status } = await deletePatientService(session.clinicId, id);
     return NextResponse.json(data, { status });
   } catch {
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });

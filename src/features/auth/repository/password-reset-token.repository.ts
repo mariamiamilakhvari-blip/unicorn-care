@@ -39,4 +39,17 @@ export const passwordResetTokenRepository = {
     );
     return result.modifiedCount;
   },
+
+  /**
+   * Purges reset tokens belonging to a set of users.
+   *
+   * By user id, because this collection carries no `clinicId` — and a live reset token outliving
+   * its user is the worst of the orphans, since it is a credential. Nothing would ever redeem it
+   * once the account is gone, but it should not be sitting in the database either.
+   */
+  async deleteAllByUsers(userIds: string[]): Promise<number> {
+    await mongo.connect();
+    const result = await PasswordResetTokenModel.deleteMany({ userId: { $in: userIds } });
+    return result.deletedCount;
+  },
 };

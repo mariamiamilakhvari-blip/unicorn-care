@@ -96,3 +96,15 @@ export type PatientActions = {
 
 export type PatientStore = PatientState & PatientActions;
 export type PatientStoreType = PatientStore;
+
+/** What a full patient erasure removed, so the dashboard can say more than "done". */
+export type DeletePatientResult = {
+  deleted: true;
+  counts: {
+    procedures: number;
+    carePlans: number;
+    reminders: number;
+    ratings: number;
+    photos: number;
+  };
+};

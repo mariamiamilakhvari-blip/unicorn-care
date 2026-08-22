@@ -205,9 +205,6 @@
     "empty": "No patients added yet",
     "accessLinkOnceWarning": "This link is shown once. Copy it now — it cannot be recovered.",
     "email": "Email",
-    "archive": "Archive",
-    "archiveTitle": "Archive this patient?",
-    "archiveWarning": "They will be hidden from the list. Their records and history are kept.",
     "writeError": {
       "SUBSCRIPTION_INACTIVE": {
         "title": "Your subscription is not active",
@@ -235,7 +232,10 @@
     "timezoneSubmit": "Save timezone",
     "timezoneSaving": "Saving…",
     "timezoneSaved": "Saved. Upcoming reminders were re-timed.",
-    "timezoneSaveFailed": "Could not save the timezone. Please try again."
+    "timezoneSaveFailed": "Could not save the timezone. Please try again.",
+    "delete": "Delete",
+    "deleteTitle": "Delete this patient?",
+    "deleteWarning": "This permanently erases their records, care plans, reminders, photographs and ratings. It cannot be undone."
   },
   "procedure": {
     "title": "Procedure",

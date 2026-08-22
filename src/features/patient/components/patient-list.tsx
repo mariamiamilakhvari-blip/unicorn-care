@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
@@ -11,10 +11,10 @@ import { ConfirmDialog } from '@/shared/components/ui/confirm-dialog';
 
 type PatientListProps = {
   patients: PatientSummary[];
-  onArchive: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 };
 
-export function PatientList({ patients, onArchive }: PatientListProps) {
+export function PatientList({ patients, onDelete }: PatientListProps) {
   const t = useTranslations('patient');
   const tCommon = useTranslations('common');
 
@@ -47,16 +47,16 @@ export function PatientList({ patients, onArchive }: PatientListProps) {
               </Link>
             </Button>
 
-            {/* Archive, never hard delete — the record is the clinic's clinical history. */}
+            {/* A full erasure. The dialog spells out what goes, because none of it comes back. */}
             <ConfirmDialog
-              title={t('archiveTitle')}
-              description={t('archiveWarning')}
-              confirmLabel={t('archive')}
-              onConfirm={() => onArchive(patient.id)}
+              title={t('deleteTitle')}
+              description={t('deleteWarning')}
+              confirmLabel={t('delete')}
+              onConfirm={() => onDelete(patient.id)}
               trigger={
                 <Button type="button" variant="ghost" size="sm" className="text-destructive">
-                  <Archive className="size-4" aria-hidden />
-                  {t('archive')}
+                  <Trash2 className="size-4" aria-hidden />
+                  {t('delete')}
                 </Button>
               }
             />

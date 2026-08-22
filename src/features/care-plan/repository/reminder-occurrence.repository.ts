@@ -253,4 +253,11 @@ export const reminderOccurrenceRepository = {
     return result.deletedCount;
   },
 
+
+  /** Purges every row for one patient, clinic-scoped so it can never reach another tenant's. */
+  async deleteAllByPatient(patientId: string, clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await ReminderOccurrenceModel.deleteMany({ patientId, clinicId });
+    return result.deletedCount;
+  },
 };
