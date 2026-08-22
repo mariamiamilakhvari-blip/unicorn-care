@@ -9,6 +9,30 @@ export type RatingAggregate = {
   avgClinicScore: number;
 };
 
+/** One clinic's public standing, as the aggregation returns it. */
+export type PublicClinicAggregate = {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+  ratingCount: number;
+  avgClinicScore: number;
+  avgDoctorScore: number;
+};
+
+/**
+ * One doctor's public standing.
+ *
+ * Keyed by clinic *and* name because a doctor is not a record here — `listDoctorsService` derives
+ * the roster from the operating surgeon written on each procedure, and `operatorUserId` is null
+ * for anyone without a staff account. Grouping on the account id alone would silently drop every
+ * visiting or unregistered surgeon from the board.
+ */
+export type PublicDoctorAggregate = {
+  _id: { clinicId: mongoose.Types.ObjectId; operatorName: string };
+  clinicName: string;
+  ratingCount: number;
+  avgDoctorScore: number;
+};
+
 export const ratingRepository = {
   async create(data: Omit<RatingDocument, '_id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     await mongo.connect();
@@ -64,6 +88,93 @@ export const ratingRepository = {
     ]).exec();
 
     return result ?? { ratingCount: 0, avgDoctorScore: 0, avgClinicScore: 0 };
+  },
+
+  /**
+   * Clinics ranked by their patients' scores, for the public board.
+   *
+   * `minRatings` and `limit` are the caller's — the threshold below which an average must not be
+   * published is a business rule and lives in the service (CLAUDE.md §8).
+   */
+  async aggregatePublicClinics(
+    minRatings: number,
+    limit: number
+  ): Promise<PublicClinicAggregate[]> {
+    await mongo.connect();
+    return RatingModel.aggregate<PublicClinicAggregate>([
+      {
+        $group: {
+          _id: '$clinicId',
+          ratingCount: { $sum: 1 },
+          avgClinicScore: { $avg: '$clinicScore' },
+          avgDoctorScore: { $avg: '$doctorScore' },
+        },
+      },
+      { $match: { ratingCount: { $gte: minRatings } } },
+      { $lookup: { from: 'clinics', localField: '_id', foreignField: '_id', as: 'clinic' } },
+      { $unwind: '$clinic' },
+      { $set: { name: '$clinic.name' } },
+      { $unset: 'clinic' },
+      // Ties broken by volume: between two clinics at 4.8, the one with more ratings is the safer
+      // recommendation, because its average is standing on more evidence.
+      { $sort: { avgClinicScore: -1, ratingCount: -1 } },
+      { $limit: limit },
+    ]).exec();
+  },
+
+  /**
+   * Doctors ranked by their patients' scores.
+   *
+   * Joined through the procedure rather than read off the rating: a rating carries
+   * `operatorUserId`, which is null for a surgeon with no staff account, while the procedure
+   * always carries `operatorName`. The join is what keeps those doctors on the board.
+   */
+  async aggregatePublicDoctors(
+    minRatings: number,
+    limit: number
+  ): Promise<PublicDoctorAggregate[]> {
+    await mongo.connect();
+    return RatingModel.aggregate<PublicDoctorAggregate>([
+      {
+        $lookup: {
+          from: 'procedures',
+          localField: 'procedureId',
+          foreignField: '_id',
+          as: 'procedure',
+        },
+      },
+      { $unwind: '$procedure' },
+      {
+        $group: {
+          _id: { clinicId: '$clinicId', operatorName: '$procedure.operatorName' },
+          ratingCount: { $sum: 1 },
+          avgDoctorScore: { $avg: '$doctorScore' },
+        },
+      },
+      { $match: { ratingCount: { $gte: minRatings } } },
+      { $lookup: { from: 'clinics', localField: '_id.clinicId', foreignField: '_id', as: 'clinic' } },
+      { $unwind: '$clinic' },
+      { $set: { clinicName: '$clinic.name' } },
+      { $unset: 'clinic' },
+      { $sort: { avgDoctorScore: -1, ratingCount: -1 } },
+      { $limit: limit },
+    ]).exec();
+  },
+
+  /**
+   * Reviews a patient has agreed may be shown publicly.
+   *
+   * `isPublic` is the only gate, and it defaults to `false` on the schema — a review is published
+   * because someone chose to publish it, never because nobody objected.
+   */
+  async findPublicReviews(limit: number): Promise<RatingDocument[]> {
+    await mongo.connect();
+    return RatingModel.find({ isPublic: true, comment: { $ne: '' } }, null, {
+      sort: { submittedAt: -1 },
+      limit,
+    })
+      .lean<RatingDocument[]>()
+      .exec();
   },
 
   /** Purged with the rest of a clinic's records on account deletion. */

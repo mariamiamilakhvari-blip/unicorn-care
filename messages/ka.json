@@ -389,7 +389,13 @@
       }
     },
     "ctaPrimary": "კლინიკის დამატება",
-    "ctaSecondary": "შესვლა"
+    "ctaSecondary": "შესვლა",
+    "topRatedEyebrow": "პაციენტების შეფასებები",
+    "topRatedTitle": "საუკეთესოდ შეფასებული კლინიკები და ექიმები",
+    "topRatedHelp": "საშუალო შეფასებები ვერიფიცირებული პაციენტებისგან, ქვეყნდება მხოლოდ მას შემდეგ, რაც კლინიკას ან ექიმს ექნება მინიმუმ {threshold} შეფასება.",
+    "topRatedClinics": "კლინიკები",
+    "topRatedDoctors": "ექიმები",
+    "ratingCount": "შეფასება"
   },
   "dashboard": {
     "overview": "მიმოხილვა",

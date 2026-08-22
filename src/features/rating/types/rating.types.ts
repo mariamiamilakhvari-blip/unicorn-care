@@ -45,3 +45,50 @@ export type ClinicRatingListView = {
   summary: ClinicRatingSummary;
   items: (RatingView & { patientName: string })[];
 };
+
+/**
+ * One clinic on the public board.
+ *
+ * Deliberately carries no patient-identifying anything. A clinic's average is a fact about the
+ * clinic; the patients behind it stay out of the payload entirely, which is why this type exists
+ * separately from `ClinicRatingListView` rather than being a narrowing of it — that one carries
+ * `patientName`, and a shared type would be one careless spread away from publishing it.
+ */
+export type PublicClinicRating = {
+  id: string;
+  name: string;
+  ratingCount: number;
+  avgClinicScore: number;
+  avgDoctorScore: number;
+};
+
+/** One doctor on the public board. Identified by name, which is how the roster is derived. */
+export type PublicDoctorRating = {
+  name: string;
+  clinicName: string;
+  ratingCount: number;
+  avgDoctorScore: number;
+};
+
+/**
+ * A published review.
+ *
+ * `isPublic` gates it and defaults to `false`, so this only ever carries text a patient chose to
+ * make public. No name, no procedure, no date of surgery — a free-text comment plus any of those
+ * re-identifies someone in a small clinic.
+ */
+export type PublicReview = {
+  id: string;
+  comment: string;
+  doctorScore: number;
+  clinicScore: number;
+  submittedAt: string;
+};
+
+export type PublicRatingsView = {
+  clinics: PublicClinicRating[];
+  doctors: PublicDoctorRating[];
+  reviews: PublicReview[];
+  /** The minimum rating count behind every figure above, so the page can say so. */
+  threshold: number;
+};
