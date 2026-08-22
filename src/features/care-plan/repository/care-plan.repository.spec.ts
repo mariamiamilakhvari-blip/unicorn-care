@@ -89,3 +89,38 @@ describe('carePlanRepository — tenancy', () => {
     expect(filter).not.toHaveProperty('clinicId');
   });
 });
+
+/**
+ * P5 — the digest read was `find({ status: 'active' }, null, { limit })` with no sort, so MongoDB
+ * returned natural order and every sweep saw the same first `limit` documents. Once those were
+ * claimed for the day the remaining 1400-odd sweeps did nothing, and any plan past the limit never
+ * received a daily digest at all: no error, no counter, for as long as it stayed active.
+ */
+describe('carePlanRepository — digest fairness', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('orders by lastDigestOn so the limit is a batch and not a wall', async () => {
+    (mockModel.find as ReturnType<typeof vi.fn>).mockReturnValueOnce(leanQuery([]));
+
+    await carePlanRepository.findActiveForDigest(200);
+
+    expect(mockModel.find).toHaveBeenCalledWith({ status: 'active' }, null, {
+      limit: 200,
+      sort: { lastDigestOn: 1 },
+    });
+  });
+
+  /*
+    `lastDigestOn` is a `YYYY-MM-DD` string and plans that have never had a digest carry `''`, so
+    ascending order puts the longest-waiting first and today's already-sent plans last. That is the
+    property that drains a backlog rather than re-reading the front of it.
+  */
+  it('sorts ascending, so never-sent and longest-waiting plans come first', async () => {
+    (mockModel.find as ReturnType<typeof vi.fn>).mockReturnValueOnce(leanQuery([]));
+
+    await carePlanRepository.findActiveForDigest(200);
+
+    const [, , options] = (mockModel.find as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(options.sort.lastDigestOn).toBe(1);
+  });
+});

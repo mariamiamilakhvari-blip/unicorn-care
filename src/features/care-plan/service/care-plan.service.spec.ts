@@ -48,8 +48,10 @@ import { reminderOccurrenceRepository } from '@/features/care-plan/repository/re
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { CreateCarePlanType } from '@/features/care-plan/validations/care-plan.validation';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
+import { clock } from '@/shared/lib/clock';
 
 import {
   activateCarePlanService,
@@ -58,6 +60,7 @@ import {
   getByProcedureService,
   getCarePlanService,
   listOccurrencesService,
+  regeneratePlansForTimezoneService,
   updateCarePlanService,
 } from './care-plan.service';
 
@@ -117,8 +120,17 @@ function planDoc(overrides: Partial<CarePlanDocument> = {}): CarePlanDocument {
   return doc as CarePlanDocument;
 }
 
+/*
+  Pinned just before the fixtures' own window. A rebuild only materialises occurrences that are
+  still ahead of `clock.now()`, so a spec running against the real clock would generate nothing
+  from dates in 2025 and every activation assertion would pass vacuously on an empty array.
+*/
+const NOW = new Date('2025-05-31T12:00:00.000Z');
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
   clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'en' } as never);
   resolveGuide.mockResolvedValue(null);
   plans.create.mockResolvedValue(PLAN_ID);
@@ -126,6 +138,8 @@ beforeEach(() => {
   occurrences.deletePendingByCarePlan.mockResolvedValue(0);
   occurrences.insertMany.mockResolvedValue(0);
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe('createCarePlanService', () => {
   it('persists a draft with the session clinic, never a body clinicId', async () => {
@@ -358,7 +372,9 @@ describe('getAdherenceService', () => {
  */
 describe('care plans behind the subscription wall', () => {
   /** A clinic seven days past the start of its trial, with everything else left alone. */
-  const lapsedClinic = { timezone: 'Europe/Berlin', locale: 'en', trialEndsAt: new Date(Date.now() - 86_400_000) } as never;
+  // Relative to the pinned `NOW`, not to `Date.now()`: read at module load the latter is the real
+  // clock, which sits far ahead of the fixtures and left the trial looking perfectly current.
+  const lapsedClinic = { timezone: 'Europe/Berlin', locale: 'en', trialEndsAt: new Date(NOW.getTime() - 86_400_000) } as never;
 
   it('refuses to create a plan once the trial has expired', async () => {
     clinics.findById.mockResolvedValue(lapsedClinic);
@@ -408,5 +424,235 @@ describe('care plans behind the subscription wall', () => {
 
     expect((await createCarePlanService(CLINIC_ID, createInput())).status).toBe(201);
     expect((await activateCarePlanService(CLINIC_ID, PLAN_ID)).status).toBe(200);
+  });
+});
+
+/**
+ * P1 — a checkup is the one field a clinician types as a datetime, and `datetime-local` submits it
+ * with no zone. It used to be stored as whatever the *server's* zone made of it, which on Vercel is
+ * UTC: a Tbilisi clinic typing 13:00 stored 13:00Z, and the portal and every email printed 17:00.
+ * The builder hid it by slicing the same UTC string back out and redisplaying the 13:00 typed.
+ */
+describe('checkup times are anchored in the clinic zone', () => {
+  const TYPED = new Date('2025-06-20T13:00:00.000Z');
+
+  function inputWithCheckup(): CreateCarePlanType {
+    return { ...createInput(), checkups: [{ scheduledAt: TYPED, title: 'Follow-up', location: 'Room 3', remindHoursBefore: 24 }] };
+  }
+
+  it('stores the wall clock the clinic typed, not the raw UTC parse', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await createCarePlanService(CLINIC_ID, inputWithCheckup());
+
+    // 13:00 in Tbilisi is 09:00 UTC. Storing 13:00Z is the four-hour shift this guards.
+    const stored = plans.create.mock.calls[0][0].checkups as { scheduledAt: Date }[];
+    expect(stored[0].scheduledAt.toISOString()).toBe('2025-06-20T09:00:00.000Z');
+  });
+
+  it('anchors on update too, so an edit does not re-shift a corrected appointment', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, inputWithCheckup());
+
+    const patch = plans.updateById.mock.calls[0][2] as { checkups: { scheduledAt: Date }[] };
+    expect(patch.checkups[0].scheduledAt.toISOString()).toBe('2025-06-20T09:00:00.000Z');
+  });
+
+  it('applies each clinic\'s own offset rather than one global assumption', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'America/New_York', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await createCarePlanService(CLINIC_ID, inputWithCheckup());
+
+    const stored = plans.create.mock.calls[0][0].checkups as { scheduledAt: Date }[];
+    expect(stored[0].scheduledAt.toISOString()).toBe('2025-06-20T17:00:00.000Z');
+  });
+
+  it('survives the builder round trip unchanged, so saving an untouched form is a no-op', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await createCarePlanService(CLINIC_ID, inputWithCheckup());
+    const stored = plans.create.mock.calls[0][0].checkups as { scheduledAt: Date }[];
+
+    // What the builder puts back in the input, then what the schema makes of it on resubmit.
+    const redisplayed = clock.civilInZone(stored[0].scheduledAt, 'Asia/Tbilisi');
+    expect(redisplayed).toBe('2025-06-20T13:00');
+
+    plans.create.mockClear();
+    await createCarePlanService(CLINIC_ID, {
+      ...createInput(),
+      checkups: [{ scheduledAt: new Date(`${redisplayed}Z`), title: 'Follow-up', location: 'Room 3', remindHoursBefore: 24 }],
+    });
+    const again = plans.create.mock.calls[0][0].checkups as { scheduledAt: Date }[];
+    expect(again[0].scheduledAt.toISOString()).toBe(stored[0].scheduledAt.toISOString());
+  });
+
+  /*
+    An unreadable clinic means an unknowable zone, so there is no honest instant to store. The
+    subscription gate happens to refuse it first — it reads the same clinic and fails closed — so
+    the visible code is 402 rather than 404. What matters here is that nothing is written on a
+    path where the appointment could only have been guessed at.
+  */
+  it('writes nothing when the clinic — and so the zone — cannot be read', async () => {
+    clinics.findById.mockResolvedValue(null);
+
+    const { status } = await createCarePlanService(CLINIC_ID, inputWithCheckup());
+
+    expect(status).not.toBe(201);
+    expect(plans.create).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * P3 — `buildOccurrences` is deterministic from `plan.startsAt`, so it returns the plan's history
+ * as well as its future, and `deletePendingByCarePlan` clears only `pending`. Rebuilding without a
+ * filter therefore laid fresh `pending` duplicates over doses already sent and ticked off; the next
+ * sweep marked everything past the grace window `missed`, inventing non-adherence for a patient who
+ * had missed nothing.
+ */
+describe('a rebuild never re-materialises the past', () => {
+  /** Mid-course: two of the four dose days are behind us, two are ahead. */
+  const MID_COURSE = new Date('2025-06-03T12:00:00.000Z');
+
+  it('inserts only occurrences still ahead of now when an active plan is edited', async () => {
+    vi.setSystemTime(MID_COURSE);
+    plans.findById.mockResolvedValue(planDoc({ status: 'active' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    const inserted = occurrences.insertMany.mock.calls[0][0];
+    expect(inserted.every(draft => draft.dueAt.getTime() >= MID_COURSE.getTime())).toBe(true);
+    // 4 dose days, of which 06-02 and 06-03 08:00 Berlin have already gone.
+    expect(inserted).toHaveLength(2);
+  });
+
+  it('writes nothing at all when every occurrence is behind us', async () => {
+    vi.setSystemTime(new Date('2025-07-01T00:00:00.000Z'));
+    plans.findById.mockResolvedValue(planDoc({ status: 'active' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(occurrences.deletePendingByCarePlan).toHaveBeenCalledWith(PLAN_ID, CLINIC_ID);
+    expect(occurrences.insertMany).not.toHaveBeenCalled();
+  });
+
+  it('guards the portal-triggered rebuild too, not only the clinic edit', async () => {
+    vi.setSystemTime(MID_COURSE);
+    plans.findActiveByPatient.mockResolvedValue([planDoc({ status: 'active' })]);
+
+    await regeneratePlansForTimezoneService(PATIENT_ID, CLINIC_ID, 'Asia/Tbilisi');
+
+    const inserted = occurrences.insertMany.mock.calls[0][0];
+    expect(inserted.every(draft => draft.dueAt.getTime() >= MID_COURSE.getTime())).toBe(true);
+  });
+});
+
+/**
+ * P4 — editing a live plan re-runs activation so the materialised rows follow the edit, which meant
+ * a corrected dosage or a moved appointment re-sent the patient the entire plan email they had
+ * already read.
+ */
+describe('the welcome email is sent on activation, not on every edit', () => {
+  it('sends when a draft becomes active', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'draft' }));
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(sendWelcomeEmailService).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent when an already-active plan is edited', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'active' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(sendWelcomeEmailService).not.toHaveBeenCalled();
+  });
+
+  it('still rebuilds the occurrences it stayed silent about', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'active' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(occurrences.deletePendingByCarePlan).toHaveBeenCalledWith(PLAN_ID, CLINIC_ID);
+    expect(occurrences.insertMany).toHaveBeenCalled();
+  });
+
+  it('treats reactivating a finished plan as a new course of treatment', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'completed' }));
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(sendWelcomeEmailService).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * P2 — every occurrence ever generated carried the English copy table. Georgian is the product's
+ * default locale, so `Take with food. 08:00` was landing on the phone of a patient whose portal,
+ * emails and clinic are all Georgian. The translator plumbing existed from the start; there was
+ * simply no non-English table for it to reach.
+ */
+describe('occurrence copy follows the patient language', () => {
+  /** Reads the body the generator actually wrote onto a row, rather than the translator it was handed. */
+  function medicationBody(): string {
+    const inserted = occurrences.insertMany.mock.calls[0][0];
+    return inserted.find(draft => draft.kind === 'medication')?.body ?? '';
+  }
+
+  it('writes Georgian copy for a Georgian patient', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'ka' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(medicationBody()).toContain('საკვებთან ერთად');
+  });
+
+  it('lets the patient language win over the clinic default', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(medicationBody()).toContain('Take with food.');
+  });
+
+  /** A record written before the patient had a language of their own inherits the clinic's. */
+  it('falls back to the clinic language when the patient has none', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(medicationBody()).toContain('საკვებთან ერთად');
+  });
+
+  it('uses the same language for the guide lookup as for the copy', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'ka' } as never);
+    patients.findById.mockResolvedValue({ timezone: '', locale: 'en' } as never);
+    plans.findById.mockResolvedValue(planDoc());
+
+    await activateCarePlanService(CLINIC_ID, PLAN_ID);
+
+    expect(resolveGuide).toHaveBeenCalledWith(PROCEDURE_ID, CLINIC_ID, 'en');
+  });
+
+  /** The portal-triggered rebuild reads the patient too, rather than assuming the clinic's tongue. */
+  it('translates the timezone rebuild in the patient language', async () => {
+    clinics.findById.mockResolvedValue({ timezone: 'Europe/Berlin', locale: 'en' } as never);
+    patients.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi', locale: 'ka' } as never);
+    plans.findActiveByPatient.mockResolvedValue([planDoc({ status: 'active' })]);
+
+    await regeneratePlansForTimezoneService(PATIENT_ID, CLINIC_ID, 'Asia/Tbilisi');
+
+    expect(medicationBody()).toContain('საკვებთან ერთად');
   });
 });

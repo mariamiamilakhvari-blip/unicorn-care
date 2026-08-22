@@ -4,8 +4,11 @@ import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { buildOccurrences } from '@/features/care-plan/service/occurrence-generator.service';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
+import { occurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
+import { AppLocale } from '@/shared/types/roles';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -65,6 +68,18 @@ async function extendPlan(plan: CarePlanDocument, now: Date): Promise<boolean> {
   */
   const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
   const timezone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
+  const locale = (patient?.locale ?? clinic.locale) as AppLocale;
+
+  /*
+    The guide has to be resolved here too, not just at activation.
+
+    This call passed neither a guide nor a translator, so `buildGuideOccurrences` received `null`
+    and returned nothing: on the first rolling extension every expected-sign notice silently
+    stopped being generated, permanently, for any plan running longer than the 90-day horizon. The
+    rows simply never appeared again and nothing reported their absence. The copy went the same
+    way — without a translator the whole window regenerated in English regardless of the patient.
+  */
+  const guide = await resolveGuideForProcedure(plan.procedureId.toString(), clinicId, locale);
 
   const elapsedDays = Math.max(
     0,
@@ -81,9 +96,14 @@ async function extendPlan(plan: CarePlanDocument, now: Date): Promise<boolean> {
     This is the guard that holds regardless of why an extension ran, which is why it exists
     alongside the trigger check above rather than instead of it.
   */
-  const drafts = buildOccurrences(plan, timezone, horizonDays).filter(
-    draft => draft.dueAt.getTime() >= now.getTime()
-  );
+  const drafts = buildOccurrences(
+    plan,
+    timezone,
+    horizonDays,
+    occurrenceTranslator(locale),
+    now,
+    guide
+  ).filter(draft => draft.dueAt.getTime() >= now.getTime());
   if (drafts.length === 0) return false;
 
   await reminderOccurrenceRepository.deletePendingByCarePlan(plan._id.toString(), clinicId);

@@ -187,6 +187,7 @@ export function PatientDetail({
               patientId={patientId}
               manipulationType={selectedProcedure?.manipulationType ?? ''}
               patientLocale={patientLocale}
+              clinicTimezone={clinicTimezone}
             />
           </CardContent>
         </Card>

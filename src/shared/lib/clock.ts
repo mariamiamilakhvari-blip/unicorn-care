@@ -32,6 +32,51 @@ class Clock {
   }
 
   /**
+   * Re-anchor a *civil* datetime — one carrying no zone of its own — into `timeZone`.
+   *
+   * The argument is a carrier, not an instant: its UTC fields hold the year/month/day/hour/minute
+   * a human wrote down, and the returned Date is the instant at which those same numbers are the
+   * wall clock in `timeZone`. Feed it 13:00 UTC with `Asia/Tbilisi` and you get 09:00 UTC, because
+   * that is when a Tbilisi clock reads 13:00.
+   *
+   * This exists because `<input type="datetime-local">` submits `"2026-08-22T13:00"` with no zone
+   * at all, and `new Date(...)` resolves that against **the server process's** zone. On Vercel that
+   * is UTC, so a Tbilisi clinic typing 13:00 stored 13:00Z and every patient-facing surface printed
+   * 17:00 — four hours late, and invisible in the builder, which sliced the same UTC string back
+   * out and redisplayed the 13:00 that had been typed. The parse is pinned to UTC upstream (see
+   * `DateSchema`) so the carrier is deterministic whatever `TZ` the process happens to run under,
+   * and the real zone is applied here, where the clinic is known.
+   */
+  zonedCivilToUtc(civil: Date, timeZone: string): Date {
+    return this.resolve(
+      civil.getUTCFullYear(),
+      civil.getUTCMonth() + 1,
+      civil.getUTCDate(),
+      civil.getUTCHours(),
+      civil.getUTCMinutes(),
+      timeZone
+    );
+  }
+
+  /**
+   * The inverse of `zonedCivilToUtc`, rendered as `YYYY-MM-DDTHH:mm` — exactly what a
+   * `datetime-local` input expects.
+   *
+   * The round trip has to close: the builder shows a stored appointment by converting the instant
+   * back to the clinic's wall clock, and saving an untouched form must not move it. Slicing the
+   * ISO string instead (`iso.slice(0, 16)`) shows the UTC wall clock, so every save would re-anchor
+   * a number that was never local and walk the appointment by the clinic's offset each time.
+   */
+  civilInZone(date: Date, timeZone: string): string {
+    const parts = this.partsInZone(date, timeZone);
+    const month = String(parts.month).padStart(2, '0');
+    const day = String(parts.day).padStart(2, '0');
+    const hour = String(parts.hour).padStart(2, '0');
+    const minute = String(parts.minute).padStart(2, '0');
+    return `${parts.year}-${month}-${day}T${hour}:${minute}`;
+  }
+
+  /**
    * The zone-local calendar date as `YYYY-MM-DD`.
    *
    * Used as a once-per-day key: "has this patient already had today's email" is a question about

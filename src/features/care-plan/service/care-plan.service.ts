@@ -23,7 +23,7 @@ import { canClinicWrite, resolveStatus } from '@/features/clinic/service/subscri
 import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
-import { defaultOccurrenceTranslator } from '@/shared/const/occurrence-copy.const';
+import { occurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { WRITE_ALLOWED_STATUSES } from '@/shared/const/subscription.const';
 import { effectiveTimeZone, isValidTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
@@ -63,7 +63,12 @@ export async function createCarePlanService(
   const existing = await carePlanRepository.findByProcedureId(input.procedureId, clinicId);
   if (existing) return { data: { error: 'PLAN_ALREADY_EXISTS' }, status: 409 };
 
-  const id = await carePlanRepository.create(toCreateInput(clinicId, input));
+  // Read for the timezone alone: a checkup arrives as a zoneless wall clock and cannot be stored
+  // as an instant until someone says which zone that clock is on. See `resolveCheckupTimes`.
+  const clinic = await clinicRepository.findById(clinicId);
+  if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
+
+  const id = await carePlanRepository.create(toCreateInput(clinicId, input, clinic.timezone));
 
   const created = await carePlanRepository.findById(id, clinicId);
   if (!created) return { data: { error: 'NOT_FOUND' }, status: 404 };
@@ -94,7 +99,10 @@ export async function updateCarePlanService(
   id: string,
   input: UpdateCarePlanType
 ): Promise<CarePlanResult> {
-  const matched = await carePlanRepository.updateById(id, clinicId, toContentPatch(input));
+  const clinic = await clinicRepository.findById(clinicId);
+  if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
+
+  const matched = await carePlanRepository.updateById(id, clinicId, toContentPatch(input, clinic.timezone));
   if (!matched) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
   const updated = await carePlanRepository.findById(id, clinicId);
@@ -120,17 +128,28 @@ async function rebuildPlanOccurrences(
 ): Promise<number> {
   const clinicId = plan.clinicId.toString();
   const planId = plan._id.toString();
+  const now = clock.now();
 
   const guide = await resolveGuideForProcedure(plan.procedureId.toString(), clinicId, locale);
 
+  /*
+    Only the future is inserted. `buildOccurrences` is deterministic from `plan.startsAt`, so it
+    returns the plan's history alongside its future, and `deletePendingByCarePlan` clears only
+    `pending`. Without this filter a rebuild laid a fresh `pending` duplicate over every dose the
+    patient had already been reminded of: anything inside `GRACE_HOURS` was sent twice, and
+    everything older was marked `missed` on the next sweep — a clinic correcting a typo invented a
+    fortnight of non-adherence for a patient who had missed nothing. Both rebuild paths reach this
+    (a clinic edit, and a patient opening the portal from a new zone). `extendPlan` carries the
+    same guard for the same reason.
+  */
   const drafts = buildOccurrences(
     plan,
     timezone,
     DEFAULT_HORIZON_DAYS,
-    defaultOccurrenceTranslator,
-    clock.now(),
+    occurrenceTranslator(locale),
+    now,
     guide
-  );
+  ).filter(draft => draft.dueAt.getTime() >= now.getTime());
 
   await reminderOccurrenceRepository.deletePendingByCarePlan(planId, clinicId);
   if (drafts.length > 0) await reminderOccurrenceRepository.insertMany(drafts);
@@ -158,10 +177,12 @@ export async function regeneratePlansForTimezoneService(
   if (!clinic) return { data: { error: 'CLINIC_NOT_FOUND' }, status: 404 };
 
   const plans = await carePlanRepository.findActiveByPatient(patientId, clinicId);
+  const patient = await patientRepository.findById(patientId, clinicId);
+  const locale = (patient?.locale ?? clinic.locale) as AppLocale;
 
   let occurrences = 0;
   for (const plan of plans) {
-    occurrences += await rebuildPlanOccurrences(plan, timezone, clinic.locale);
+    occurrences += await rebuildPlanOccurrences(plan, timezone, locale);
   }
 
   return { data: { plans: plans.length, occurrences }, status: 200 };
@@ -217,7 +238,9 @@ export async function activateCarePlanService(
   const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
   const timezone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
 
-  await rebuildPlanOccurrences(plan, timezone, clinic.locale);
+  // Same rule the emails follow: the patient's own language wins, the clinic's is the fallback for
+  // a record written before the field existed.
+  await rebuildPlanOccurrences(plan, timezone, (patient?.locale ?? clinic.locale) as AppLocale);
 
   await carePlanRepository.updateById(id, clinicId, { status: 'active' });
 
@@ -229,8 +252,15 @@ export async function activateCarePlanService(
     procedures, the checkup and the guide only exist once a plan is built, so an email sent earlier
     would arrive almost empty. Failure is logged inside the service and never fails activation — a
     live plan with no email beats no plan at all.
+
+    Only on the transition *into* `active`, though. Editing a live plan re-runs activation to keep
+    the materialised rows following the edit, which meant every correction — a dosage typo, a
+    moved appointment — re-sent the largest email the product has, in full, to a patient who had
+    already read it. `status` is read off the document as it was *before* the flip below, so a
+    genuine draft → active activation still sends and a re-activation of a finished plan still
+    counts as a new course of treatment.
   */
-  await sendWelcomeEmailService(activated, clinic);
+  if (plan.status !== 'active') await sendWelcomeEmailService(activated, clinic);
 
   return { data: activated, status: 200 };
 }
@@ -283,25 +313,39 @@ export async function getAdherenceService(
  * itself, so the plain object is narrowed to the document type here. `DocumentArray` is assignable
  * to a plain array, which is what makes this a narrowing assertion and not an `unknown` cast.
  */
-function toContentPatch(input: UpdateCarePlanType): CarePlanContentPatch {
+/**
+ * Shared by create and update, and the point at which each appointment's wall clock is anchored in
+ * the clinic's zone. See `clock.zonedCivilToUtc` for what
+ * `datetime-local` submits and why the raw parse put every Tbilisi checkup four hours late.
+ *
+ * The clinic's zone, deliberately, and not the patient's `effectiveTimeZone` that doses use: a
+ * checkup is a visit *to the clinic*, booked against the clinic's own calendar, and it does not
+ * move because the patient travelled. The portal still renders it in the patient's zone, which
+ * tells someone recovering abroad what time to be there in their own local terms.
+ */
+function toContentPatch(input: UpdateCarePlanType, timeZone: string): CarePlanContentPatch {
   const content = {
     startsAt: input.startsAt,
     rehabEndsAt: input.rehabEndsAt,
     recoveryLogEnabled: input.recoveryLogEnabled,
     medications: input.medications,
     rehabTasks: input.rehabTasks,
-    checkups: input.checkups.map(checkup => ({ ...checkup, completedAt: null })),
+    checkups: input.checkups.map(checkup => ({
+      ...checkup,
+      scheduledAt: clock.zonedCivilToUtc(checkup.scheduledAt, timeZone),
+      completedAt: null,
+    })),
   };
   return content as CarePlanContentPatch;
 }
 
-function toCreateInput(clinicId: string, input: CreateCarePlanType): CarePlanInput {
+function toCreateInput(clinicId: string, input: CreateCarePlanType, timeZone: string): CarePlanInput {
   const draft = {
     procedureId: new Types.ObjectId(input.procedureId),
     patientId: new Types.ObjectId(input.patientId),
     clinicId: new Types.ObjectId(clinicId),
     status: 'draft',
-    ...toContentPatch(input),
+    ...toContentPatch(input, timeZone),
   };
   return draft as CarePlanInput;
 }

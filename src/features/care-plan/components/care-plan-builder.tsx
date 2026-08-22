@@ -45,6 +45,11 @@ type CarePlanBuilderProps = {
   /** Drives the recovery guide section — the guide is written per procedure type. */
   manipulationType: string;
   patientLocale: AppLocale;
+  /**
+   * The zone a checkup's wall clock is read in, both ways. An appointment is a visit to the
+   * clinic, booked on the clinic's calendar, so it is the clinic's zone and never the patient's.
+   */
+  clinicTimezone: string;
 };
 
 export function CarePlanBuilder({
@@ -52,6 +57,7 @@ export function CarePlanBuilder({
   patientId,
   manipulationType,
   patientLocale,
+  clinicTimezone,
 }: CarePlanBuilderProps) {
   const t = useTranslations('carePlan');
   const tCommon = useTranslations('common');
@@ -104,8 +110,8 @@ export function CarePlanBuilder({
   // plan rather than an empty builder.
   useEffect(() => {
     if (!plan) return;
-    reset(toCarePlanFormValues(plan));
-  }, [plan, reset]);
+    reset(toCarePlanFormValues(plan, clinicTimezone));
+  }, [plan, reset, clinicTimezone]);
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>;
 
