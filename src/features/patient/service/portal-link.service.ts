@@ -114,7 +114,7 @@ export async function requestPortalLinkService(
     one log line. Archiving is how a clinic ends a relationship, and a link that re-opened the
     record afterwards would make that meaningless.
   */
-  if (!patient || patient.isArchived || !patient.email) {
+  if (!patient || !patient.email) {
     console.warn('[portal-link] request for an address with no reachable patient');
     return accepted;
   }
@@ -197,7 +197,7 @@ export async function redeemPortalLinkService(
 
   // The patient can have been archived in the hours since the link was sent.
   const patient = await patientRepository.findById(patientId, clinicId);
-  if (!patient || patient.isArchived) {
+  if (!patient) {
     console.warn('[portal-link] rejected: patient inactive', { token: tag, patientId });
     return rejected;
   }

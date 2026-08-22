@@ -39,6 +39,7 @@ import {
   reviseRatingService,
   submitRatingService,
 } from '@/features/rating/service/rating.service';
+import { MIN_RATINGS_FOR_AVERAGE } from '@/shared/const/rating.const';
 import { clock } from '@/shared/lib/clock';
 
 const ratings = vi.mocked(ratingRepository);
@@ -252,9 +253,15 @@ describe('rating service', () => {
       ratings.findByClinic.mockResolvedValue([]);
     });
 
-    it('withholds the averages below five ratings', async () => {
+    /*
+      Both boundary cases are derived from `MIN_RATINGS_FOR_AVERAGE` rather than written as 4 and
+      5. The rule under test is "one short is withheld, exactly enough is shown", which is a fact
+      about the threshold and not about the number five — pinning the literal made the suppression
+      rule untestable at any other value and turned tuning the constant into a spec failure.
+    */
+    it('withholds the averages one rating short of the threshold', async () => {
       ratings.aggregateForClinic.mockResolvedValue({
-        ratingCount: 4,
+        ratingCount: MIN_RATINGS_FOR_AVERAGE - 1,
         avgDoctorScore: 5,
         avgClinicScore: 5,
       });
@@ -265,13 +272,13 @@ describe('rating service', () => {
         belowThreshold: true,
         avgDoctorScore: null,
         avgClinicScore: null,
-        ratingCount: 4,
+        ratingCount: MIN_RATINGS_FOR_AVERAGE - 1,
       });
     });
 
-    it('shows them at exactly five', async () => {
+    it('shows them at exactly the threshold', async () => {
       ratings.aggregateForClinic.mockResolvedValue({
-        ratingCount: 5,
+        ratingCount: MIN_RATINGS_FOR_AVERAGE,
         avgDoctorScore: 4.24,
         avgClinicScore: 3.96,
       });

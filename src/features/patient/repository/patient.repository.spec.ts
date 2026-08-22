@@ -9,6 +9,7 @@ vi.mock('@/features/patient/schema/patient.schema', () => ({
     findOne: vi.fn(),
     countDocuments: vi.fn(),
     updateOne: vi.fn(),
+    deleteOne: vi.fn(),
   },
 }));
 
@@ -107,13 +108,14 @@ describe('patientRepository — tenancy', () => {
     expect(await patientRepository.updateById(PATIENT_ID, OTHER_CLINIC_ID, { notes: 'x' })).toBe(false);
   });
 
-  it('archiveById scopes the filter by clinicId and sets isArchived', async () => {
-    (mockModel.updateOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ matchedCount: 1 });
-    await patientRepository.archiveById(PATIENT_ID, CLINIC_ID);
-    expect(mockModel.updateOne).toHaveBeenCalledWith(
-      { _id: PATIENT_ID, clinicId: CLINIC_ID },
-      { $set: { isArchived: true } }
-    );
+  /*
+    Archiving is gone; the same button now erases. `deleteById` carries the clinic scope that
+    `archiveById` used to, which is what stops a guessed id reaching another tenant's record.
+  */
+  it('deleteById scopes the filter by clinicId', async () => {
+    (mockModel.deleteOne as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ deletedCount: 1 });
+    await patientRepository.deleteById(PATIENT_ID, CLINIC_ID);
+    expect(mockModel.deleteOne).toHaveBeenCalledWith({ _id: PATIENT_ID, clinicId: CLINIC_ID });
   });
 
   it('create connects and returns the new id', async () => {
@@ -127,6 +129,6 @@ describe('patientRepository — tenancy', () => {
     expect(patientRepository.findById.length).toBeGreaterThanOrEqual(2);
     expect(patientRepository.search.length).toBeGreaterThanOrEqual(2);
     expect(patientRepository.updateById.length).toBeGreaterThanOrEqual(3);
-    expect(patientRepository.archiveById.length).toBeGreaterThanOrEqual(2);
+    expect(patientRepository.deleteById.length).toBeGreaterThanOrEqual(2);
   });
 });

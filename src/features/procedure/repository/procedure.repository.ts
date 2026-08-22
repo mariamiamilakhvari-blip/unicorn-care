@@ -82,4 +82,11 @@ export const procedureRepository = {
     return result.deletedCount;
   },
 
+
+  /** Purges every row for one patient, clinic-scoped so it can never reach another tenant's. */
+  async deleteAllByPatient(patientId: string, clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await ProcedureModel.deleteMany({ patientId, clinicId });
+    return result.deletedCount;
+  },
 };

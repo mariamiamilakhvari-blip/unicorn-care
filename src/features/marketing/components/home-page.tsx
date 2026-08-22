@@ -6,6 +6,7 @@ import { AudienceSection } from '@/features/marketing/components/audience-sectio
 import { BenefitCards } from '@/features/marketing/components/benefit-cards';
 import { FaqSection } from '@/features/marketing/components/faq-section';
 import { StructuredData } from '@/features/marketing/components/structured-data';
+import { TopRatedSection } from '@/features/marketing/components/top-rated-section';
 import { Footer } from '@/shared/components/layout/footer';
 import { Header } from '@/shared/components/layout/header';
 import { Button } from '@/shared/components/ui/button';
@@ -95,6 +96,13 @@ export const HomePage = () => {
 
         {/* The payoff: what the product does for a clinic, before the audience and the FAQ. */}
         <BenefitCards />
+
+        {/*
+          Social proof, and the only section here whose content comes from the database. Renders
+          nothing until a clinic has cleared the rating threshold, so an early-stage deployment
+          shows the page it always showed rather than an empty board.
+        */}
+        <TopRatedSection />
 
 
         {/* Below the feature deck: the body copy a search engine can actually read and rank. */}

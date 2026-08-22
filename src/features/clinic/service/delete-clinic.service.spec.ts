@@ -4,7 +4,31 @@ vi.mock('@/features/clinic/repository/clinic.repository', () => ({
   clinicRepository: { findById: vi.fn(), deleteById: vi.fn() },
 }));
 vi.mock('@/features/patient/repository/patient.repository', () => ({
-  patientRepository: { deleteAllByClinic: vi.fn() },
+  patientRepository: { deleteAllByClinic: vi.fn(), findAllByClinic: vi.fn() },
+}));
+vi.mock('@/features/patient/repository/patient-access-token.repository', () => ({
+  patientAccessTokenRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/patient/repository/patient-portal-link.repository', () => ({
+  patientPortalLinkRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/recovery-guide/repository/symptom-report.repository', () => ({
+  symptomReportRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/recovery-log/repository/photo-access-event.repository', () => ({
+  photoAccessEventRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/data-protection/repository/consent-record.repository', () => ({
+  consentRecordRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/data-protection/repository/data-request.repository', () => ({
+  dataRequestRepository: { deleteAllByClinic: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/notifications/repository/push-subscription.repository', () => ({
+  pushSubscriptionRepository: { deleteAllByPatients: vi.fn().mockResolvedValue(0) },
+}));
+vi.mock('@/features/auth/repository/password-reset-token.repository', () => ({
+  passwordResetTokenRepository: { deleteAllByUsers: vi.fn().mockResolvedValue(0) },
 }));
 vi.mock('@/features/procedure/repository/procedure.repository', () => ({
   procedureRepository: { deleteAllByClinic: vi.fn() },
@@ -33,18 +57,27 @@ vi.mock('@/features/recovery-log/repository/recovery-log.repository', () => ({
 }));
 vi.mock('@/shared/lib/blob-client', () => ({ blobClient: { remove: vi.fn() } }));
 vi.mock('@/features/auth/repository/user.repository', () => ({
-  userRepository: { deleteAllByClinic: vi.fn() },
+  userRepository: { deleteAllByClinic: vi.fn(), findAllByClinic: vi.fn() },
 }));
 vi.mock('@/shared/lib/dodo-client', () => ({ dodoClient: { cancelSubscription: vi.fn() } }));
 
+import { passwordResetTokenRepository } from '@/features/auth/repository/password-reset-token.repository';
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { consentRecordRepository } from '@/features/data-protection/repository/consent-record.repository';
+import { dataRequestRepository } from '@/features/data-protection/repository/data-request.repository';
+import { pushSubscriptionRepository } from '@/features/notifications/repository/push-subscription.repository';
+import { patientAccessTokenRepository } from '@/features/patient/repository/patient-access-token.repository';
+import { patientPortalLinkRepository } from '@/features/patient/repository/patient-portal-link.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
+import { ratingRepository } from '@/features/rating/repository/rating.repository';
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
+import { symptomReportRepository } from '@/features/recovery-guide/repository/symptom-report.repository';
 import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
+import { photoAccessEventRepository } from '@/features/recovery-log/repository/photo-access-event.repository';
 import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { blobClient } from '@/shared/lib/blob-client';
 import { dodoClient } from '@/shared/lib/dodo-client';
@@ -58,6 +91,15 @@ const plans = vi.mocked(carePlanRepository);
 const reminders = vi.mocked(reminderOccurrenceRepository);
 const guides = vi.mocked(recoveryGuideRepository);
 const users = vi.mocked(userRepository);
+const ratings = vi.mocked(ratingRepository);
+const accessTokens = vi.mocked(patientAccessTokenRepository);
+const portalLinks = vi.mocked(patientPortalLinkRepository);
+const symptomReports = vi.mocked(symptomReportRepository);
+const photoAccess = vi.mocked(photoAccessEventRepository);
+const consents = vi.mocked(consentRecordRepository);
+const dataRequests = vi.mocked(dataRequestRepository);
+const pushSubs = vi.mocked(pushSubscriptionRepository);
+const resetTokens = vi.mocked(passwordResetTokenRepository);
 const photos = vi.mocked(patientPhotoRepository);
 const logs = vi.mocked(recoveryLogRepository);
 const blob = vi.mocked(blobClient);
@@ -78,6 +120,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   clinics.findById.mockResolvedValue(clinicDoc());
   clinics.deleteById.mockResolvedValue(true);
+  // The ids the cascade captures up front, for the two collections that carry no `clinicId`.
+  patients.findAllByClinic.mockResolvedValue({ items: [], total: 0 } as never);
+  users.findAllByClinic.mockResolvedValue([] as never);
   dodo.cancelSubscription.mockResolvedValue({ ok: true });
   for (const repo of [patients, procedures, plans, reminders, guides, users]) {
     repo.deleteAllByClinic.mockResolvedValue(0);
@@ -178,5 +223,86 @@ describe('deleteClinicService', () => {
 
     expect(status).toBe(404);
     expect(clinics.deleteById).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The cascade used to reach ten collections and leave nine behind, several holding patient health
+ * data: portal credentials, symptom reports, the photograph access log, the consent record, the
+ * data requests, and — because neither carries a `clinicId` at all — every push endpoint and
+ * password-reset token belonging to the accounts being deleted.
+ *
+ * `consentRecordRepository` and `dataRequestRepository` both already had a `deleteAllByClinic`
+ * that nothing ever called, which is the easiest kind of gap to miss: the method exists, so a
+ * search for one finds it.
+ */
+describe('deleteClinicService — the collections that were being orphaned', () => {
+  // `CLINIC_ID` and the confirmation name come from the fixtures at the top of this file — a
+  // mismatched name is a 422 and the service returns before deleting anything.
+  const PATIENT_ID = '507f1f77bcf86cd799439022';
+  const STAFF_ID = '507f1f77bcf86cd799439033';
+
+  beforeEach(() => {
+    patients.findAllByClinic.mockResolvedValue({
+      items: [{ _id: { toString: () => PATIENT_ID } }],
+      total: 1,
+    } as never);
+    users.findAllByClinic.mockResolvedValue([{ _id: { toString: () => STAFF_ID } }] as never);
+  });
+
+  it('purges the portal credentials', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(accessTokens.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+    expect(portalLinks.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+  });
+
+  it('purges the patient-reported health data and its access log', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(symptomReports.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+    expect(photoAccess.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+  });
+
+  it('purges the data-protection record, which had a delete nobody called', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(consents.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+    expect(dataRequests.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
+  });
+
+  /*
+    The two the clinic-scoped cascade structurally could not see. Both are resolved from ids read
+    before their owners are deleted, so this also pins the ordering: read first, delete after.
+  */
+  it('purges push endpoints by patient id, since they carry no clinic', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(pushSubs.deleteAllByPatients).toHaveBeenCalledWith([PATIENT_ID]);
+  });
+
+  it('purges reset tokens by user id, since they carry no clinic', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(resetTokens.deleteAllByUsers).toHaveBeenCalledWith([STAFF_ID]);
+  });
+
+  it('reads the patient and staff ids before deleting the rows that carry them', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    const [readPatients] = patients.findAllByClinic.mock.invocationCallOrder;
+    const [deletedPatients] = patients.deleteAllByClinic.mock.invocationCallOrder;
+    const [readStaff] = users.findAllByClinic.mock.invocationCallOrder;
+    const [deletedStaff] = users.deleteAllByClinic.mock.invocationCallOrder;
+
+    expect(readPatients).toBeLessThan(deletedPatients);
+    expect(readStaff).toBeLessThan(deletedStaff);
+  });
+
+  /** Ratings go with the clinic, which is what takes it off the public boards. */
+  it('purges the ratings behind the public leaderboards', async () => {
+    await deleteClinicService(CLINIC_ID, 'Gold Esthetic');
+
+    expect(ratings.deleteAllByClinic).toHaveBeenCalledWith(CLINIC_ID);
   });
 });

@@ -46,4 +46,18 @@ export const symptomReportRepository = {
     const result = await SymptomReportModel.updateOne({ _id: id, clinicId }, { $set: data });
     return result.matchedCount > 0;
   },
+
+  /** Purges every row this clinic owns. Only the cascade-deletion services call this. */
+  async deleteAllByClinic(clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await SymptomReportModel.deleteMany({ clinicId });
+    return result.deletedCount;
+  },
+
+  /** Purges every row for one patient, scoped to their clinic so it can never reach another's. */
+  async deleteAllByPatient(patientId: string, clinicId: string): Promise<number> {
+    await mongo.connect();
+    const result = await SymptomReportModel.deleteMany({ patientId, clinicId });
+    return result.deletedCount;
+  },
 };

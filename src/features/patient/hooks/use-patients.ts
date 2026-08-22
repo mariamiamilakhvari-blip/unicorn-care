@@ -12,7 +12,7 @@ type PatientsState = {
   hasError: boolean;
   reload: () => Promise<void>;
   create: (input: CreatePatientType) => Promise<void>;
-  archive: (id: string) => Promise<void>;
+  remove: (id: string, confirmationName: string) => Promise<void>;
 };
 
 export function usePatients(query?: string): PatientsState {
@@ -45,14 +45,20 @@ export function usePatients(query?: string): PatientsState {
     [reload]
   );
 
-  /** Soft delete: the API archives rather than removing the clinical record. */
-  const archive = useCallback(
-    async (id: string) => {
-      await http.delete(`/patients/${id}`);
+  /*
+    A full erasure, not the archive this replaced. The endpoint removes the patient and everything
+    the clinic holds about them, so the list is re-read rather than filtered locally — there is no
+    hidden row left to reason about.
+  */
+  const remove = useCallback(
+    async (id: string, confirmationName: string) => {
+      // The typed name travels in the body, not the path — it is a confirmation, and a query
+      // string would put a patient's name in the server logs.
+      await http.delete(`/patients/${id}`, { confirmationName });
       await reload();
     },
     [reload]
   );
 
-  return { patients, isLoading, hasError, reload, create, archive };
+  return { patients, isLoading, hasError, reload, create, remove };
 }

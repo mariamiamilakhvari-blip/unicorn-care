@@ -21,7 +21,6 @@ export type PatientSummary = {
     from a patient who happens to be in the same city.
   */
   timezone: string;
-  isArchived: boolean;
 };
 
 /**
@@ -96,3 +95,15 @@ export type PatientActions = {
 
 export type PatientStore = PatientState & PatientActions;
 export type PatientStoreType = PatientStore;
+
+/** What a full patient erasure removed, so the dashboard can say more than "done". */
+export type DeletePatientResult = {
+  deleted: true;
+  counts: {
+    procedures: number;
+    carePlans: number;
+    reminders: number;
+    ratings: number;
+    photos: number;
+  };
+};

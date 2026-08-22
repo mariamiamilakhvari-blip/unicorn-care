@@ -87,4 +87,19 @@ export const pushSubscriptionRepository = {
     );
     return result.matchedCount > 0;
   },
+
+  /**
+   * Purges the push endpoints belonging to a set of patients.
+   *
+   * By patient id and not by clinic, because this collection carries no `clinicId` at all — a
+   * subscription is a browser endpoint bound to one patient. That is exactly why it was missed by
+   * the clinic cascade: a delete written around `clinicId` cannot see it, so the endpoints
+   * survived their patients and kept a live push channel pointing at a record that no longer
+   * existed.
+   */
+  async deleteAllByPatients(patientIds: string[]): Promise<number> {
+    await mongo.connect();
+    const result = await PushSubscriptionModel.deleteMany({ patientId: { $in: patientIds } });
+    return result.deletedCount;
+  },
 };

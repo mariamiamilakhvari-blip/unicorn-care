@@ -205,9 +205,6 @@
     "empty": "No patients added yet",
     "accessLinkOnceWarning": "This link is shown once. Copy it now — it cannot be recovered.",
     "email": "Email",
-    "archive": "Archive",
-    "archiveTitle": "Archive this patient?",
-    "archiveWarning": "They will be hidden from the list. Their records and history are kept.",
     "writeError": {
       "SUBSCRIPTION_INACTIVE": {
         "title": "Your subscription is not active",
@@ -235,7 +232,11 @@
     "timezoneSubmit": "Save timezone",
     "timezoneSaving": "Saving…",
     "timezoneSaved": "Saved. Upcoming reminders were re-timed.",
-    "timezoneSaveFailed": "Could not save the timezone. Please try again."
+    "timezoneSaveFailed": "Could not save the timezone. Please try again.",
+    "delete": "Delete",
+    "deleteTitle": "Delete this patient?",
+    "deleteWarning": "This permanently erases their records, care plans, reminders, photographs and ratings. It cannot be undone.",
+    "deleteConfirmLabel": "Type {name} to confirm"
   },
   "procedure": {
     "title": "Procedure",
@@ -389,7 +390,13 @@
       }
     },
     "ctaPrimary": "Set up your clinic",
-    "ctaSecondary": "Sign in"
+    "ctaSecondary": "Sign in",
+    "topRatedEyebrow": "Patient ratings",
+    "topRatedTitle": "Top rated clinics & doctors",
+    "topRatedHelp": "Averages from verified patients, published only once a clinic or doctor has at least {threshold, plural, one {# rating} other {# ratings}}.",
+    "topRatedClinics": "Clinics",
+    "topRatedDoctors": "Doctors",
+    "topRatedRatingCount": "{count, plural, one {# rating} other {# ratings}}"
   },
   "dashboard": {
     "overview": "Overview",

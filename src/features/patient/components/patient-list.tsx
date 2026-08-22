@@ -1,20 +1,20 @@
 'use client';
 
-import { Archive, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 import { AccessLinkDialog } from '@/features/patient/components/access-link-dialog';
+import { DeletePatientDialog } from '@/features/patient/components/delete-patient-dialog';
 import { PatientSummary } from '@/features/patient/types/patient.types';
 import { Button } from '@/shared/components/ui/button';
-import { ConfirmDialog } from '@/shared/components/ui/confirm-dialog';
 
 type PatientListProps = {
   patients: PatientSummary[];
-  onArchive: (id: string) => Promise<void>;
+  onDelete: (id: string, confirmationName: string) => Promise<void>;
 };
 
-export function PatientList({ patients, onArchive }: PatientListProps) {
+export function PatientList({ patients, onDelete }: PatientListProps) {
   const t = useTranslations('patient');
   const tCommon = useTranslations('common');
 
@@ -47,18 +47,14 @@ export function PatientList({ patients, onArchive }: PatientListProps) {
               </Link>
             </Button>
 
-            {/* Archive, never hard delete — the record is the clinic's clinical history. */}
-            <ConfirmDialog
-              title={t('archiveTitle')}
-              description={t('archiveWarning')}
-              confirmLabel={t('archive')}
-              onConfirm={() => onArchive(patient.id)}
-              trigger={
-                <Button type="button" variant="ghost" size="sm" className="text-destructive">
-                  <Archive className="size-4" aria-hidden />
-                  {t('archive')}
-                </Button>
-              }
+            {/*
+              A full erasure behind a typed confirmation. None of it comes back, so a single
+              click is not a strong enough gate — see `DeletePatientDialog`.
+            */}
+            <DeletePatientDialog
+              patientId={patient.id}
+              patientName={`${patient.firstName} ${patient.lastName}`.trim()}
+              onDelete={onDelete}
             />
           </div>
         </li>

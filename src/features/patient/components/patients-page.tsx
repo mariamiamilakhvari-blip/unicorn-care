@@ -29,7 +29,7 @@ export function PatientsPage({ clinicTimezone }: PatientsPageProps) {
   const tCommon = useTranslations('common');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const { patients, isLoading, hasError, create, archive } = usePatients(debouncedSearch || undefined);
+  const { patients, isLoading, hasError, create, remove } = usePatients(debouncedSearch || undefined);
   const { subscription } = useSubscription();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -103,7 +103,7 @@ export function PatientsPage({ clinicTimezone }: PatientsPageProps) {
 
       {isLoading && <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>}
       {hasError && <p className="text-sm font-medium text-destructive">{tCommon('error')}</p>}
-      {!isLoading && !hasError && <PatientList patients={patients} onArchive={archive} />}
+      {!isLoading && !hasError && <PatientList patients={patients} onDelete={remove} />}
     </div>
   );
 }

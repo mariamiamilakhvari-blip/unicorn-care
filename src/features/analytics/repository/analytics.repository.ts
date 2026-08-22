@@ -45,7 +45,6 @@ export const analyticsRepository = {
     await mongo.connect();
     return PatientModel.countDocuments({
       clinicId: new mongoose.Types.ObjectId(clinicId),
-      isArchived: false,
       createdAt: { $lte: to },
     }).exec();
   },
@@ -66,7 +65,6 @@ export const analyticsRepository = {
       {
         $match: {
           clinicId: new mongoose.Types.ObjectId(clinicId),
-          isArchived: false,
           createdAt: { $lte: to },
         },
       },

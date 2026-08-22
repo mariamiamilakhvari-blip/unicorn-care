@@ -45,7 +45,6 @@ export const patientRepository = {
     await mongo.connect();
     return PatientModel.find({
       clinicId,
-      isArchived: { $ne: true },
       $or: [
         { email: { $in: [null, ''] } },
         { email: { $exists: false } },
@@ -101,11 +100,13 @@ export const patientRepository = {
     return result.matchedCount > 0;
   },
 
-  async archiveById(id: string, clinicId: string): Promise<boolean> {
+  /** Clinic-scoped, like every other write here: another clinic's id matches nothing. */
+  async deleteById(id: string, clinicId: string): Promise<boolean> {
     await mongo.connect();
-    const result = await PatientModel.updateOne({ _id: id, clinicId }, { $set: { isArchived: true } });
-    return result.matchedCount > 0;
+    const result = await PatientModel.deleteOne({ _id: id, clinicId });
+    return result.deletedCount > 0;
   },
+
   /** Purges every row this clinic owns. Only the account-deletion service calls this. */
   async deleteAllByClinic(clinicId: string): Promise<number> {
     await mongo.connect();
