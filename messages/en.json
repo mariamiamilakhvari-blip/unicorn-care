@@ -235,7 +235,8 @@
     "timezoneSaveFailed": "Could not save the timezone. Please try again.",
     "delete": "Delete",
     "deleteTitle": "Delete this patient?",
-    "deleteWarning": "This permanently erases their records, care plans, reminders, photographs and ratings. It cannot be undone."
+    "deleteWarning": "This permanently erases their records, care plans, reminders, photographs and ratings. It cannot be undone.",
+    "deleteConfirmLabel": "Type {name} to confirm"
   },
   "procedure": {
     "title": "Procedure",

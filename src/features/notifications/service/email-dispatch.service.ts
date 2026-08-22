@@ -117,7 +117,7 @@ export function createReminderEmailSender() {
         patients.set(patientId, await patientRepository.findById(patientId, clinicId));
       }
       const patient = patients.get(patientId) ?? null;
-      if (!patient || !patient.email || patient.isArchived) return false;
+      if (!patient || !patient.email) return false;
       /*
         Withdrawn consent stops the send outright, before any channel question is asked.
 
@@ -209,7 +209,7 @@ export async function sendDailyDigestsService(): Promise<ServiceResult<EmailSend
       local, or not at all on the day they travelled. It costs one extra read per plan per sweep.
     */
     const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
-    if (!patient || !patient.email || patient.isArchived || isEmailSuppressed(patient)) {
+    if (!patient || !patient.email || isEmailSuppressed(patient)) {
       skipped += 1;
       continue;
     }

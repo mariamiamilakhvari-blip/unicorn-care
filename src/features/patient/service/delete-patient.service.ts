@@ -29,15 +29,26 @@ import { ServiceResult } from '@/shared/types/common';
  * and it matters more here than anywhere else in the codebase.
  *
  * Irreversible, and it destroys clinical history: the plans, the adherence record, the
- * post-operative photographs. The confirmation belongs at the UI, which is where a clinician can
- * still change their mind.
+ * post-operative photographs. Guarded by a typed confirmation of the patient's own name, the same
+ * gate account deletion uses — a confirm dialog is one click, and none of this comes back.
  */
 export async function deletePatientService(
   clinicId: string,
-  patientId: string
+  patientId: string,
+  confirmationName: string
 ): Promise<ServiceResult<DeletePatientResult>> {
   const patient = await patientRepository.findById(patientId, clinicId);
   if (!patient) return { data: { error: 'NOT_FOUND' }, status: 404 };
+
+  /*
+    Compared on trimmed text so a trailing space is not a trap, but case must match — the same rule
+    account deletion uses. Checked after the patient is read, because the name being confirmed is
+    the one on the record rather than anything the caller supplied about it.
+  */
+  const fullName = `${patient.firstName} ${patient.lastName}`.trim();
+  if (confirmationName.trim() !== fullName) {
+    return { data: { error: 'CONFIRMATION_MISMATCH' }, status: 422 };
+  }
 
   /*
     Occurrences first, and the patient row last, for the reason the clinic cascade gives: the

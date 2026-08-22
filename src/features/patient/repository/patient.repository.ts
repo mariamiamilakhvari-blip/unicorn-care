@@ -45,7 +45,6 @@ export const patientRepository = {
     await mongo.connect();
     return PatientModel.find({
       clinicId,
-      isArchived: { $ne: true },
       $or: [
         { email: { $in: [null, ''] } },
         { email: { $exists: false } },
@@ -101,11 +100,6 @@ export const patientRepository = {
     return result.matchedCount > 0;
   },
 
-  async archiveById(id: string, clinicId: string): Promise<boolean> {
-    await mongo.connect();
-    const result = await PatientModel.updateOne({ _id: id, clinicId }, { $set: { isArchived: true } });
-    return result.matchedCount > 0;
-  },
   /** Clinic-scoped, like every other write here: another clinic's id matches nothing. */
   async deleteById(id: string, clinicId: string): Promise<boolean> {
     await mongo.connect();

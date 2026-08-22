@@ -5,7 +5,10 @@ import {
   getPatientService,
   updatePatientService,
 } from '@/features/patient/service/patient.service';
-import { UpdatePatientSchema } from '@/features/patient/validations/patient.validation';
+import {
+  DeletePatientSchema,
+  UpdatePatientSchema,
+} from '@/features/patient/validations/patient.validation';
 import { clinicGuard } from '@/shared/lib/clinic-guard';
 import { validateBody } from '@/shared/middleware/validate-body';
 
@@ -46,13 +49,20 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
  * erased — a hidden record is still a held record. The service cascades every collection the
  * clinic holds about them.
  */
-export async function DELETE(_req: NextRequest, { params }: RouteContext) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
   try {
     const session = await clinicGuard.requireClinicUser();
     if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 
+    const validated = await validateBody(req, DeletePatientSchema);
+    if (validated instanceof NextResponse) return validated;
+
     const { id } = await params;
-    const { data, status } = await deletePatientService(session.clinicId, id);
+    const { data, status } = await deletePatientService(
+      session.clinicId,
+      id,
+      validated.data.confirmationName
+    );
     return NextResponse.json(data, { status });
   } catch {
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });

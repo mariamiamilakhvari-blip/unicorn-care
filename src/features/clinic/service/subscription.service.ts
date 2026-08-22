@@ -166,10 +166,16 @@ export function resolveGrace(clinic: ClinicDocument, now: Date): GraceWindow {
   };
 }
 
-/** Active patients only — an archived record is history, not a seat being occupied. */
+/*
+  Every patient on the roster occupies a seat.
+
+  This filtered out archived records, which was the right rule while archiving existed: a hidden
+  patient was history rather than an active relationship. Deleting replaced it, so a patient either
+  exists and takes a seat or does not exist at all.
+*/
 async function countActivePatients(clinicId: string): Promise<number> {
   const { items } = await patientRepository.findAllByClinic(clinicId, 1, ROSTER_LIMIT);
-  return items.filter(patient => !patient.isArchived).length;
+  return items.length;
 }
 
 export async function getSubscriptionService(

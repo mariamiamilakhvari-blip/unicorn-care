@@ -68,10 +68,11 @@ const blob = vi.mocked(blobClient);
 
 const CLINIC = '507f1f77bcf86cd799439011';
 const PATIENT = '507f1f77bcf86cd799439022';
+const NAME = 'Lika Beridze';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  patients.findById.mockResolvedValue({ _id: PATIENT } as never);
+  patients.findById.mockResolvedValue({ _id: PATIENT, firstName: 'Lika', lastName: 'Beridze' } as never);
   patients.deleteById.mockResolvedValue(true);
   photos.findByPatient.mockResolvedValue([]);
   photos.deleteAllByPatient.mockResolvedValue(0);
@@ -85,7 +86,7 @@ describe('deletePatientService — tenancy', () => {
   it('404s on a patient belonging to another clinic, touching nothing', async () => {
     patients.findById.mockResolvedValue(null);
 
-    const result = await deletePatientService(CLINIC, PATIENT);
+    const result = await deletePatientService(CLINIC, PATIENT, NAME);
 
     expect(result).toEqual({ data: { error: 'NOT_FOUND' }, status: 404 });
     expect(patients.deleteById).not.toHaveBeenCalled();
@@ -93,7 +94,7 @@ describe('deletePatientService — tenancy', () => {
   });
 
   it('scopes every delete by clinic as well as patient', async () => {
-    await deletePatientService(CLINIC, PATIENT);
+    await deletePatientService(CLINIC, PATIENT, NAME);
 
     for (const call of [
       reminders.deleteAllByPatient,
@@ -112,7 +113,7 @@ describe('deletePatientService — tenancy', () => {
 describe('deletePatientService — what a full erasure removes', () => {
   /** Archiving only set a flag. A hidden record is still a held record. */
   it('removes the patient row itself rather than flagging it', async () => {
-    const { data, status } = await deletePatientService(CLINIC, PATIENT);
+    const { data, status } = await deletePatientService(CLINIC, PATIENT, NAME);
 
     expect(status).toBe(200);
     expect(patients.deleteById).toHaveBeenCalledWith(PATIENT, CLINIC);
@@ -129,7 +130,7 @@ describe('deletePatientService — what a full erasure removes', () => {
       { pathname: 'p/2.jpg' },
     ] as never);
 
-    await deletePatientService(CLINIC, PATIENT);
+    await deletePatientService(CLINIC, PATIENT, NAME);
 
     expect(blob.remove).toHaveBeenCalledWith('p/1.jpg');
     expect(blob.remove).toHaveBeenCalledWith('p/2.jpg');
@@ -138,7 +139,7 @@ describe('deletePatientService — what a full erasure removes', () => {
 
   /** The rating rows are what the public boards aggregate, so removing them is the whole update. */
   it('removes the ratings, taking the patient off the public boards', async () => {
-    await deletePatientService(CLINIC, PATIENT);
+    await deletePatientService(CLINIC, PATIENT, NAME);
 
     expect(ratings.deleteAllByPatient).toHaveBeenCalledWith(PATIENT, CLINIC);
   });
@@ -148,11 +149,54 @@ describe('deletePatientService — what a full erasure removes', () => {
     picking up reminders for a patient who is halfway deleted.
   */
   it('clears the reminders before the patient row', async () => {
-    await deletePatientService(CLINIC, PATIENT);
+    await deletePatientService(CLINIC, PATIENT, NAME);
 
     const [clearedReminders] = reminders.deleteAllByPatient.mock.invocationCallOrder;
     const [deletedPatient] = patients.deleteById.mock.invocationCallOrder;
 
     expect(clearedReminders).toBeLessThan(deletedPatient);
+  });
+});
+
+/**
+ * The typed gate. A confirm dialog is one click, and this destroys a clinical record outright —
+ * the plans, the adherence history, the photographs. Account deletion has always been guarded this
+ * way; per-patient erasure is the same act at a smaller scale.
+ */
+describe('deletePatientService — the typed confirmation', () => {
+  it('refuses a mismatched name with 422 and deletes nothing', async () => {
+    const result = await deletePatientService(CLINIC, PATIENT, 'Lika Beridz');
+
+    expect(result).toEqual({ data: { error: 'CONFIRMATION_MISMATCH' }, status: 422 });
+    expect(patients.deleteById).not.toHaveBeenCalled();
+    expect(reminders.deleteAllByPatient).not.toHaveBeenCalled();
+    expect(blob.remove).not.toHaveBeenCalled();
+  });
+
+  it('accepts surrounding whitespace, since that is a paste artefact and not a mistake', async () => {
+    const { status } = await deletePatientService(CLINIC, PATIENT, '  Lika Beridze  ');
+
+    expect(status).toBe(200);
+    expect(patients.deleteById).toHaveBeenCalledWith(PATIENT, CLINIC);
+  });
+
+  /** Case is the one thing not forgiven: it is the difference between reading and skimming. */
+  it('refuses a case mismatch', async () => {
+    const { status } = await deletePatientService(CLINIC, PATIENT, 'lika beridze');
+
+    expect(status).toBe(422);
+    expect(patients.deleteById).not.toHaveBeenCalled();
+  });
+
+  /** The name is read off the record, never taken from the caller. */
+  it('checks the confirmation against the stored name, not a supplied one', async () => {
+    patients.findById.mockResolvedValue({
+      _id: PATIENT,
+      firstName: 'Nino',
+      lastName: 'Kechakmadze',
+    } as never);
+
+    expect((await deletePatientService(CLINIC, PATIENT, NAME)).status).toBe(422);
+    expect((await deletePatientService(CLINIC, PATIENT, 'Nino Kechakmadze')).status).toBe(200);
   });
 });

@@ -34,7 +34,6 @@ function toPatientSummary(patient: PatientDocument): PatientSummary {
     allergies: patient.allergies ?? [],
     notes: patient.notes ?? '',
     timezone: patient.timezone ?? '',
-    isArchived: patient.isArchived,
   };
 }
 
@@ -84,7 +83,6 @@ export async function createPatientService(
     ...patient,
     clinicId: new Types.ObjectId(clinicId),
     consent: { version: CONSENT_VERSION, confirmedAt: clock.now() },
-    isArchived: false,
   });
 
   /*

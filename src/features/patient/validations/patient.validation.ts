@@ -110,3 +110,16 @@ export type PatientTimezoneEditType = z.infer<typeof PatientTimezoneEditSchema>;
 
 /** The pre-validation half, for the same reason `CreatePatientFormType` exists: `.default('')`. */
 export type PatientTimezoneEditFormType = z.input<typeof PatientTimezoneEditSchema>;
+
+/**
+ * The typed confirmation guarding patient erasure — checked against the patient's own name.
+ *
+ * A confirm dialog alone is a single click, and this destroys a clinical record outright: the
+ * plans, the adherence history, the post-operative photographs. Typing the name is the same gate
+ * account deletion uses, for the same reason.
+ */
+export const DeletePatientSchema = z.object({
+  confirmationName: z.string().min(1).max(200),
+});
+
+export type DeletePatientType = z.infer<typeof DeletePatientSchema>;

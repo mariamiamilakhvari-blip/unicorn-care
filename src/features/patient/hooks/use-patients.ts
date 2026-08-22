@@ -12,7 +12,7 @@ type PatientsState = {
   hasError: boolean;
   reload: () => Promise<void>;
   create: (input: CreatePatientType) => Promise<void>;
-  remove: (id: string) => Promise<void>;
+  remove: (id: string, confirmationName: string) => Promise<void>;
 };
 
 export function usePatients(query?: string): PatientsState {
@@ -51,8 +51,10 @@ export function usePatients(query?: string): PatientsState {
     hidden row left to reason about.
   */
   const remove = useCallback(
-    async (id: string) => {
-      await http.delete(`/patients/${id}`);
+    async (id: string, confirmationName: string) => {
+      // The typed name travels in the body, not the path — it is a confirmation, and a query
+      // string would put a patient's name in the server logs.
+      await http.delete(`/patients/${id}`, { confirmationName });
       await reload();
     },
     [reload]

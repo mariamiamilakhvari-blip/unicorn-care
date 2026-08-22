@@ -57,13 +57,15 @@ function clinicDoc(overrides: ClinicOverrides = {}) {
   } as never;
 }
 
-/** `count` active patients, plus one archived to prove archived rows never occupy a seat. */
+/*
+  `count` patients, every one of them occupying a seat.
+
+  This used to append an archived row and assert it was not counted. Archiving is gone — the same
+  button now erases the record — so there is no longer a class of patient that exists without
+  taking a seat, and a fixture implying otherwise would describe behaviour with no code behind it.
+*/
 function roster(count: number) {
-  const items = Array.from({ length: count }, (_, index) => ({
-    _id: `active-${index}`,
-    isArchived: false,
-  }));
-  items.push({ _id: 'archived', isArchived: true } as never);
+  const items = Array.from({ length: count }, (_, index) => ({ _id: `active-${index}` }));
   return { items, total: items.length } as never;
 }
 
@@ -149,10 +151,6 @@ describe('checkPatientSeat — limits', () => {
   });
 
   /** Archiving is how a clinic frees a seat, so archived rows must not be counted. */
-  it('does not count archived patients against the limit', async () => {
-    patients.findAllByClinic.mockResolvedValue(roster(TRIAL_PATIENT_LIMIT - 1));
-    expect(await checkPatientSeat(CLINIC_ID)).toEqual({ ok: true });
-  });
 });
 
 describe('checkPatientSeat — subscription state', () => {

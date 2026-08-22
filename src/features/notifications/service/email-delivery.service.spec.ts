@@ -37,7 +37,6 @@ const patient = (overrides: Partial<PatientDocument> = {}): PatientDocument =>
     emailSuppressedAt: null,
     emailSuppressionReason: '',
     emailSoftBounces: 0,
-    isArchived: false,
     ...overrides,
   }) as PatientDocument;
 

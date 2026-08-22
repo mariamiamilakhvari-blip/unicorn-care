@@ -36,7 +36,6 @@ const patient = (timezone: string): PatientDocument =>
     locale: 'ka',
     sex: 'female',
     timezone,
-    isArchived: false,
   }) as PatientDocument;
 
 beforeEach(() => {

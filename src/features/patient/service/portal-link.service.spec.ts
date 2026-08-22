@@ -58,7 +58,6 @@ const patient = (overrides: Partial<PatientDocument> = {}) =>
     clinicId: new mongoose.Types.ObjectId(CLINIC),
     email: 'patient@example.com',
     locale: 'ka',
-    isArchived: false,
     ...overrides,
   }) as PatientDocument;
 
@@ -88,7 +87,8 @@ describe('requestPortalLinkService', () => {
    */
   it.each([
     ['an unknown address', null],
-    ['an archived patient', patient({ isArchived: true })],
+    // The archived-patient case retired with archiving itself: a patient now either exists or has
+    // been erased, and an erased one is indistinguishable from an unknown address above.
     ['a patient with no email on file', patient({ email: null as never })],
   ])('answers the same for %s as for a real one', async (_label, found) => {
     patients.findByEmail.mockResolvedValue(found as never);
@@ -189,7 +189,8 @@ describe('redeemPortalLinkService', () => {
     ['an unknown link', null, null],
     ['a link already used', link({ usedAt: NOW }), null],
     ['an expired link', link({ expiresAt: new Date(NOW.getTime() - 1) }), null],
-    ['a link whose patient was archived', link(), patient({ isArchived: true })],
+    // A link whose patient no longer exists is the `null` patient case, which the row above covers.
+    ['a link whose patient is gone', link(), null],
   ])('refuses %s', async (_label, found, foundPatient) => {
     links.findByTokenHash.mockResolvedValue(found as never);
     patients.findById.mockResolvedValue(foundPatient as never);

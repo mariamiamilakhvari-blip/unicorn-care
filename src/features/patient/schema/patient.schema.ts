@@ -96,7 +96,6 @@ const PatientSchema = new Schema(
     },
     /* Consecutive soft bounces. Any delivery resets it, so this measures a run, not a lifetime. */
     emailSoftBounces: { type: Number, required: false, default: 0 },
-    isArchived: { type: Boolean, default: false, required: true },
   },
   { timestamps: true }
 );

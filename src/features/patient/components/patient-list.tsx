@@ -1,17 +1,17 @@
 'use client';
 
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 import { AccessLinkDialog } from '@/features/patient/components/access-link-dialog';
+import { DeletePatientDialog } from '@/features/patient/components/delete-patient-dialog';
 import { PatientSummary } from '@/features/patient/types/patient.types';
 import { Button } from '@/shared/components/ui/button';
-import { ConfirmDialog } from '@/shared/components/ui/confirm-dialog';
 
 type PatientListProps = {
   patients: PatientSummary[];
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string, confirmationName: string) => Promise<void>;
 };
 
 export function PatientList({ patients, onDelete }: PatientListProps) {
@@ -47,18 +47,14 @@ export function PatientList({ patients, onDelete }: PatientListProps) {
               </Link>
             </Button>
 
-            {/* A full erasure. The dialog spells out what goes, because none of it comes back. */}
-            <ConfirmDialog
-              title={t('deleteTitle')}
-              description={t('deleteWarning')}
-              confirmLabel={t('delete')}
-              onConfirm={() => onDelete(patient.id)}
-              trigger={
-                <Button type="button" variant="ghost" size="sm" className="text-destructive">
-                  <Trash2 className="size-4" aria-hidden />
-                  {t('delete')}
-                </Button>
-              }
+            {/*
+              A full erasure behind a typed confirmation. None of it comes back, so a single
+              click is not a strong enough gate — see `DeletePatientDialog`.
+            */}
+            <DeletePatientDialog
+              patientId={patient.id}
+              patientName={`${patient.firstName} ${patient.lastName}`.trim()}
+              onDelete={onDelete}
             />
           </div>
         </li>
