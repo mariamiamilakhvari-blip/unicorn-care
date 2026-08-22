@@ -392,10 +392,10 @@
     "ctaSecondary": "Sign in",
     "topRatedEyebrow": "Patient ratings",
     "topRatedTitle": "Top rated clinics & doctors",
-    "topRatedHelp": "Averages from verified patients, published only once a clinic or doctor has at least {threshold} ratings.",
+    "topRatedHelp": "Averages from verified patients, published only once a clinic or doctor has at least {threshold, plural, one {# rating} other {# ratings}}.",
     "topRatedClinics": "Clinics",
     "topRatedDoctors": "Doctors",
-    "ratingCount": "ratings"
+    "topRatedRatingCount": "{count, plural, one {# rating} other {# ratings}}"
   },
   "dashboard": {
     "overview": "Overview",

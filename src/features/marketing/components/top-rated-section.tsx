@@ -51,7 +51,12 @@ export const TopRatedSection = async () => {
         {boards.clinics.length > 0 && (
           <Board title={t('topRatedClinics')}>
             {boards.clinics.map((clinic, index) => (
-              <ClinicRow key={clinic.id} clinic={clinic} rank={index + 1} label={t('ratingCount')} />
+              <ClinicRow
+                key={clinic.id}
+                clinic={clinic}
+                rank={index + 1}
+                count={t('topRatedRatingCount', { count: clinic.ratingCount })}
+              />
             ))}
           </Board>
         )}
@@ -63,7 +68,7 @@ export const TopRatedSection = async () => {
                 key={`${doctor.clinicName}-${doctor.name}`}
                 doctor={doctor}
                 rank={index + 1}
-                label={t('ratingCount')}
+                count={t('topRatedRatingCount', { count: doctor.ratingCount })}
               />
             ))}
           </Board>
@@ -105,23 +110,26 @@ function Score({ value }: { value: number }) {
   );
 }
 
+/*
+  The count arrives pre-formatted, not as a number beside a bare noun. "1 ratings" is what
+  concatenation produces, and the plural rules differ per locale — Georgian does not inflect the
+  noun after a numeral at all, so the choice cannot live in the component.
+*/
 function ClinicRow({
   clinic,
   rank,
-  label,
+  count,
 }: {
   clinic: PublicClinicRating;
   rank: number;
-  label: string;
+  count: string;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50">
       <Rank value={rank} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{clinic.name}</p>
-        <p className="text-xs text-muted-foreground">
-          {clinic.ratingCount} {label}
-        </p>
+        <p className="text-xs text-muted-foreground">{count}</p>
       </div>
       <Score value={clinic.avgClinicScore} />
     </li>
@@ -131,11 +139,11 @@ function ClinicRow({
 function DoctorRow({
   doctor,
   rank,
-  label,
+  count,
 }: {
   doctor: PublicDoctorRating;
   rank: number;
-  label: string;
+  count: string;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50">
@@ -143,7 +151,7 @@ function DoctorRow({
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{doctor.name}</p>
         <p className="truncate text-xs text-muted-foreground">
-          {doctor.clinicName} · {doctor.ratingCount} {label}
+          {doctor.clinicName} · {count}
         </p>
       </div>
       <Score value={doctor.avgDoctorScore} />
