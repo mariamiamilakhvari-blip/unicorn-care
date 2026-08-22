@@ -5,15 +5,27 @@ import { clock } from '@/shared/lib/clock';
 const ObjectIdSchema = z.string().min(24).max(24);
 
 /**
+ * A `datetime-local` value: `YYYY-MM-DDTHH:mm`, optionally with seconds, and carrying no zone.
+ *
+ * Anchored, not resolved. Date-*only* strings are already UTC by specification, but a zoneless
+ * date-*time* is resolved against the running process's zone — so the same payload parsed to a
+ * different instant on a developer's laptop than on Vercel. Pinning it to UTC makes the parse
+ * deterministic; the appointment is then re-anchored in the clinic's real zone by
+ * `toContentPatch`, in the service layer — the only layer that knows what that zone is.
+ */
+const ZONELESS_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+
+/**
  * Accepts ISO strings from the browser and real `Date`s from a loaded document alike.
  *
  * The refinement is what stops an empty input reporting "expected date, received Date": coercion
  * turns `''` into an Invalid Date, which passes the type check and fails unhelpfully downstream.
  */
-const DateSchema = z.preprocess(
-  value => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.coerce.date({ message: 'Enter a valid date' })
-);
+const DateSchema = z.preprocess(value => {
+  if (typeof value !== 'string') return value;
+  if (value.trim() === '') return undefined;
+  return ZONELESS_DATE_TIME.test(value) ? `${value}Z` : value;
+}, z.coerce.date({ message: 'Enter a valid date' }));
 
 /** The persisted Mongoose enums (PRD 01 §6) — the schema, not the label catalogue, is the source. */
 export const ROUTE_VALUES = ['oral', 'topical', 'injection', 'other'] as const;

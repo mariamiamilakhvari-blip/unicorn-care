@@ -4,6 +4,7 @@ import {
   MedicationFormRow,
   RehabTaskFormRow,
 } from '@/features/care-plan/types/care-plan-form.types';
+import { clock } from '@/shared/lib/clock';
 
 /**
  * A stored plan as it arrives over JSON. Dates are ISO strings, subdocuments keep their `_id`.
@@ -34,16 +35,23 @@ function toDateInput(iso: string): string {
   return iso ? iso.slice(0, 10) : '';
 }
 
-/** `yyyy-MM-ddTHH:mm` — what a native datetime-local input expects, seconds and zone dropped. */
-function toDateTimeInput(iso: string): string {
-  return iso ? iso.slice(0, 16) : '';
+/**
+ * `yyyy-MM-ddTHH:mm` in the clinic's zone — what a native datetime-local input expects.
+ *
+ * Converted, not sliced. `iso.slice(0, 16)` yields the *UTC* wall clock, which is only the right
+ * number for a clinic sitting on UTC; a Tbilisi clinic reopening a 13:00 appointment saw 09:00.
+ * It also has to invert the service's anchoring exactly, or saving an untouched form would re-anchor
+ * a number that was never local and walk every appointment by the clinic's offset on each save.
+ */
+function toDateTimeInput(iso: string, timeZone: string): string {
+  return iso ? clock.civilInZone(new Date(iso), timeZone) : '';
 }
 
 /**
  * Turns a saved plan back into builder form values, so reopening a patient shows what was stored
  * instead of an empty form.
  */
-export function toCarePlanFormValues(plan: StoredCarePlan): CarePlanFormType {
+export function toCarePlanFormValues(plan: StoredCarePlan, timeZone: string): CarePlanFormType {
   return {
     startsAt: toDateInput(plan.startsAt),
     rehabEndsAt: toDateInput(plan.rehabEndsAt),
@@ -72,7 +80,7 @@ export function toCarePlanFormValues(plan: StoredCarePlan): CarePlanFormType {
       remindMinutesBefore: item.remindMinutesBefore ?? 0,
     })),
     checkups: (plan.checkups ?? []).map(item => ({
-      scheduledAt: toDateTimeInput(item.scheduledAt),
+      scheduledAt: toDateTimeInput(item.scheduledAt, timeZone),
       title: item.title,
       location: item.location ?? '',
       remindHoursBefore: item.remindHoursBefore ?? 24,

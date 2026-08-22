@@ -185,3 +185,66 @@ describe('Clock class', () => {
     expect(first).toBe(second);
   });
 });
+
+/*
+  The pair that makes a `datetime-local` appointment survive a round trip through the database.
+
+  A zoneless wall clock is meaningless until something says which zone it is on, and the browser
+  input that produces one carries no zone at all. `zonedCivilToUtc` applies the clinic's;
+  `civilInZone` takes it back off. They have to be exact inverses or every save walks the
+  appointment by the clinic's offset.
+*/
+describe('clock.zonedCivilToUtc', () => {
+  it('reads the carrier\'s UTC fields as wall clock in the target zone', () => {
+    // 13:00 typed by a Tbilisi clinic is 09:00 UTC, because that is when a Tbilisi clock says 13:00.
+    const civil = new Date('2026-08-22T13:00:00.000Z');
+    expect(clock.zonedCivilToUtc(civil, TBILISI).toISOString()).toBe('2026-08-22T09:00:00.000Z');
+  });
+
+  it('is the identity on UTC, which is why the old bug was invisible in development', () => {
+    const civil = new Date('2026-08-22T13:00:00.000Z');
+    expect(clock.zonedCivilToUtc(civil, 'UTC').toISOString()).toBe('2026-08-22T13:00:00.000Z');
+  });
+
+  it('crosses the date boundary for a zone far enough west', () => {
+    // 01:00 in New York on the 22nd is 05:00 UTC the same day; the civil carrier keeps the 22nd.
+    const civil = new Date('2026-08-22T01:00:00.000Z');
+    expect(clock.zonedCivilToUtc(civil, NEW_YORK).toISOString()).toBe('2026-08-22T05:00:00.000Z');
+  });
+
+  it('resolves against the offset in force on the day, not a fixed one', () => {
+    // London is UTC+1 in August and UTC+0 in January. Same wall clock, different instants.
+    const summer = clock.zonedCivilToUtc(new Date('2026-08-22T13:00:00.000Z'), LONDON);
+    const winter = clock.zonedCivilToUtc(new Date('2026-01-22T13:00:00.000Z'), LONDON);
+    expect(summer.toISOString()).toBe('2026-08-22T12:00:00.000Z');
+    expect(winter.toISOString()).toBe('2026-01-22T13:00:00.000Z');
+  });
+});
+
+describe('clock.civilInZone', () => {
+  it('renders the zone-local wall clock as a datetime-local value', () => {
+    expect(clock.civilInZone(new Date('2026-08-22T09:00:00.000Z'), TBILISI)).toBe(
+      '2026-08-22T13:00'
+    );
+  });
+
+  it('zero-pads every field so the string is always input-shaped', () => {
+    expect(clock.civilInZone(new Date('2026-01-05T04:05:00.000Z'), TBILISI)).toBe(
+      '2026-01-05T08:05'
+    );
+  });
+
+  it('rolls back to the previous local day west of UTC', () => {
+    expect(clock.civilInZone(new Date('2026-08-22T02:00:00.000Z'), NEW_YORK)).toBe(
+      '2026-08-21T22:00'
+    );
+  });
+
+  it('inverts zonedCivilToUtc exactly, so an untouched form never moves the appointment', () => {
+    for (const zone of [TBILISI, LONDON, NEW_YORK, 'UTC']) {
+      const typed = '2026-08-22T13:00';
+      const stored = clock.zonedCivilToUtc(new Date(`${typed}Z`), zone);
+      expect(clock.civilInZone(stored, zone)).toBe(typed);
+    }
+  });
+});
