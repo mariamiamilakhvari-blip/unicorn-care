@@ -14,6 +14,13 @@ export type PatientSummary = {
   locale: AppLocale;
   allergies: string[];
   notes: string;
+  /*
+    Empty means the patient inherits the clinic's zone rather than holding one of their own. The
+    wire carries the raw field, not the resolved answer: the timezone card has to be able to show
+    "following the clinic" as a state, which a pre-resolved value would make indistinguishable
+    from a patient who happens to be in the same city.
+  */
+  timezone: string;
   isArchived: boolean;
 };
 

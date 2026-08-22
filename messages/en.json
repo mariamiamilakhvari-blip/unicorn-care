@@ -227,7 +227,15 @@
     "unreachableTitle": "This patient cannot receive reminders",
     "unreachableNoContact": "There is no email address on file and no notifications have been enabled on their device, so nothing this plan sends will reach them. Add an email address to their record, or ask them to open their portal link and allow notifications.",
     "unreachableSuppressed": "Email to this patient has been stopped after a bounce or complaint, and no notifications are enabled on their device, so nothing this plan sends will reach them. Check the address with the patient before clearing it.",
-    "emailBlankWarning": "Without an email address this patient will receive no reminders unless they open their portal link and allow notifications."
+    "emailBlankWarning": "Without an email address this patient will receive no reminders unless they open their portal link and allow notifications.",
+    "timezone": "Timezone",
+    "timezoneInherit": "Follow the clinic ({zone})",
+    "timezoneHelp": "Reminders fire at the prescribed time in this zone. The patient's own device updates this when they open their portal.",
+    "timezoneEffect": "Reminders are timed for {zone}. Saving re-times every upcoming reminder; doses already sent are left as they happened.",
+    "timezoneSubmit": "Save timezone",
+    "timezoneSaving": "Saving…",
+    "timezoneSaved": "Saved. Upcoming reminders were re-timed.",
+    "timezoneSaveFailed": "Could not save the timezone. Please try again."
   },
   "procedure": {
     "title": "Procedure",

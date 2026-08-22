@@ -1,5 +1,7 @@
 import { Types } from 'mongoose';
 
+import { regeneratePlansForTimezoneService } from '@/features/care-plan/service/care-plan.service';
+import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { checkPatientSeat } from '@/features/clinic/service/subscription.service';
 import { recordIntakeConsentsService } from '@/features/data-protection/service/consent.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
@@ -11,6 +13,7 @@ import {
 } from '@/features/patient/validations/patient.validation';
 import { ConsentType, INTAKE_CONSENT_MAP } from '@/shared/const/consent-type.const';
 import { CONSENT_VERSION } from '@/shared/const/consent.const';
+import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 import { UNKNOWN_IP } from '@/shared/utils/client-ip';
@@ -30,6 +33,7 @@ function toPatientSummary(patient: PatientDocument): PatientSummary {
     locale: patient.locale,
     allergies: patient.allergies ?? [],
     notes: patient.notes ?? '',
+    timezone: patient.timezone ?? '',
     isArchived: patient.isArchived,
   };
 }
@@ -134,14 +138,64 @@ export async function getPatientService(
   return { data: toPatientSummary(patient), status: 200 };
 }
 
+/**
+ * A clinic edit, including the one edit that moves a schedule.
+ *
+ * `timezone` is not an ordinary field. The occurrence rows hold absolute instants resolved from
+ * the prescribed wall clock at the moment they were built, so changing the zone on the record and
+ * stopping there would leave a patient's reminders firing on the clock of a country they have
+ * left — the field would read correctly and nothing the patient can see would change.
+ *
+ * Compared as *effective* zones, not as stored strings. A clinic clearing the field is setting the
+ * patient back to inheriting, which is a real move when the clinic sits in a different zone, and a
+ * clinic typing the zone the patient was already inheriting is no move at all.
+ */
 export async function updatePatientService(
   clinicId: string,
   patientId: string,
   input: UpdatePatientType
 ): Promise<ServiceResult<PatientSummary>> {
+  const before = await patientRepository.findById(patientId, clinicId);
+  if (!before) return { data: { error: 'NOT_FOUND' }, status: 404 };
+
   const updated = await patientRepository.updateById(patientId, clinicId, input);
   if (!updated) return { data: { error: 'NOT_FOUND' }, status: 404 };
+
+  if (input.timezone !== undefined) {
+    await retimePlansForPatient(clinicId, patientId, before.timezone ?? '', input.timezone);
+  }
+
   return getPatientService(clinicId, patientId);
+}
+
+/**
+ * Rebuilds the patient's active plans when an edit actually moved them.
+ *
+ * Failure is logged and swallowed: the record has already been corrected, and a regeneration that
+ * threw must not turn a saved edit into a 500 the clinic reads as "nothing was saved". The next
+ * portal visit re-reports the device zone and rebuilds anyway, so this is recoverable — silently
+ * reverting the clinic's edit would not be.
+ */
+async function retimePlansForPatient(
+  clinicId: string,
+  patientId: string,
+  storedBefore: string,
+  storedAfter: string
+): Promise<void> {
+  const clinic = await clinicRepository.findById(clinicId);
+  if (!clinic) return;
+
+  const before = effectiveTimeZone(storedBefore, clinic.timezone);
+  const after = effectiveTimeZone(storedAfter, clinic.timezone);
+  if (before === after) return;
+
+  try {
+    const result = await regeneratePlansForTimezoneService(patientId, clinicId, after);
+    const rebuilt = 'occurrences' in result.data ? result.data.occurrences : 0;
+    console.warn('[patient] timezone changed by clinic', { patientId, before, after, rebuilt });
+  } catch (caught) {
+    console.error('[patient] could not re-time plans after a timezone edit', patientId, caught);
+  }
 }
 
 export async function archivePatientService(

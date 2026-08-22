@@ -14,6 +14,9 @@ vi.mock('@/features/care-plan/repository/reminder-occurrence.repository', () => 
 vi.mock('@/features/clinic/repository/clinic.repository', () => ({
   clinicRepository: { findById: vi.fn() },
 }));
+vi.mock('@/features/patient/repository/patient.repository', () => ({
+  patientRepository: { findById: vi.fn() },
+}));
 vi.mock('@/features/care-plan/service/occurrence-generator.service', () => ({
   buildOccurrences: vi.fn(),
 }));
@@ -25,10 +28,13 @@ import { extendActivePlansService } from '@/features/care-plan/service/dispatch-
 import { buildOccurrences } from '@/features/care-plan/service/occurrence-generator.service';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { PatientDocument } from '@/features/patient/schema/patient.schema';
 
 const plans = vi.mocked(carePlanRepository);
 const occurrences = vi.mocked(reminderOccurrenceRepository);
 const clinics = vi.mocked(clinicRepository);
+const patients = vi.mocked(patientRepository);
 const generate = vi.mocked(buildOccurrences);
 
 const NOW = new Date('2026-08-09T00:00:00.000Z');
@@ -52,6 +58,7 @@ describe('extendActivePlansService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi' } as ClinicDocument);
+    patients.findById.mockResolvedValue({ timezone: '' } as PatientDocument);
     occurrences.findByPatientAndRange.mockResolvedValue([]);
     occurrences.deletePendingByCarePlan.mockResolvedValue(0);
     occurrences.insertMany.mockResolvedValue(0);
@@ -154,5 +161,52 @@ describe('extendActivePlansService', () => {
     ] as never);
 
     expect(await extendActivePlansService(NOW)).toBe(0);
+  });
+});
+
+/**
+ * The rolling extension was the one place a patient's move was quietly undone: it rebuilt the
+ * next window against the *clinic's* zone, so a patient who had flown home went back to being
+ * reminded on the clock of the city they left — three months after anyone was still watching.
+ */
+describe('the zone an extension rebuilds against', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    clinics.findById.mockResolvedValue({ timezone: 'Asia/Tbilisi' } as ClinicDocument);
+    occurrences.findByPatientAndRange.mockResolvedValue([]);
+    occurrences.deletePendingByCarePlan.mockResolvedValue(0);
+    occurrences.insertMany.mockResolvedValue(0);
+    plans.findActivePlansNeedingExtension.mockResolvedValue([plan('2026-12-31T00:00:00.000Z')]);
+    generate.mockReturnValue([draft('2026-09-01T06:00:00.000Z')] as never);
+  });
+
+  it('uses the patient’s own zone when they have one', async () => {
+    patients.findById.mockResolvedValue({ timezone: 'Europe/Amsterdam' } as PatientDocument);
+
+    await extendActivePlansService(NOW);
+
+    expect(generate).toHaveBeenCalledWith(
+      expect.anything(),
+      'Europe/Amsterdam',
+      expect.any(Number)
+    );
+  });
+
+  /** A blank field is inheritance, not a missing value — recovery starts at the clinic. */
+  it('falls back to the clinic when the patient has not moved', async () => {
+    patients.findById.mockResolvedValue({ timezone: '' } as PatientDocument);
+
+    await extendActivePlansService(NOW);
+
+    expect(generate).toHaveBeenCalledWith(expect.anything(), 'Asia/Tbilisi', expect.any(Number));
+  });
+
+  /** A patient row that cannot be read must not take the extension down with it. */
+  it('still extends when the patient row is missing', async () => {
+    patients.findById.mockResolvedValue(null);
+
+    await extendActivePlansService(NOW);
+
+    expect(generate).toHaveBeenCalledWith(expect.anything(), 'Asia/Tbilisi', expect.any(Number));
   });
 });

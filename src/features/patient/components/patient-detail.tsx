@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { CarePlanBuilder } from '@/features/care-plan/components/care-plan-builder';
 import { EmailDeliveryCard } from '@/features/notifications/components/email-delivery-card';
 import { AccessLinkDialog } from '@/features/patient/components/access-link-dialog';
+import { PatientTimezoneCard } from '@/features/patient/components/patient-timezone-card';
 import { ReachabilityNotice } from '@/features/patient/components/reachability-notice';
 import { ProcedureForm } from '@/features/procedure/components/procedure-form';
 import { ProcedureRow } from '@/features/procedure/components/procedure-row';
@@ -21,9 +22,18 @@ type PatientDetailProps = {
   patientName: string;
   /** The guide is written in the patient's language, so it has to come from the record. */
   patientLocale: AppLocale;
+  /** The stored zone, blank when the patient still follows the clinic. */
+  patientTimezone: string;
+  clinicTimezone: string;
 };
 
-export function PatientDetail({ patientId, patientName, patientLocale }: PatientDetailProps) {
+export function PatientDetail({
+  patientId,
+  patientName,
+  patientLocale,
+  patientTimezone,
+  clinicTimezone,
+}: PatientDetailProps) {
   const t = useTranslations('procedure');
   const tCarePlan = useTranslations('carePlan');
   const tCommon = useTranslations('common');
@@ -97,6 +107,17 @@ export function PatientDetail({ patientId, patientName, patientLocale }: Patient
       <ReachabilityNotice patientId={patientId} />
 
       <EmailDeliveryCard patientId={patientId} />
+
+      {/*
+        Beside the other reachability panels rather than buried in an edit form: a patient in the
+        wrong zone is reached at the wrong hour, which is the same class of problem as a dead
+        address, and it is the one a clinic has to fix mid-recovery.
+      */}
+      <PatientTimezoneCard
+        patientId={patientId}
+        timezone={patientTimezone}
+        clinicTimezone={clinicTimezone}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">

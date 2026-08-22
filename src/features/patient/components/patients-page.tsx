@@ -19,7 +19,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Input } from '@/shared/components/ui/input';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 
-export function PatientsPage() {
+type PatientsPageProps = {
+  /** Read on the server so the intake form can name the zone a patient inherits. */
+  clinicTimezone: string;
+};
+
+export function PatientsPage({ clinicTimezone }: PatientsPageProps) {
   const t = useTranslations('patient');
   const tCommon = useTranslations('common');
   const [search, setSearch] = useState('');
@@ -80,7 +85,11 @@ export function PatientsPage() {
             <CardTitle className="text-base">{t('createPatient')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <PatientForm onSubmit={handleCreate} isPending={isPending} />
+            <PatientForm
+              onSubmit={handleCreate}
+              isPending={isPending}
+              clinicTimezone={clinicTimezone}
+            />
           </CardContent>
         </Card>
       )}

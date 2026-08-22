@@ -2,6 +2,7 @@
 import { useTranslations } from 'next-intl';
 import { Control } from 'react-hook-form';
 
+import { PatientTimezoneField } from '@/features/patient/components/patient-timezone-field';
 import { CreatePatientFormType } from '@/features/patient/validations/patient.validation';
 import {
   FormControl,
@@ -27,7 +28,13 @@ const SEX_KEYS = ['female', 'male', 'other'] as const;
  * Who the patient is. Split out of `PatientForm` so that form stays readable now that it also
  * carries the consent block — the identity grid is the largest and least-changing half.
  */
-export function PatientIdentityFields({ control }: { control: Control<CreatePatientFormType> }) {
+type PatientIdentityFieldsProps = {
+  control: Control<CreatePatientFormType>;
+  /** The zone a patient inherits until they go somewhere else. */
+  clinicTimezone: string;
+};
+
+export function PatientIdentityFields({ control, clinicTimezone }: PatientIdentityFieldsProps) {
   const t = useTranslations('patient');
   const tCommon = useTranslations('common');
 
@@ -177,6 +184,11 @@ export function PatientIdentityFields({ control }: { control: Control<CreatePati
             <FormMessage />
           </FormItem>
         )}
+      />
+      <PatientTimezoneField
+        control={control}
+        name="timezone"
+        clinicTimezone={clinicTimezone}
       />
     </div>
   );

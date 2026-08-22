@@ -3,6 +3,8 @@ import { reminderOccurrenceRepository } from '@/features/care-plan/repository/re
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { buildOccurrences } from '@/features/care-plan/service/occurrence-generator.service';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -49,8 +51,20 @@ async function needsExtension(plan: CarePlanDocument, now: Date): Promise<boolea
  * `sent` / `done` / `skipped` / `missed` history is never touched, so adherence data survives.
  */
 async function extendPlan(plan: CarePlanDocument, now: Date): Promise<boolean> {
-  const clinic = await clinicRepository.findById(plan.clinicId.toString());
+  const clinicId = plan.clinicId.toString();
+  const clinic = await clinicRepository.findById(clinicId);
   if (!clinic) return false;
+
+  /*
+    The patient's zone, on the same rule the rest of the plan follows.
+
+    This read the clinic's, which made the rolling extension the one place a patient's move was
+    quietly undone: every 90 days the window was rebuilt against the zone of a city they had left,
+    and a 09:30 dose went back to firing on the clinic's clock. The bug only ever showed up months
+    into a long plan, which is precisely when nobody is still watching for it.
+  */
+  const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
+  const timezone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
 
   const elapsedDays = Math.max(
     0,
@@ -67,15 +81,12 @@ async function extendPlan(plan: CarePlanDocument, now: Date): Promise<boolean> {
     This is the guard that holds regardless of why an extension ran, which is why it exists
     alongside the trigger check above rather than instead of it.
   */
-  const drafts = buildOccurrences(plan, clinic.timezone, horizonDays).filter(
+  const drafts = buildOccurrences(plan, timezone, horizonDays).filter(
     draft => draft.dueAt.getTime() >= now.getTime()
   );
   if (drafts.length === 0) return false;
 
-  await reminderOccurrenceRepository.deletePendingByCarePlan(
-    plan._id.toString(),
-    plan.clinicId.toString()
-  );
+  await reminderOccurrenceRepository.deletePendingByCarePlan(plan._id.toString(), clinicId);
   await reminderOccurrenceRepository.insertMany(drafts);
   return true;
 }
