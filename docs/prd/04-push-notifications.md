@@ -79,7 +79,7 @@ hooks/use-push-subscription.ts
 
 ### The sweep — `GET /api/cron/dispatch-reminders`
 
-Runs every few minutes — currently every minute, driven by cron-job.org.
+Runs every minute, driven by the Vercel cron in `vercel.json`.
 
 1. Authorise: header `Authorization: Bearer ${CRON_SECRET}` must match, else 401.
    (Vercel Cron sends this automatically when `CRON_SECRET` is set.)
@@ -94,12 +94,17 @@ Runs every few minutes — currently every minute, driven by cron-job.org.
 7. Rolling extension: for active plans whose generated horizon ends within 14 days, generate the
    next 90-day window (see PRD 03).
 
-Cron registration in `vercel.json` is the daily backstop only — the Hobby plan caps Vercel cron at
-one run a day, which is why the minute cadence comes from cron-job.org instead:
+The schedule lives in `vercel.json` and ships with the deployment:
 
 ```json
-"crons": [{ "path": "/api/cron/dispatch-reminders", "schedule": "0 6 * * *" }]
+"crons": [{ "path": "/api/cron/dispatch-reminders", "schedule": "* * * * *" }]
 ```
+
+The minute cadence needs a Pro plan; Hobby caps Vercel cron at one run a day, and that cap is what
+sent the cadence to third-party schedulers twice. Both failed silently — GitHub Actions by
+honouring roughly one trigger an hour, cron-job.org by auto-disabling itself after a bad
+`CRON_SECRET` gave it eight days of 401s. A schedule that ships with the code cannot drift out of
+sync with it, which is the property being bought here.
 
 For local dev, the same route can be hit manually with the bearer token.
 

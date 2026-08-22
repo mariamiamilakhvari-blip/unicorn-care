@@ -28,15 +28,22 @@ function isAuthorised(req: NextRequest): boolean {
 }
 
 /**
- * Called with `Authorization: Bearer ${CRON_SECRET}` by cron-job.org every minute, which is what
- * makes a reminder arrive near its time, and by the daily Vercel cron in `vercel.json` as a
- * backstop. The Hobby plan caps Vercel cron at once a day, so on its own it would leave most of
- * the day's doses to be swept up hours late and then marked missed past the 6-hour grace window.
+ * Called with `Authorization: Bearer ${CRON_SECRET}` by the Vercel cron in `vercel.json`, every
+ * minute, which is what makes a reminder arrive near its time.
  *
- * `.github/workflows/dispatch-reminders.yml` can still fire a sweep by hand but no longer holds a
- * schedule: GitHub delivered about one run an hour against a five-minute cron, which is why the
- * scheduler moved off it. Concurrent callers are safe — a row is claimed before anything is sent,
- * so a manual run alongside the minute cadence cannot double-send.
+ * It has been three schedulers. GitHub Actions delivered about one run an hour against a
+ * five-minute cron, so the cadence moved to cron-job.org; that ran until a `CRON_SECRET`
+ * overwritten with an unrelated key gave it eight days of 401s, after which cron-job.org
+ * auto-disabled the job and nobody was told. The only sweeps for a week were the daily Hobby-plan
+ * backstop, and every dose more than six hours old was marked missed instead of sent.
+ *
+ * Both of those failures were invisible because the scheduler lived outside the deployment. It
+ * now ships with it: the schedule is in `vercel.json`, and a Pro plan allows the minute cadence
+ * the sweep was always sized for.
+ *
+ * `.github/workflows/dispatch-reminders.yml` can still fire a sweep by hand. Concurrent callers
+ * are safe — a row is claimed before anything is sent, so a manual run alongside the schedule
+ * cannot double-send.
  */
 export async function GET(req: NextRequest) {
   if (!isAuthorised(req)) {

@@ -44,7 +44,7 @@ const ReminderOccurrenceSchema = new Schema(
     status: {
       type: String,
       // `sending` is the claimed state: a dispatch run has taken this row and no other run may
-      // touch it. Two schedulers hit the sweep (cron-job.org every minute, the Vercel cron daily),
+      // touch it. The Vercel cron hits the sweep every minute and a manual run may overlap it,
       // so without a claim both read the same `pending` rows and the patient is reminded twice.
       enum: ['pending', 'sending', 'sent', 'done', 'skipped', 'missed'],
       default: 'pending',

@@ -33,7 +33,7 @@ const GRACE_HOURS = 6;
 /**
  * Hard ceiling per run so one sweep can never exceed the function timeout (PRD 04 §2).
  *
- * Sized against the cadence: cron-job.org calls the sweep every minute, so a run carries about a
+ * Sized against the cadence: the Vercel cron calls the sweep every minute, so a run carries about a
  * minute of backlog and never comes close to this. It was briefly 2000, when GitHub Actions held
  * the schedule and delivered roughly one run an hour — twelve times the backlog, which 500
  * truncated. That is the number to raise again if the scheduler ever falls behind, and the
@@ -139,10 +139,9 @@ function createSubscriptionGate() {
  * The sweep (PRD 04 §"The sweep"). Runs unscoped by clinic — the cron is the platform,
  * authorised by `CRON_SECRET`, and has no clinic session.
  *
- * Two schedulers call this: cron-job.org every minute, and the daily Vercel cron as a backstop.
- * They collide every day at 06:00 UTC, and a run lasting more than a minute overruns into the
- * next one — which the minute cadence makes routine rather than exceptional, since the budget
- * allows 45 seconds. Selecting rows and marking them afterwards left a window where both runs
+ * The Vercel cron calls this every minute, and a manual run from the GitHub workflow may land on
+ * top of one. A run lasting more than a minute also overruns into the next one — which the minute
+ * cadence makes routine rather than exceptional, since the budget allows 45 seconds. Selecting rows and marking them afterwards left a window where both runs
  * read the same `pending` rows and pushed the same medication reminder twice, so selection is a
  * claim: a row is moved to `sending` before anything is sent, and a run only ever sends rows
  * carrying its own claim.

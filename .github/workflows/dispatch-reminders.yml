@@ -2,9 +2,9 @@ name: Dispatch reminders
 
 # Manual trigger only. This is NOT the scheduler.
 #
-# cron-job.org calls /api/cron/dispatch-reminders every minute and is what makes a reminder arrive
-# near its time; the daily Vercel cron in vercel.json is the backstop. This workflow is kept for
-# firing a sweep by hand — after an incident, or to confirm the endpoint still answers.
+# The Vercel cron in vercel.json calls /api/cron/dispatch-reminders every minute and is what makes
+# a reminder arrive near its time. This workflow is kept for firing a sweep by hand — after an
+# incident, or to confirm the endpoint still answers.
 #
 # It used to hold the schedule, on a five-minute cron. GitHub delivered roughly one run an hour
 # against it, so reminders arrived up to an hour after the time printed on them. GitHub's
@@ -12,6 +12,11 @@ name: Dispatch reminders
 # 60 days without repository activity — none of which is acceptable for clinical reminders. The
 # schedule was removed rather than lengthened: a cadence GitHub will not honour is worse than no
 # cadence, because the green ticks make it look like it is working.
+#
+# The cadence then sat on cron-job.org for a while, which failed the same way for a different
+# reason: CRON_SECRET was overwritten with an unrelated key, cron-job.org auto-disabled the job
+# after eight days of 401s, and nothing said so. A scheduler outside the deployment fails quietly
+# whichever vendor holds it, which is why the schedule now ships in vercel.json.
 #
 # Setup: add two repository secrets under Settings → Secrets and variables → Actions
 #   APP_URL      the canonical host, no trailing slash — the one that answers *without* a
@@ -21,8 +26,8 @@ name: Dispatch reminders
 #                  curl -o /dev/null -w '%{http_code}\n' https://YOUR-HOST/api/health
 #   CRON_SECRET  the same value as the CRON_SECRET environment variable on Vercel
 #
-# Both secrets exist only to run this by hand. Deleting them disables that and nothing else —
-# cron-job.org holds its own copy of CRON_SECRET.
+# Both secrets exist only to run this by hand. Deleting them disables that and nothing else — the
+# Vercel cron authorises itself from the project's own CRON_SECRET.
 
 on:
   workflow_dispatch:
