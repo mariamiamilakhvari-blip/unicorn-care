@@ -9,6 +9,15 @@ import { seedFamilyFor } from '@/shared/const/recovery-guide-seed.const';
  * A label can be corrected any day; a key cannot be edited without rewriting stored rows.
  */
 describe('the procedure catalogue', () => {
+  /*
+    The catch-all, and the only entry that is not a procedure. A clinic doing something the list
+    does not name needs somewhere to put it — without one the nearest wrong option gets picked,
+    and the record then says the patient had a procedure they did not have.
+  */
+  it('offers `other` as the last option', () => {
+    expect(PROCEDURE_TYPES.at(-1)?.key).toBe('other');
+  });
+
   it('has no duplicate keys', () => {
     const keys = PROCEDURE_TYPES.map(type => type.key);
 

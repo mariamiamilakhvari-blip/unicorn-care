@@ -21,7 +21,7 @@ export type SeedGuideBody = {
  * Two of these are baselines and three are specific. The baselines — `surgical` and `nonSurgical` —
  * say only what is true of any procedure in their family: recovery differs far more between an
  * operation and an injectable than between two operations, and writing a bespoke guide per
- * catalogue entry would mean ninety-one sets of procedure-specific clinical claims nobody here is
+ * catalogue entry would mean ninety-two sets of procedure-specific clinical claims nobody here is
  * qualified to make. The catalogue grows; this list does not grow with it.
  *
  * The three specific families exist because a clinician supplied their content. They are not
@@ -57,10 +57,10 @@ export function isProcedureFamily(family: SeedFamily): family is SeedProcedureFa
  * family is reserved for procedures involving incision and theatre recovery — the body and breast
  * operations, the gynaecological plastics, and the vein work that is cut rather than injected.
  *
- * Ambiguous cases go to `surgical` rather than `nonSurgical`, on the same reasoning that sent the
- * old `other` there: the surgical baseline is the more cautious of the two, and a patient whose
- * procedure nobody classified confidently should read the guidance that says more about bleeding
- * and infection, not less. `stress_incontinence_treatment` and `endovenous_laser_ablation` are the
+ * `other` is the unknown case and is deliberately `surgical`, which is the more cautious of the
+ * two baselines. Ambiguous entries go there for the same reason: a patient whose procedure nobody
+ * classified confidently should read the guidance that says more about bleeding and infection,
+ * not less. `stress_incontinence_treatment` and `endovenous_laser_ablation` are the
  * two to check first — both are performed either way depending on the clinic.
  *
  * `liposculpture` is deliberately NOT on the body-contouring draft despite being liposuction work.
@@ -164,6 +164,7 @@ const FAMILY_BY_PROCEDURE: Record<ProcedureTypeKey, SeedFamily> = {
   body_wraps: 'nonSurgical',
   express_spa: 'nonSurgical',
   general_body_massage: 'nonSurgical',
+  other: 'surgical',
 };
 
 /**
@@ -185,7 +186,6 @@ const RETIRED_FAMILY_BY_PROCEDURE: Record<string, SeedFamily> = {
   otoplasty: 'surgical',
   brazilian_butt_lift: 'surgical',
   hair_transplant: 'surgical',
-  other: 'surgical',
 };
 
 /**

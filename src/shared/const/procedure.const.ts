@@ -90,6 +90,8 @@ export const PROCEDURE_TYPES = [
   { key: 'body_wraps', ka: 'სხეულის შეხვევები', en: 'Body wraps' },
   { key: 'express_spa', ka: 'ექსპრეს სპა პროცედურები', en: 'Express spa treatments' },
   { key: 'general_body_massage', ka: 'ზოგადი სხეულის მასაჟი', en: 'General body massage' },
+  // Last on purpose: the catch-all belongs after everything it is a fallback for.
+  { key: 'other', ka: 'სხვა', en: 'Other' },
 ] as const;
 
 export const ANESTHESIA_TYPES = [
