@@ -173,7 +173,6 @@ function toExportPlan(plan: CarePlanDocument): PatientExportPlan {
     })),
     rehabTasks: (plan.rehabTasks ?? []).map(item => ({
       title: item.title,
-      intensity: item.intensity,
       timesOfDay: item.timesOfDay ?? [],
     })),
     checkups: (plan.checkups ?? []).map(item => ({

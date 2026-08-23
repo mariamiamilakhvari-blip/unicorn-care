@@ -19,13 +19,10 @@ const PLAN = {
 const untouchedTask = () => ({
   title: '',
   description: '',
-  intensity: 'light',
-  durationMinutes: 10,
   timesOfDay: ['09:00'],
   daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
   startsOn: '',
   endsOn: '',
-  remindMinutesBefore: 0,
 });
 
 const realTask = () => ({

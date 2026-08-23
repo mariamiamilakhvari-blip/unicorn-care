@@ -1,3 +1,5 @@
+import { WarningSeverity } from '@/shared/const/recovery.const';
+
 /**
  * The shape of every word that reaches an inbox.
  *
@@ -8,8 +10,6 @@
  * The two filled-in tables live in `email-copy-en.const.ts` and `email-copy-ka.const.ts`, and
  * `email-copy.const.ts` is what callers reach for.
  */
-import { WarningSeverity } from '@/shared/const/recovery.const';
-
 export type EmailCopy = {
   welcomeSubject: string;
   dailySubject: string;
@@ -27,10 +27,8 @@ export type EmailCopy = {
   daysUnit: string;
   today: string;
   noneToday: string;
-  intensity: Record<'light' | 'moderate' | 'intense', string>;
   withFood: string;
   withoutFood: string;
-  minutesShort: string;
   dayRange: string;
   /** Keyed by the schema enum, so a new severity cannot be added without wording for the inbox. */
   severity: Record<WarningSeverity, string>;

@@ -14,23 +14,19 @@ import { AppLocale } from '@/shared/types/roles';
 export const OCCURRENCE_EN_COPY: Record<OccurrenceCopyKey, string> = {
   withFood: 'Take with food.',
   withoutFood: 'Take on an empty stomach.',
-  minutesShort: 'min',
   today: 'Today',
   tomorrow: 'Tomorrow',
-  light: 'Light',
-  moderate: 'Moderate',
-  intense: 'Intense',
   startingSoon: 'Starts',
   expectedSign: 'This is expected',
   recoveryCheckIn: 'How is your recovery going?',
 };
 
 /*
-  Lifted from the copy that already reaches these patients rather than translated afresh: the food,
-  intensity, minute and day words are the exact strings in `EMAIL_COPY_KA`, `expectedSign` is the
-  portal's own `kind_guide` label, and `recoveryCheckIn` is the recovery-log form's title. A dose
-  reminder and the email about the same dose disagreeing on the word for "with food" would read as
-  two different instructions.
+  Lifted from the copy that already reaches these patients rather than translated afresh: the food
+  and day words are the exact strings in `EMAIL_COPY_KA`, `expectedSign` is the portal's own
+  `kind_guide` label, and `recoveryCheckIn` is the recovery-log form's title. A dose reminder and
+  the email about the same dose disagreeing on the word for "with food" would read as two different
+  instructions.
 
   `tomorrow` and `startingSoon` have no existing Georgian anywhere in the product and are the only
   two strings here that are new.
@@ -38,12 +34,8 @@ export const OCCURRENCE_EN_COPY: Record<OccurrenceCopyKey, string> = {
 export const OCCURRENCE_KA_COPY: Record<OccurrenceCopyKey, string> = {
   withFood: 'საკვებთან ერთად',
   withoutFood: 'ცარიელ კუჭზე',
-  minutesShort: 'წთ',
   today: 'დღეს',
   tomorrow: 'ხვალ',
-  light: 'მსუბუქი',
-  moderate: 'საშუალო',
-  intense: 'ინტენსიური',
   startingSoon: 'იწყება',
   expectedSign: 'რა არის მოსალოდნელი',
   recoveryCheckIn: 'როგორ მიმდინარეობს აღდგენა?',

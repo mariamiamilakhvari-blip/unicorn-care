@@ -24,10 +24,8 @@ export const EMAIL_COPY_EN: EmailCopy = {
   daysUnit: 'days',
   today: 'today',
   noneToday: 'Nothing scheduled for today.',
-  intensity: { light: 'Light', moderate: 'Moderate', intense: 'Intense' },
   withFood: 'with food',
   withoutFood: 'on an empty stomach',
-  minutesShort: 'min',
   dayRange: 'day',
   // The email says exactly what the patient's screen says. Written once, in the guide's own
   // vocabulary, so an inbox and the portal can never instruct the same person differently.

@@ -78,7 +78,7 @@ export type PatientExportPlan = {
   startsAt: string;
   rehabEndsAt: string | null;
   medications: { name: string; dosage: string; timesOfDay: string[]; instructions: string }[];
-  rehabTasks: { title: string; intensity: string; timesOfDay: string[] }[];
+  rehabTasks: { title: string; timesOfDay: string[] }[];
   checkups: { title: string; scheduledAt: string; location: string }[];
 };
 

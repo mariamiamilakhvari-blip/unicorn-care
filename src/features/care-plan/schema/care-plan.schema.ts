@@ -23,14 +23,11 @@ const MedicationSchema = new Schema({
 const RehabTaskSchema = new Schema({
   title: { type: String, required: true },
   description: { type: String, required: false, default: '' },
-  intensity: { type: String, enum: ['light', 'moderate', 'intense'], required: true },
-  durationMinutes: { type: Number, required: false, default: 0 },
   timesOfDay: { type: [String], required: true },
   // 0 = Sunday, matching clock.weekdayInZone.
   daysOfWeek: { type: [Number], default: [0, 1, 2, 3, 4, 5, 6] },
   startsOn: { type: Date, required: true },
   endsOn: { type: Date, required: true },
-  remindMinutesBefore: { type: Number, default: 0, required: true },
 });
 
 const CheckupSchema = new Schema({

@@ -116,29 +116,34 @@ function medicationDrafts(context: GeneratorContext, item: MedicationItem): Occu
   });
 }
 
-/** Same cadence as a medication, but only on the weekdays the clinic prescribed. */
+/**
+ * Same cadence as a medication, but only on the weekdays the clinic prescribed.
+ *
+ * The body is empty, and that is the whole of it. A rehab task is now a name, a window, times and
+ * a description — there is no grade and no category left to summarise, and the title is the
+ * instruction. This matches medications, whose `instructions` never reached the reminder either:
+ * the notification names the task, the portal holds the detail.
+ *
+ * `intensity` on the draft is null, as it already was for every other kind. The column stays on the
+ * occurrence for the rows that were generated with one; nothing new writes it.
+ */
 function rehabDrafts(context: GeneratorContext, item: RehabTaskItem): OccurrenceDraft[] {
-  const minutes = item.durationMinutes ?? 0;
-  const duration = minutes > 0 ? ` · ${minutes} ${context.t('minutesShort')}` : '';
-  const body = `${context.t(item.intensity)}${duration}`;
   const configured = item.daysOfWeek ?? EVERY_DAY;
-  // The session time is only worth spelling out when the reminder lands before it; without a lead
-  // the notification arrives at the time itself and saying so adds nothing.
-  const showsTime = (item.remindMinutesBefore ?? 0) > 0;
 
   return dailyDrafts(context, {
     startsOn: item.startsOn,
     endsOn: item.endsOn,
     daysOfWeek: configured.length > 0 ? configured : EVERY_DAY,
     timesOfDay: item.timesOfDay,
-    remindMinutesBefore: item.remindMinutesBefore,
-    build: (dueAt, timeOfDay) => ({
+    // Rehab reminders arrive at the session time; the clinic-set lead went with the field.
+    remindMinutesBefore: 0,
+    build: dueAt => ({
       kind: 'rehab',
       sourceItemId: item._id,
       dueAt,
       title: item.title,
-      body: showsTime ? `${body} · ${timeOfDay}` : body,
-      intensity: item.intensity,
+      body: '',
+      intensity: null,
     }),
   });
 }

@@ -72,7 +72,7 @@ function medicationSection(input: DailyEmailInput, copy: EmailCopy, zone: string
 
 function rehabSection(input: DailyEmailInput, copy: EmailCopy): string {
   if (input.rehabTasks.length === 0) return '';
-  return section('🧘', copy.todayProcedures, list(rehabLines(input.rehabTasks, copy)));
+  return section('🧘', copy.todayProcedures, list(rehabLines(input.rehabTasks)));
 }
 
 function checkupSection(input: DailyEmailInput, copy: EmailCopy, zone: string): string {
@@ -139,7 +139,7 @@ function plainLines(input: DailyEmailInput, copy: EmailCopy, zone: string): stri
   );
 
   if (input.rehabTasks.length > 0) {
-    lines.push('', copy.todayProcedures, ...rehabLines(input.rehabTasks, copy).map(strip));
+    lines.push('', copy.todayProcedures, ...rehabLines(input.rehabTasks).map(strip));
   }
   if (input.nextCheckup && input.daysUntilCheckup !== null) {
     const countdown =

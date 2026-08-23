@@ -24,10 +24,8 @@ export const EMAIL_COPY_KA: EmailCopy = {
   daysUnit: 'დღე',
   today: 'დღეს',
   noneToday: 'დღეს დაგეგმილი არაფერია.',
-  intensity: { light: 'მსუბუქი', moderate: 'საშუალო', intense: 'ინტენსიური' },
   withFood: 'საკვებთან ერთად',
   withoutFood: 'ცარიელ კუჭზე',
-  minutesShort: 'წთ',
   dayRange: 'დღე',
   // Same wording as the patient's screen — see the English table for why.
   severity: WARNING_SEVERITY_LABELS.ka,

@@ -22,10 +22,10 @@ export const SURGERY_RECOVERY_PAGE: FeaturePage = {
             'from.',
         },
         {
-          heading: 'A rehabilitation programme with intensity',
+          heading: 'A rehabilitation programme, task by task',
           body:
-            'Rehabilitation tasks carry their intensity, duration, days of the week and times of ' +
-            'day, so a patient is told what to do and how hard, not simply to rest.',
+            'Rehabilitation tasks carry their own window, days of the week and times of day, so ' +
+            'a patient is told what to do and when, not simply to rest.',
         },
         {
           heading: 'A defined end',

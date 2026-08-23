@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import {
-  INTENSITY_VALUES,
   ROUTE_VALUES,
 } from '@/features/care-plan/validations/care-plan.validation';
 
@@ -44,13 +43,10 @@ const RehabTaskRow = z
   .object({
     title: z.string().min(1, { message: 'Required' }).max(120),
     description: z.string().max(500),
-    intensity: z.enum(INTENSITY_VALUES),
-    durationMinutes: z.number().int().min(0).max(600),
     timesOfDay: TimesOfDay,
     daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, { message: 'Pick at least one day' }),
     startsOn: RequiredDate,
     endsOn: RequiredDate,
-    remindMinutesBefore: z.number().int().min(0).max(1440),
   })
   .refine(item => item.endsOn >= item.startsOn, {
     message: 'End date is before the start date',

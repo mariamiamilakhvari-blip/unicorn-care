@@ -71,13 +71,10 @@ export function toCarePlanFormValues(plan: StoredCarePlan, timeZone: string): Ca
     rehabTasks: (plan.rehabTasks ?? []).map(item => ({
       title: item.title,
       description: item.description ?? '',
-      intensity: item.intensity,
-      durationMinutes: item.durationMinutes ?? 0,
       timesOfDay: [...item.timesOfDay],
       daysOfWeek: [...item.daysOfWeek],
       startsOn: toDateInput(item.startsOn),
       endsOn: toDateInput(item.endsOn),
-      remindMinutesBefore: item.remindMinutesBefore ?? 0,
     })),
     checkups: (plan.checkups ?? []).map(item => ({
       scheduledAt: toDateTimeInput(item.scheduledAt, timeZone),

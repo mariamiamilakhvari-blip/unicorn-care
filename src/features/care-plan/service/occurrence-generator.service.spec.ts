@@ -64,8 +64,6 @@ function rehabTask(overrides: Partial<RehabTaskItem> = {}): RehabTaskItem {
     _id: new Types.ObjectId(),
     title: 'Lymphatic massage',
     description: '',
-    intensity: 'light',
-    durationMinutes: 10,
     timesOfDay: ['09:00'],
     daysOfWeek: [1, 4],
     startsOn: new Date('2025-06-02T00:00:00.000Z'),
@@ -144,18 +142,33 @@ describe('buildOccurrences — rehab tasks', () => {
     ]);
   });
 
-  it('renders "Light · 10 min" and stores the intensity for the chip', () => {
+  /*
+    The title is the whole instruction now. A rehab task has no grade and no category left to
+    summarise, and the description stays in the portal — the same rule medications follow, whose
+    `instructions` never reached the reminder either.
+  */
+  it('names the task and leaves the body empty', () => {
     const drafts = build(makePlan({ rehabTasks: [rehabTask()] }));
 
     expect(drafts[0].title).toBe('Lymphatic massage');
-    expect(drafts[0].body).toBe('Light · 10 min');
-    expect(drafts[0].intensity).toBe('light');
+    expect(drafts[0].body).toBe('');
   });
 
-  it('drops the duration clause when the clinic did not prescribe one', () => {
-    const drafts = build(makePlan({ rehabTasks: [rehabTask({ durationMinutes: 0 })] }));
+  /* The column stays for the rows generated with one; nothing new writes it. */
+  it('no longer stores an intensity on the row', () => {
+    const drafts = build(makePlan({ rehabTasks: [rehabTask()] }));
 
-    expect(drafts[0].body).toBe('Light');
+    expect(drafts[0].intensity).toBeNull();
+  });
+
+  /*
+    The clinic-set lead went with the field, so a rehab reminder lands on the prescribed wall clock
+    itself — 09:00 in the plan's zone, which is 07:00Z here.
+  */
+  it('fires at the session time, with no lead', () => {
+    const drafts = build(makePlan({ rehabTasks: [rehabTask()] }));
+
+    expect(drafts[0].dueAt.toISOString()).toBe('2025-06-02T07:00:00.000Z');
   });
 });
 

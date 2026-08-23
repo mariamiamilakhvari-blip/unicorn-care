@@ -16,12 +16,8 @@ export type OccurrenceDraft = ReminderOccurrenceInput;
 export type OccurrenceCopyKey =
   | 'withFood'
   | 'withoutFood'
-  | 'minutesShort'
   | 'today'
   | 'tomorrow'
-  | 'light'
-  | 'moderate'
-  | 'intense'
   | 'startingSoon'
   | 'expectedSign'
   | 'recoveryCheckIn';

@@ -33,8 +33,6 @@ function input(overrides: Partial<WelcomeEmailInput> = {}): WelcomeEmailInput {
     rehabTasks: [
       {
         title: 'walking',
-        intensity: 'light',
-        durationMinutes: 15,
         timesOfDay: ['18:00'],
         daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
         startsOn: new Date('2026-07-28T00:00:00.000Z'),
@@ -68,7 +66,7 @@ describe('buildWelcomeEmail', () => {
     expect(html).toContain('1000 mg');
     expect(html).toContain('10:00');
     expect(html).toContain('walking');
-    expect(html).toContain('Light');
+    expect(html).toContain('18:00');
     expect(html).toContain('swelling');
     expect(html).toContain('redness');
     expect(html).toContain('Call your clinic');

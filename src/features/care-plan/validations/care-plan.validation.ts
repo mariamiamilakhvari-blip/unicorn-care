@@ -29,7 +29,6 @@ const DateSchema = z.preprocess(value => {
 
 /** The persisted Mongoose enums (PRD 01 §6) — the schema, not the label catalogue, is the source. */
 export const ROUTE_VALUES = ['oral', 'topical', 'injection', 'other'] as const;
-export const INTENSITY_VALUES = ['light', 'moderate', 'intense'] as const;
 
 const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -61,8 +60,6 @@ const RehabTaskSchema = z
   .object({
     title: z.string().min(1).max(120),
     description: z.string().max(500).default(''),
-    intensity: z.enum(INTENSITY_VALUES),
-    durationMinutes: z.number().int().min(0).max(600).default(0),
     timesOfDay: TimesOfDaySchema,
     daysOfWeek: z
       .array(z.number().int().min(0).max(6))
@@ -72,7 +69,6 @@ const RehabTaskSchema = z
       .default([0, 1, 2, 3, 4, 5, 6]),
     startsOn: DateSchema,
     endsOn: DateSchema,
-    remindMinutesBefore: z.number().int().min(0).max(1440).default(0),
   })
   .refine(item => item.endsOn.getTime() >= item.startsOn.getTime(), {
     message: 'ENDS_BEFORE_STARTS',
@@ -109,7 +105,7 @@ const allBlank =
 
 /*
   The fields listed per section are the ones a clinician types into. Anything defaulted by the
-  form — intensity, route, times of day, reminder offsets — is deliberately excluded: those carry
+  form — route, times of day, reminder offsets — is deliberately excluded: those carry
   a value on an untouched row, so counting them would make every blank block look filled in.
 */
 export const isUntouchedMedicationRow = allBlank([

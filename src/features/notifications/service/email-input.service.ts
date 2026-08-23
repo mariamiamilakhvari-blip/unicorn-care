@@ -69,8 +69,6 @@ function toMedications(plan: CarePlanDocument): EmailMedication[] {
 function toRehabTasks(plan: CarePlanDocument): EmailRehabTask[] {
   return plan.rehabTasks.map(item => ({
     title: item.title,
-    intensity: item.intensity,
-    durationMinutes: item.durationMinutes ?? 0,
     timesOfDay: [...item.timesOfDay],
     daysOfWeek: [...(item.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6])],
     startsOn: item.startsOn,

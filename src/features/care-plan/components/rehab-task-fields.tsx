@@ -9,24 +9,15 @@ import {
   CarePlanFormType,
   EMPTY_REHAB_TASK,
 } from '@/features/care-plan/types/care-plan-form.types';
-import { INTENSITY_VALUES } from '@/features/care-plan/validations/care-plan.validation';
 import { Button } from '@/shared/components/ui/button';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
 import { Textarea } from '@/shared/components/ui/textarea';
 
 export function RehabTaskFields({ control }: { control: Control<CarePlanFormType> }) {
@@ -56,56 +47,6 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                   <FormControl>
                     <Input {...input} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name={`rehabTasks.${index}.intensity`}
-              render={({ field: input }) => (
-                <FormItem>
-                  <FormLabel>{t('intensity.label')}</FormLabel>
-                  <Select onValueChange={input.onChange} value={input.value}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {INTENSITY_VALUES.map(value => (
-                        <SelectItem key={value} value={value}>
-                          {t(`intensity.${value}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name={`rehabTasks.${index}.durationMinutes`}
-              render={({ field: input }) => (
-                <FormItem>
-                  <FormLabel>{t('sessionLength')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={600}
-                      value={input.value}
-                      onChange={event => input.onChange(Number(event.target.value))}
-                    />
-                  </FormControl>
-                  {/*
-                    Named for what it is. Labelled "Duration" it sat directly above a start and an
-                    end date and read as a third way of saying the same thing, which is how it came
-                    to look like a redundant field worth deleting — it is neither: it is how long
-                    one session lasts, and it is the `· 10 წთ` the patient reads on the reminder.
-                  */}
-                  <FormDescription>{t('sessionLengthHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -167,28 +108,6 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                 <FormControl>
                   <Textarea rows={2} {...input} />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-
-          <FormField
-            control={control}
-            name={`rehabTasks.${index}.remindMinutesBefore`}
-            render={({ field: input }) => (
-              <FormItem className="sm:max-w-xs">
-                <FormLabel>{t('remindMinutesBefore')}</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={1440}
-                    value={input.value ?? 0}
-                    onChange={event => input.onChange(Number(event.target.value))}
-                  />
-                </FormControl>
-                <FormDescription>{t('remindMinutesBeforeHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

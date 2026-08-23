@@ -107,17 +107,17 @@ function medicationSection(
   return section('💊', copy.medications, list(medicationLines(medications, copy, zone)));
 }
 
-export function rehabLines(tasks: EmailRehabTask[], copy: EmailCopy): string[] {
-  return tasks.map(item => {
-    const duration = item.durationMinutes > 0 ? ` · ${item.durationMinutes} ${copy.minutesShort}` : '';
-    const detail = `${copy.intensity[item.intensity]}${duration} · ${item.timesOfDay.join(', ')}`;
-    return `<strong>${escapeHtml(item.title)}</strong> — ${escapeHtml(detail)}`;
-  });
+export function rehabLines(tasks: EmailRehabTask[]): string[] {
+  // The task's name and when to do it. Nothing else survives on a rehab task worth summarising.
+  return tasks.map(
+    item =>
+      `<strong>${escapeHtml(item.title)}</strong> — ${escapeHtml(item.timesOfDay.join(', '))}`
+  );
 }
 
 function rehabSection(tasks: EmailRehabTask[], copy: EmailCopy): string {
   if (tasks.length === 0) return '';
-  return section('🧘', copy.dailyProcedures, list(rehabLines(tasks, copy)));
+  return section('🧘', copy.dailyProcedures, list(rehabLines(tasks)));
 }
 
 function expectedSection(guide: EmailGuide | null, copy: EmailCopy): string {
@@ -172,7 +172,7 @@ function plainLines(input: WelcomeEmailInput, copy: EmailCopy, zone: string): st
     lines.push('', copy.medications, ...medicationLines(input.medications, copy, zone).map(strip));
   }
   if (input.rehabTasks.length > 0) {
-    lines.push('', copy.dailyProcedures, ...rehabLines(input.rehabTasks, copy).map(strip));
+    lines.push('', copy.dailyProcedures, ...rehabLines(input.rehabTasks).map(strip));
   }
   const next = nextCheckup(input.checkups);
   if (next) {

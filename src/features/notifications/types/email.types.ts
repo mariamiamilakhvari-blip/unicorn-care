@@ -45,8 +45,6 @@ export type EmailMedication = {
 
 export type EmailRehabTask = {
   title: string;
-  intensity: 'light' | 'moderate' | 'intense';
-  durationMinutes: number;
   timesOfDay: string[];
   daysOfWeek: number[];
   startsOn: Date;

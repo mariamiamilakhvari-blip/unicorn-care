@@ -1,4 +1,4 @@
-import { INTENSITY_VALUES, ROUTE_VALUES } from '@/features/care-plan/validations/care-plan.validation';
+import { ROUTE_VALUES } from '@/features/care-plan/validations/care-plan.validation';
 
 /**
  * The builder's own shape. Dates are `yyyy-MM-dd` / `datetime-local` strings because that is what
@@ -20,13 +20,10 @@ export type MedicationFormRow = {
 export type RehabTaskFormRow = {
   title: string;
   description: string;
-  intensity: (typeof INTENSITY_VALUES)[number];
-  durationMinutes: number;
   timesOfDay: string[];
   daysOfWeek: number[];
   startsOn: string;
   endsOn: string;
-  remindMinutesBefore: number;
 };
 
 export type CheckupFormRow = {
@@ -61,13 +58,10 @@ export const EMPTY_MEDICATION: MedicationFormRow = {
 export const EMPTY_REHAB_TASK: RehabTaskFormRow = {
   title: '',
   description: '',
-  intensity: 'light',
-  durationMinutes: 10,
   timesOfDay: ['09:00'],
   daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
   startsOn: '',
   endsOn: '',
-  remindMinutesBefore: 0,
 };
 
 export const EMPTY_CHECKUP: CheckupFormRow = {

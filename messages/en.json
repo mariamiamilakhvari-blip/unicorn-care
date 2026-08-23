@@ -265,14 +265,11 @@
     "startsOn": "Starts on",
     "endsOn": "Ends on",
     "withFood": "With food",
-    "sessionLength": "Session length (min)",
-    "sessionLengthHint": "How long one session lasts. Shown to the patient on the reminder. 0 = not stated.",
     "rehabEndsAt": "Rehab ends at",
     "addMedication": "Add medication",
     "addRehabTask": "Add rehab task",
     "addCheckup": "Add checkup",
     "intensity": {
-      "label": "Intensity",
       "light": "Light",
       "moderate": "Moderate",
       "intense": "Intense"
