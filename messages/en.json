@@ -409,7 +409,6 @@
   "recoveryGuide": {
     "title": "Complications and what is normal",
     "authoringHelp": "Content you write here is shown to your patients in their portal. Nothing is generated automatically.",
-    "resetToTemplate": "Reset to template",
     "emergencyBanner": "This is general guidance from your clinic, not a diagnosis. Contact your clinic with any concern. If something is severe or sudden, seek emergency care immediately.",
     "expectedHeading": "What is expected",
     "warningHeading": "When to contact the clinic",
@@ -439,7 +438,6 @@
     "yourGuides": "Your guides",
     "noGuidesYet": "No guides written yet.",
     "editorHeading": "Write or update a guide",
-    "guideSaved": "Guide saved",
     "expectedCount": "{count} expected",
     "warningCount": "{count} warning",
     "reportQueue": "Symptom reports",
@@ -451,10 +449,7 @@
       "needs_review": "Needs review",
       "reviewed": "Reviewed",
       "dismissed": "Dismissed"
-    },
-    "saveGuide": "Save guide",
-    "sharedAcrossPatients": "Written per procedure type — every patient with this procedure sees it.",
-    "usingDefault": "Showing the default guide. Saving creates your clinic’s own version."
+    }
   },
   "pricing": {
     "title": "Pricing",

@@ -1,9 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Info, RotateCcw } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect } from 'react';
+import { ReactNode, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { ExpectedFields } from '@/features/recovery-guide/components/expected-fields';
@@ -17,7 +17,6 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Form } from '@/shared/components/ui/form';
 import { Separator } from '@/shared/components/ui/separator';
-import { recoveryGuideTemplate } from '@/shared/const/recovery-guide-template.const';
 import { AppLocale } from '@/shared/types/roles';
 
 /**
@@ -39,6 +38,17 @@ type CarePlanGuideSectionProps = {
   manipulationType: string;
   /** The patient's language — the guide is written and shown in it. */
   locale: AppLocale;
+  /**
+   * Validates and writes the care plan half of the page. Resolves false when the plan is invalid
+   * or its write was rejected, which is what stops the guide from being written on its own.
+   */
+  onSavePlan: () => Promise<boolean>;
+  /** True while the plan half is in flight, so one Save reads as busy for both halves. */
+  isPlanPending: boolean;
+  /** The plan's error, already turned into copy by the builder, which owns those codes. */
+  planError: string | null;
+  /** Activation and plan status, supplied by the care plan and shown beside Save. */
+  planActions: ReactNode;
 };
 
 /**
@@ -46,9 +56,22 @@ type CarePlanGuideSectionProps = {
  *
  * Its own <form>, not part of the care plan form: the two save to different endpoints and a nested
  * form would submit both at once.
+ *
+ * It nonetheless carries the page's only Save. Two save buttons for what a clinician experiences
+ * as one document meant a plan could be written while the guide beside it was left as a draft, and
+ * neither button said which half it covered. The split survives in the markup, because the two
+ * endpoints are real; it no longer survives in the interface.
  */
-export function CarePlanGuideSection({ manipulationType, locale }: CarePlanGuideSectionProps) {
+export function CarePlanGuideSection({
+  manipulationType,
+  locale,
+  onSavePlan,
+  isPlanPending,
+  planError,
+  planActions,
+}: CarePlanGuideSectionProps) {
   const t = useTranslations('recoveryGuide');
+  const tCarePlan = useTranslations('carePlan');
   const tCommon = useTranslations('common');
   const { guide, isLoading, isPending, savedAt, error, save } = useProcedureGuide(
     manipulationType,
@@ -67,27 +90,6 @@ export function CarePlanGuideSection({ manipulationType, locale }: CarePlanGuide
   });
 
   const { reset } = form;
-
-  /*
-    Fills the form and stops. Nothing is saved and nothing is published — a template is a starting
-    point for the clinician reading it, not content this product is willing to put in front of a
-    post-operative patient on its own authority.
-
-    The template's day windows are collapsed to their length, because that is what the editor now
-    asks for. An item the draft scheduled from day 14 becomes "for 365 days" here and will store as
-    0–365 if saved: one field cannot carry two numbers, and the number a clinic is answering for is
-    how long.
-  */
-  const applyTemplate = useCallback(() => {
-    const template = recoveryGuideTemplate(locale, manipulationType);
-    reset({
-      manipulationType,
-      locale,
-      expected: template.expected.map(toFormItem),
-      warning: template.warning.map(toFormItem),
-      isPublished: false,
-    });
-  }, [locale, manipulationType, reset]);
 
   /*
     What the editor opens on: this clinic's own guide, or nothing at all.
@@ -112,52 +114,65 @@ export function CarePlanGuideSection({ manipulationType, locale }: CarePlanGuide
     reset({ manipulationType, locale, expected: [], warning: [], isPublished: true });
   }, [guide, manipulationType, locale, reset]);
 
+  /*
+    One click, both halves, in the only order that cannot half-write the page.
+
+    React Hook Form has already validated the guide by the time this runs, and `onSavePlan`
+    validates the plan before it writes anything — so an invalid half stops the flow with nothing
+    sent, and the invalid field is focused wherever it sits.
+
+    Two endpoints cannot be one transaction, so the plan is written first and the guide only
+    follows if it landed. That ordering makes a failure recoverable by pressing the same button
+    again: the plan write is idempotent for an existing plan, so a retry re-sends the plan and
+    then reaches the guide. The reverse order would leave the guide — content shared by every
+    patient with this procedure — updated to describe a plan the server had rejected.
+  */
+  const saveAll = useCallback(
+    async (values: UpsertRecoveryGuideType) => {
+      if (!(await onSavePlan())) return;
+      await save(values);
+    },
+    [onSavePlan, save]
+  );
+
   if (isLoading) return <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>;
+
+  // One button spanning two requests: it stays busy until the slower half is done.
+  const isBusy = isPending || isPlanPending;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(save)} className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-lg font-semibold">{t('title')}</h2>
-            <p className="mt-1 flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              {/* Says plainly that this is shared content, so nobody edits it thinking it is
-                  specific to the patient in front of them. */}
-              {guide?.isDefault ? t('usingDefault') : t('sharedAcrossPatients')}
-            </p>
-          </div>
-
-          {/*
-            One click, and no confirmation, because the click is not the destructive act — it
-            refills the form and nothing else. What is stored changes when the clinic presses save,
-            which is the same deliberate step every other edit on this screen goes through, and
-            leaving without saving still leaves the stored guide exactly as it was.
-
-            It exists for legacy content: a clinic guide written years ago, or the incorrect line
-            somebody typed once, needs a way back to the reviewed template that is not deleting
-            rows by hand.
-          */}
-          <Button type="button" variant="ghost" size="sm" onClick={applyTemplate}>
-            <RotateCcw className="size-4" aria-hidden />
-            {t('resetToTemplate')}
-          </Button>
-        </div>
+      <form onSubmit={form.handleSubmit(saveAll)} className="flex flex-col gap-5">
+        <h2 className="font-heading text-lg font-semibold">{t('title')}</h2>
 
         <ExpectedFields control={form.control} />
         <Separator />
         <WarningFields control={form.control} locale={locale} />
 
-        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+        {/* Whichever half failed, reported in the one place the clinic pressed. */}
+        {(planError || error) && (
+          <p className="text-sm font-medium text-destructive">{planError ?? error}</p>
+        )}
 
+        {/*
+          The page's actions, at the foot of everything they act on: the plan's fields, then the
+          expected signs, then the warning signs. Save writes all of it; activation follows,
+          because there is no point publishing a plan to the patient's portal before it is stored.
+        */}
+        <Separator />
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isPending}>
-            {isPending ? tCommon('loading') : t('saveGuide')}
+          <Button type="submit" disabled={isBusy}>
+            {isBusy ? tCommon('loading') : tCommon('save')}
           </Button>
-          {savedAt && !error && (
+          {planActions}
+          {/*
+            The guide is written last, so its timestamp is the one thing that means both halves
+            landed — a silent 200 on either was why saving used to look broken.
+          */}
+          {savedAt && !error && !planError && (
             <span className="flex items-center gap-2 text-sm font-medium text-moss">
               <Check className="size-4" aria-hidden />
-              {t('guideSaved')}
+              {tCarePlan('planSaved')}
             </span>
           )}
         </div>

@@ -48,11 +48,28 @@ const state = (overrides: Partial<ReturnType<typeof useProcedureGuide>> = {}) =>
   ...overrides,
 });
 
-function open(manipulationType: string, overrides = {}) {
+type SectionProps = Parameters<typeof CarePlanGuideSection>[0];
+
+/**
+ * The plan half is a prop, so it is a spy here. What this file can prove is the contract between
+ * the two halves — the order they are written in, and that neither is written alone.
+ */
+function open(manipulationType: string, overrides = {}, props: Partial<SectionProps> = {}) {
   const current = state(overrides);
   guideHook.mockReturnValue(current);
-  render(<CarePlanGuideSection manipulationType={manipulationType} locale="en" />);
-  return current;
+  const onSavePlan = props.onSavePlan ?? vi.fn().mockResolvedValue(true);
+  render(
+    <CarePlanGuideSection
+      manipulationType={manipulationType}
+      locale="en"
+      isPlanPending={false}
+      planError={null}
+      planActions={<button type="button">activatePlan</button>}
+      {...props}
+      onSavePlan={onSavePlan}
+    />
+  );
+  return { ...current, onSavePlan };
 }
 
 const expectedText = () => screen.getByTestId('expected').textContent ?? '';
@@ -152,71 +169,121 @@ describe('CarePlanGuideSection — what the editor opens on', () => {
 });
 
 /**
- * The way back from legacy content. A clinic guide written years ago, or a line somebody typed
- * once and should not have, needs a route to the reviewed template that is not deleting rows by
- * hand.
+ * The header is the heading. Nothing else.
+ *
+ * It used to carry two notices and a reset-to-template button. All three described the editor's own
+ * machinery rather than the patient's recovery, and one of them appeared exactly when the editor was
+ * already empty — telling a clinician about content that was not on screen. The template is still
+ * the seed service's business; it is no longer a control here.
  */
-describe('CarePlanGuideSection — resetting to the template', () => {
-  const ownGuide = {
-    isDefault: false,
-    isPublished: true,
-    expected: [{ title: 'Legacy line', description: '', fromDay: 0, toDay: 7 }],
-    warning: [],
-  } as never;
+describe('CarePlanGuideSection — the header', () => {
+  it('offers no reset-to-template control', () => {
+    open('rhinoplasty', {
+      guide: {
+        isDefault: false,
+        isPublished: true,
+        expected: [{ title: 'Legacy line', description: '', fromDay: 0, toDay: 7 }],
+        warning: [],
+      } as never,
+    });
 
-  it('is offered even when the clinic has written its own guide', () => {
-    open('rhinoplasty', { guide: ownGuide });
-
-    expect(screen.getByText('resetToTemplate')).toBeInTheDocument();
+    expect(screen.queryByText('resetToTemplate')).not.toBeInTheDocument();
   });
 
-  it('replaces the clinic’s content on a single click', () => {
-    open('rhinoplasty', { guide: ownGuide });
-    expect(expectedText()).toBe('Legacy line');
+  /* No standing notice above the fields, in either state the guide can load in. */
+  it.each([true, false])('carries no explanatory notice when isDefault is %s', isDefault => {
+    open('rhinoplasty', {
+      guide: { isDefault, isPublished: true, expected: [], warning: [] } as never,
+    });
 
-    fireEvent.click(screen.getByText('resetToTemplate'));
-
-    expect(expectedText()).toContain('Mild nasal congestion');
-    expect(expectedText()).not.toContain('Legacy line');
+    expect(screen.queryByText('sharedAcrossPatients')).not.toBeInTheDocument();
+    expect(screen.queryByText('usingDefault')).not.toBeInTheDocument();
   });
+});
 
-  /* Fills an empty editor too — the only route to the template now that nothing pre-fills. */
-  it('loads the template into an empty editor', () => {
+
+/**
+ * Two save buttons for one document is what this replaces. A clinician could write the plan and
+ * leave the guide beside it a draft, with nothing on screen saying which button covered which
+ * half, and the patient's portal would show a plan explained by stale content.
+ */
+describe('CarePlanGuideSection — one Save for both halves', () => {
+  const clickSave = () => fireEvent.click(screen.getByText('save'));
+
+  it('offers one save control, not one per endpoint', () => {
     open('rhinoplasty');
-    expect(expectedText()).toBe('');
 
-    fireEvent.click(screen.getByText('resetToTemplate'));
-
-    expect(expectedText()).toContain('Mild nasal congestion');
-  });
-
-  /* The template's windows arrive as lengths, since that is the only field left to hold them. */
-  it('brings the template in as durations', () => {
-    open('rhinoplasty');
-
-    fireEvent.click(screen.getByText('resetToTemplate'));
-
-    expect(warningText()).toMatch(/@\d+/);
-    expect(warningText()).not.toContain('@0-');
-  });
-
-  it('loads the general draft for an unmapped procedure', () => {
-    open('some_new_operation', { guide: ownGuide });
-
-    fireEvent.click(screen.getByText('resetToTemplate'));
-
-    expect(expectedText()).toContain(BASELINE);
+    expect(screen.getAllByText('save')).toHaveLength(1);
+    expect(screen.queryByText('saveGuide')).not.toBeInTheDocument();
   });
 
   /*
-    The click is not the destructive act. It refills the form; what is stored changes when the
-    clinic presses save, so leaving without saving keeps the stored guide exactly as it was.
+    Order is the whole design. The guide is shared by every patient with this procedure, so it must
+    never be updated to describe a plan the server has just refused.
   */
-  it('changes nothing stored until the clinic saves', async () => {
-    const current = open('rhinoplasty', { guide: ownGuide });
+  it('writes the plan first and the guide second', async () => {
+    const written: string[] = [];
+    const current = open(
+      'rhinoplasty',
+      {
+        save: vi.fn(async () => {
+          written.push('guide');
+        }),
+      },
+      {
+        onSavePlan: vi.fn(async () => {
+          written.push('plan');
+          return true;
+        }),
+      }
+    );
 
-    fireEvent.click(screen.getByText('resetToTemplate'));
+    clickSave();
 
-    await waitFor(() => expect(current.save).not.toHaveBeenCalled());
+    await waitFor(() => expect(current.save).toHaveBeenCalled());
+    expect(written).toEqual(['plan', 'guide']);
+  });
+
+  it('leaves the guide untouched when the plan half is refused', async () => {
+    const onSavePlan = vi.fn().mockResolvedValue(false);
+    const current = open('rhinoplasty', {}, { onSavePlan });
+
+    clickSave();
+
+    await waitFor(() => expect(onSavePlan).toHaveBeenCalled());
+    expect(current.save).not.toHaveBeenCalled();
+  });
+
+  /* Activation belongs to the plan, and now sits beside the Save that stores what it publishes. */
+  it('renders the plan’s own actions beside Save', () => {
+    open('rhinoplasty');
+
+    expect(screen.getByText('activatePlan')).toBeInTheDocument();
+  });
+
+  /* One button spanning two requests reads as busy until the slower half is finished. */
+  it('reads as busy while the plan half is in flight', () => {
+    open('rhinoplasty', {}, { isPlanPending: true });
+
+    expect(screen.getByText('loading')).toBeInTheDocument();
+  });
+
+  it('reports the plan’s error where the clinic clicked', () => {
+    open('rhinoplasty', {}, { planError: 'INCOMPLETE_PLAN' });
+
+    expect(screen.getByText('INCOMPLETE_PLAN')).toBeInTheDocument();
+  });
+
+  /* The guide is written last, so its timestamp is the only honest "both halves landed". */
+  it('confirms the save once the guide has landed', () => {
+    open('rhinoplasty', { savedAt: 1 });
+
+    expect(screen.getByText('planSaved')).toBeInTheDocument();
+  });
+
+  it('withholds the confirmation when the plan half failed', () => {
+    open('rhinoplasty', { savedAt: 1 }, { planError: 'INCOMPLETE_PLAN' });
+
+    expect(screen.queryByText('planSaved')).not.toBeInTheDocument();
   });
 });

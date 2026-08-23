@@ -12,7 +12,8 @@ type CarePlanState = {
   isPending: boolean;
   error: string | null;
   savedAt: number | null;
-  save: (procedureId: string, patientId: string, values: CarePlanFormType) => Promise<void>;
+  /** Resolves true when the plan reached the server, false when it was rejected. */
+  save: (procedureId: string, patientId: string, values: CarePlanFormType) => Promise<boolean>;
   activate: () => Promise<void>;
 };
 
@@ -72,8 +73,10 @@ export function useCarePlan(procedureId: string | null): CarePlanState {
           });
         setPlan(saved);
         setSavedAt(Date.now());
+        return true;
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : 'ERROR');
+        return false;
       } finally {
         setIsPending(false);
       }

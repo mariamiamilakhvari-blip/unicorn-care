@@ -1,9 +1,8 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Resolver, useForm } from 'react-hook-form';
 
 
@@ -23,7 +22,6 @@ import {
   isUntouchedRehabRow,
 } from '@/features/care-plan/validations/care-plan.validation';
 import { CarePlanGuideSection } from '@/features/recovery-guide/components/care-plan-guide-section';
-import { Button } from '@/shared/components/ui/button';
 import {
   Form,
   FormControl,
@@ -61,7 +59,7 @@ export function CarePlanBuilder({
 }: CarePlanBuilderProps) {
   const t = useTranslations('carePlan');
   const tCommon = useTranslations('common');
-  const { plan, isLoading, isPending, error, savedAt, save, activate } = useCarePlan(procedureId);
+  const { plan, isLoading, isPending, error, save, activate } = useCarePlan(procedureId);
 
   /*
     Blank blocks are filtered out before the schema sees them, in all three sections.
@@ -113,14 +111,42 @@ export function CarePlanBuilder({
     reset(toCarePlanFormValues(plan, clinicTimezone));
   }, [plan, reset, clinicTimezone]);
 
+  /*
+    Validates the plan and writes it, on behalf of the single Save at the foot of the page.
+
+    The plan and the recovery guide are two forms posting to two endpoints, so "save everything"
+    is a sequence rather than one request. This half runs first and reports whether it got
+    through; the guide is only written if it did, so a rejected plan never leaves the two halves
+    describing different things.
+
+    `handleSubmit` is wrapped in a promise because it signals failure by calling a callback rather
+    than by rejecting, and the caller needs a value to branch on. Wrapping it also keeps RHF's
+    focus-first-error behaviour, which is what carries the clinician back up to an invalid field
+    from a button that now sits far below it.
+  */
+  const savePlan = useCallback(
+    () =>
+      new Promise<boolean>(resolve => {
+        void form.handleSubmit(
+          async values => resolve(await save(procedureId, patientId, values)),
+          () => resolve(false)
+        )();
+      }),
+    [form, save, procedureId, patientId]
+  );
+
   if (isLoading) return <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>;
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(values => save(procedureId, patientId, values))}
-        className="flex flex-col gap-6"
-      >
+      {/*
+        This form has no submit button of its own — it is submitted through `savePlan` by the one
+        Save at the foot of the guide section below. The handler exists only to swallow a submit
+        that arrives anyway: a <form> whose event goes unhandled navigates, which would reload the
+        page and discard everything typed into it. `noValidate` leaves the checking to the
+        resolver, whose messages say more than the browser's bubble.
+      */}
+      <form noValidate onSubmit={event => event.preventDefault()} className="flex flex-col gap-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -175,41 +201,36 @@ export function CarePlanBuilder({
         <Separator />
         <CheckupFields control={form.control} />
 
-        {/* Known error codes get a sentence the clinic can act on; anything else shows raw. */}
-        {error && (
-          <p className="text-sm font-medium text-destructive">
-            {KNOWN_ERRORS.includes(error) ? t(`error.${error}`) : error}
-          </p>
-        )}
-
-        {/*
-          A silent 200 is why this looked broken: the request succeeded, nothing on screen changed,
-          and the reasonable conclusion was that saving had failed.
-        */}
-        {savedAt && !error && !form.formState.isDirty && (
-          <p className="flex items-center gap-2 text-sm font-medium text-moss">
-            <Check className="size-4" aria-hidden />
-            {t('planSaved')}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isPending}>
-            {isPending ? tCommon('loading') : tCommon('save')}
-          </Button>
-          {/* Asks first when the patient has no way to receive anything the plan would send. */}
-          <ActivatePlanButton
-            patientId={patientId}
-            isDisabled={!plan || isPending}
-            onActivate={activate}
-          />
-          {plan && <span className="text-sm text-muted-foreground">{t(`status.${plan.status}`)}</span>}
-        </div>
       </form>
 
-      {/* Outside the plan form on purpose — separate endpoint, separate save. */}
+      {/*
+        Outside the plan form on purpose — separate endpoint, and a nested form would submit both
+        at once. The guide section carries the page's only Save, so the plan's own error copy and
+        activation control are handed down to sit beside it rather than stranded up here, far from
+        the button that produces them.
+      */}
       <Separator className="my-6" />
-      <CarePlanGuideSection manipulationType={manipulationType} locale={patientLocale} />
+      <CarePlanGuideSection
+        manipulationType={manipulationType}
+        locale={patientLocale}
+        onSavePlan={savePlan}
+        isPlanPending={isPending}
+        /* Known error codes get a sentence the clinic can act on; anything else shows raw. */
+        planError={error && (KNOWN_ERRORS.includes(error) ? t(`error.${error}`) : error)}
+        planActions={
+          /* Asks first when the patient has no way to receive anything the plan would send. */
+          <>
+            <ActivatePlanButton
+              patientId={patientId}
+              isDisabled={!plan || isPending}
+              onActivate={activate}
+            />
+            {plan && (
+              <span className="text-sm text-muted-foreground">{t(`status.${plan.status}`)}</span>
+            )}
+          </>
+        }
+      />
     </Form>
   );
 }
