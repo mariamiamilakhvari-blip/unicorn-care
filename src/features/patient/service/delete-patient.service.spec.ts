@@ -4,10 +4,16 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
   patientRepository: { findById: vi.fn(), deleteById: vi.fn() },
 }));
 vi.mock('@/features/care-plan/repository/care-plan.repository', () => ({
-  carePlanRepository: { deleteAllByPatient: vi.fn().mockResolvedValue(0) },
+  carePlanRepository: {
+    findAllByPatient: vi.fn().mockResolvedValue([]),
+    deleteAllByPatient: vi.fn().mockResolvedValue(0),
+  },
 }));
 vi.mock('@/features/care-plan/repository/reminder-occurrence.repository', () => ({
-  reminderOccurrenceRepository: { deleteAllByPatient: vi.fn().mockResolvedValue(0) },
+  reminderOccurrenceRepository: {
+    deleteAllByPatient: vi.fn().mockResolvedValue(0),
+    deleteAllByCarePlan: vi.fn().mockResolvedValue(0),
+  },
 }));
 vi.mock('@/features/procedure/repository/procedure.repository', () => ({
   procedureRepository: { deleteAllByPatient: vi.fn().mockResolvedValue(0) },
@@ -76,7 +82,14 @@ beforeEach(() => {
   patients.deleteById.mockResolvedValue(true);
   photos.findByPatient.mockResolvedValue([]);
   photos.deleteAllByPatient.mockResolvedValue(0);
+  plans.findAllByPatient.mockResolvedValue([]);
+  plans.deleteAllByPatient.mockResolvedValue(0);
+  reminders.deleteAllByPatient.mockResolvedValue(0);
+  reminders.deleteAllByCarePlan.mockResolvedValue(0);
 });
+
+/** A plan as the cascade reads it: only its id is used. */
+const plan = (id: string) => ({ _id: { toString: () => id } });
 
 describe('deletePatientService — tenancy', () => {
   /*
@@ -159,6 +172,75 @@ describe('deletePatientService — what a full erasure removes', () => {
 });
 
 /**
+ * Erasure is unconditional. A patient still mid-course is not an edge case to be refused — it is
+ * the case the right exists for, since a withdrawal takes effect when it is made rather than when
+ * the course happens to finish.
+ */
+describe('deletePatientService — a patient still in active care', () => {
+  const ACTIVE = '507f1f77bcf86cd799439033';
+  const FINISHED = '507f1f77bcf86cd799439044';
+
+  beforeEach(() => {
+    plans.findAllByPatient.mockResolvedValue([plan(ACTIVE), plan(FINISHED)] as never);
+    plans.deleteAllByPatient.mockResolvedValue(2);
+    reminders.deleteAllByPatient.mockResolvedValue(40);
+    reminders.deleteAllByCarePlan.mockResolvedValue(1);
+    ratings.deleteAllByPatient.mockResolvedValue(3);
+  });
+
+  it('erases the patient with an active plan, pending reminders and published ratings', async () => {
+    const result = await deletePatientService(CLINIC, PATIENT, NAME);
+
+    expect(result.status).toBe(200);
+    expect(plans.deleteAllByPatient).toHaveBeenCalledWith(PATIENT, CLINIC);
+    expect(ratings.deleteAllByPatient).toHaveBeenCalledWith(PATIENT, CLINIC);
+    expect(patients.deleteById).toHaveBeenCalledWith(PATIENT, CLINIC);
+  });
+
+  /** Every plan, whatever its status — a finished course leaves rows behind like a running one. */
+  it('reads every plan, not only the active ones', async () => {
+    await deletePatientService(CLINIC, PATIENT, NAME);
+
+    expect(plans.findAllByPatient).toHaveBeenCalledWith(PATIENT, CLINIC);
+    expect(reminders.deleteAllByCarePlan).toHaveBeenCalledTimes(2);
+  });
+
+  /*
+    The second sweep. An occurrence carries `patientId` and `carePlanId` independently, so a row
+    whose patient reference is stale survives the first filter and would then sit in the dispatch
+    queue pointing at a patient who no longer exists.
+  */
+  it('sweeps occurrences by each care plan as well as by the patient', async () => {
+    await deletePatientService(CLINIC, PATIENT, NAME);
+
+    expect(reminders.deleteAllByPatient).toHaveBeenCalledWith(PATIENT, CLINIC);
+    expect(reminders.deleteAllByCarePlan).toHaveBeenCalledWith(ACTIVE, CLINIC);
+    expect(reminders.deleteAllByCarePlan).toHaveBeenCalledWith(FINISHED, CLINIC);
+  });
+
+  it('counts both sweeps in what it reports back', async () => {
+    const { data } = await deletePatientService(CLINIC, PATIENT, NAME);
+
+    expect(data).toEqual({
+      deleted: true,
+      counts: { procedures: 0, carePlans: 2, reminders: 42, ratings: 3, photos: 0 },
+    });
+  });
+
+  /* The plans are gone by the end, so their ids have to be in hand before anything is removed. */
+  it('reads the plans before deleting them', async () => {
+    await deletePatientService(CLINIC, PATIENT, NAME);
+
+    const [read] = plans.findAllByPatient.mock.invocationCallOrder;
+    const [sweptByPlan] = reminders.deleteAllByCarePlan.mock.invocationCallOrder;
+    const [deleted] = plans.deleteAllByPatient.mock.invocationCallOrder;
+
+    expect(read).toBeLessThan(sweptByPlan);
+    expect(sweptByPlan).toBeLessThan(deleted);
+  });
+});
+
+/**
  * The typed gate. A confirm dialog is one click, and this destroys a clinical record outright —
  * the plans, the adherence history, the photographs. Account deletion has always been guarded this
  * way; per-patient erasure is the same act at a smaller scale.
@@ -175,6 +257,25 @@ describe('deletePatientService — the typed confirmation', () => {
 
   it('accepts surrounding whitespace, since that is a paste artefact and not a mistake', async () => {
     const { status } = await deletePatientService(CLINIC, PATIENT, '  Lika Beridze  ');
+
+    expect(status).toBe(200);
+    expect(patients.deleteById).toHaveBeenCalledWith(PATIENT, CLINIC);
+  });
+
+  /*
+    The failure this was reported as. Nothing trimmed the name fields at intake, so a record could
+    hold `"Lika "` and render a full name whose doubled space the browser collapses to one. The
+    clinic typed exactly what the screen showed, the comparison failed on a character that was
+    never visible, and the button stayed disabled with nothing to explain why.
+  */
+  it('accepts the visible name when the record carries a doubled space', async () => {
+    patients.findById.mockResolvedValue({
+      _id: PATIENT,
+      firstName: 'Lika ',
+      lastName: 'Beridze',
+    } as never);
+
+    const { status } = await deletePatientService(CLINIC, PATIENT, 'Lika Beridze');
 
     expect(status).toBe(200);
     expect(patients.deleteById).toHaveBeenCalledWith(PATIENT, CLINIC);

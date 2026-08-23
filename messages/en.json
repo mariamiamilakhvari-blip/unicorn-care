@@ -236,7 +236,11 @@
     "delete": "Delete",
     "deleteTitle": "Delete this patient?",
     "deleteWarning": "This permanently erases their records, care plans, reminders, photographs and ratings. It cannot be undone.",
-    "deleteConfirmLabel": "Type {name} to confirm"
+    "deleteConfirmLabel": "Type {name} to confirm",
+    "deleteError": {
+      "CONFIRMATION_MISMATCH": "The name does not match. Nothing was deleted.",
+      "GENERIC": "The patient could not be deleted. Nothing was removed — please try again."
+    }
   },
   "procedure": {
     "title": "Procedure",

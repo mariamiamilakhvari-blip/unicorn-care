@@ -64,7 +64,15 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
       validated.data.confirmationName
     );
     return NextResponse.json(data, { status });
-  } catch {
+  } catch (caught) {
+    /*
+      The one route here that logs before it answers. A cascade this wide can fail in a dozen
+      places, and a bare `INTERNAL_ERROR` told the clinic nothing and left nothing behind either —
+      the deletion simply did not happen, with no trace in the platform logs to say why. Only the
+      message: the patient's name and id are the very thing being erased, and neither belongs in a
+      log line that outlives the record.
+    */
+    console.error('[patients] delete failed', caught instanceof Error ? caught.message : caught);
     return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }

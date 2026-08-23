@@ -15,6 +15,7 @@ import { photoAccessEventRepository } from '@/features/recovery-log/repository/p
 import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { blobClient } from '@/shared/lib/blob-client';
 import { ServiceResult } from '@/shared/types/common';
+import { confirmationMatches } from '@/shared/utils/confirmation-name';
 
 /**
  * Erases one patient and everything the clinic holds about them.
@@ -27,6 +28,13 @@ import { ServiceResult } from '@/shared/types/common';
  * Every read here is scoped by `clinicId` as well as `patientId`, so a guessed id belonging to
  * another clinic deletes nothing and answers 404 — the same rule the rest of the feature follows,
  * and it matters more here than anywhere else in the codebase.
+ *
+ * Unconditional once the name is typed. An active plan, a checkup still scheduled, reminders still
+ * pending, a rating already published — none of them hold the record back, and none of them is
+ * checked. That is the point: a withdrawal takes effect when it is made, so a patient still mid-
+ * course is precisely the case that must work. There is no referential integrity in MongoDB to
+ * refuse this either; the ordering below is the only dependency that exists, and it is about what
+ * a crash leaves behind rather than about what is permitted.
  *
  * Irreversible, and it destroys clinical history: the plans, the adherence record, the
  * post-operative photographs. Guarded by a typed confirmation of the patient's own name, the same
@@ -41,22 +49,46 @@ export async function deletePatientService(
   if (!patient) return { data: { error: 'NOT_FOUND' }, status: 404 };
 
   /*
-    Compared on trimmed text so a trailing space is not a trap, but case must match — the same rule
-    account deletion uses. Checked after the patient is read, because the name being confirmed is
-    the one on the record rather than anything the caller supplied about it.
+    Compared on normalised whitespace so neither a trailing space nor a doubled one is a trap, but
+    case must match — the same rule account deletion uses. Trimming alone was not enough: nothing
+    trims the name fields at intake, so a stored `"tamar "` yields `"tamar  amilakhvari"`, which the
+    browser renders with one space and no caller can ever reproduce. Checked after the patient is
+    read, because the name being confirmed is the one on the record rather than anything the caller
+    supplied about it.
   */
-  const fullName = `${patient.firstName} ${patient.lastName}`.trim();
-  if (confirmationName.trim() !== fullName) {
+  const fullName = `${patient.firstName} ${patient.lastName}`;
+  if (!confirmationMatches(confirmationName, fullName)) {
     return { data: { error: 'CONFIRMATION_MISMATCH' }, status: 422 };
   }
+
+  /*
+    The plans are read before anything is removed, because they are what the occurrence sweep below
+    needs and they are gone by the end of this function. Every plan, not the active ones — a
+    finished course leaves rows behind exactly like a running one.
+  */
+  const plans = await carePlanRepository.findAllByPatient(patientId, clinicId);
 
   /*
     Occurrences first, and the patient row last, for the reason the clinic cascade gives: the
     dispatch sweep reads occurrences with no clinic scope, so clearing them up front stops a run
     picking up reminders for a patient who is halfway deleted. Leaving the patient row until the
     end keeps a crash midway recognisable as an incomplete deletion rather than orphaned rows.
+
+    Swept twice, by patient and then by each of their plans. The second pass is not redundant: an
+    occurrence carries `patientId` and `carePlanId` independently, so a row whose patient reference
+    is missing or stale — a legacy row, a plan whose patient was corrected — survives the first
+    filter and would then sit in the dispatch queue pointing at a patient who no longer exists.
+    `deleteMany` on an already-empty match costs a query and returns zero, which is the right price
+    for that not happening.
   */
-  const reminders = await reminderOccurrenceRepository.deleteAllByPatient(patientId, clinicId);
+  let reminders = await reminderOccurrenceRepository.deleteAllByPatient(patientId, clinicId);
+  for (const plan of plans) {
+    reminders += await reminderOccurrenceRepository.deleteAllByCarePlan(
+      plan._id.toString(),
+      clinicId
+    );
+  }
+
   const carePlans = await carePlanRepository.deleteAllByPatient(patientId, clinicId);
   const procedures = await procedureRepository.deleteAllByPatient(patientId, clinicId);
 

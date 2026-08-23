@@ -65,8 +65,14 @@ export const PATIENT_CONSENT_KEYS = Object.keys(
 ) as (keyof PatientConsentType)[];
 
 export const CreatePatientSchema = z.object({
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
+  /*
+    Trimmed on the way in, which is not cosmetic. An untrimmed `"tamar "` makes the full name
+    `"tamar  amilakhvari"` — a doubled space the browser renders as one, so the erasure dialog asks
+    for a name that cannot be typed back. `normalizeConfirmationName` forgives the records that
+    already carry it; this stops new ones being written.
+  */
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
   phone: z.string().max(40).default(''),
   email: z.union([z.literal(''), z.string().email()]).default(''),
   dateOfBirth: DateOfBirthSchema,
