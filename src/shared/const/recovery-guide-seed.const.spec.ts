@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { PROCEDURE_TYPES } from '@/shared/const/procedure.const';
-import { RECOVERY_GUIDE_SEED_EN } from '@/shared/const/recovery-guide-seed-en.const';
-import { RECOVERY_GUIDE_SEED_KA } from '@/shared/const/recovery-guide-seed-ka.const';
 import {
   SEED_FAMILIES,
   SEED_PROCEDURE_KEYS,
   seedFamilyFor,
+  SeedGuideBody,
 } from '@/shared/const/recovery-guide-seed.const';
+import { RECOVERY_GUIDE_TEMPLATES } from '@/shared/const/recovery-guide-template.const';
 import { WARNING_SEVERITIES } from '@/shared/const/recovery.const';
 
 describe('every procedure type is covered', () => {
@@ -36,33 +36,33 @@ describe('every procedure type is covered', () => {
  */
 describe('the Georgian and English drafts stay parallel', () => {
   it.each(SEED_FAMILIES)('%s has the same number of items in both languages', family => {
-    expect(RECOVERY_GUIDE_SEED_KA[family].expected).toHaveLength(
-      RECOVERY_GUIDE_SEED_EN[family].expected.length
+    expect(RECOVERY_GUIDE_TEMPLATES.ka[family].expected).toHaveLength(
+      RECOVERY_GUIDE_TEMPLATES.en[family].expected.length
     );
-    expect(RECOVERY_GUIDE_SEED_KA[family].warning).toHaveLength(
-      RECOVERY_GUIDE_SEED_EN[family].warning.length
+    expect(RECOVERY_GUIDE_TEMPLATES.ka[family].warning).toHaveLength(
+      RECOVERY_GUIDE_TEMPLATES.en[family].warning.length
     );
   });
 
   it.each(SEED_FAMILIES)('%s carries the same severities in the same order', family => {
-    const ka = RECOVERY_GUIDE_SEED_KA[family].warning.map(item => item.severity);
-    const en = RECOVERY_GUIDE_SEED_EN[family].warning.map(item => item.severity);
+    const ka = RECOVERY_GUIDE_TEMPLATES.ka[family].warning.map(item => item.severity);
+    const en = RECOVERY_GUIDE_TEMPLATES.en[family].warning.map(item => item.severity);
 
     expect(ka).toEqual(en);
   });
 
   it.each(SEED_FAMILIES)('%s carries the same day windows', family => {
-    const days = (body: (typeof RECOVERY_GUIDE_SEED_KA)[typeof family]) => [
+    const days = (body: SeedGuideBody) => [
       ...body.expected.map(item => [item.fromDay, item.toDay]),
       ...body.warning.map(item => [item.fromDay, item.toDay]),
     ];
 
-    expect(days(RECOVERY_GUIDE_SEED_KA[family])).toEqual(days(RECOVERY_GUIDE_SEED_EN[family]));
+    expect(days(RECOVERY_GUIDE_TEMPLATES.ka[family])).toEqual(days(RECOVERY_GUIDE_TEMPLATES.en[family]));
   });
 
   it.each(SEED_FAMILIES)('%s is written in Georgian, not left as English', family => {
     // Guards against a copy-paste that leaves the English text sitting in the Georgian file.
-    const titles = RECOVERY_GUIDE_SEED_KA[family].expected.map(item => item.title).join(' ');
+    const titles = RECOVERY_GUIDE_TEMPLATES.ka[family].expected.map(item => item.title).join(' ');
 
     expect(titles).toMatch(/[Ⴀ-ჿ]/);
   });
@@ -70,8 +70,8 @@ describe('the Georgian and English drafts stay parallel', () => {
 
 describe('the drafts are well formed', () => {
   const bodies = SEED_FAMILIES.flatMap(family => [
-    RECOVERY_GUIDE_SEED_KA[family],
-    RECOVERY_GUIDE_SEED_EN[family],
+    RECOVERY_GUIDE_TEMPLATES.ka[family],
+    RECOVERY_GUIDE_TEMPLATES.en[family],
   ]);
 
   it('has content in every family', () => {
@@ -109,7 +109,7 @@ describe('the drafts are well formed', () => {
    * the procedure was. A baseline with no `emergency` item would read as reassurance.
    */
   it.each(SEED_FAMILIES)('%s names at least one emergency', family => {
-    for (const body of [RECOVERY_GUIDE_SEED_KA[family], RECOVERY_GUIDE_SEED_EN[family]]) {
+    for (const body of [RECOVERY_GUIDE_TEMPLATES.ka[family], RECOVERY_GUIDE_TEMPLATES.en[family]]) {
       expect(body.warning.some(item => item.severity === 'emergency')).toBe(true);
     }
   });

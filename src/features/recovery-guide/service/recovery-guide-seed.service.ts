@@ -1,26 +1,17 @@
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
 import { LOCALE_OPTIONS } from '@/shared/const/locale.const';
-import { RECOVERY_GUIDE_SEED_EN } from '@/shared/const/recovery-guide-seed-en.const';
-import { RECOVERY_GUIDE_SEED_KA } from '@/shared/const/recovery-guide-seed-ka.const';
-import {
-  SEED_PROCEDURE_KEYS,
-  seedFamilyFor,
-  SeedGuideBody,
-} from '@/shared/const/recovery-guide-seed.const';
+import { SEED_PROCEDURE_KEYS } from '@/shared/const/recovery-guide-seed.const';
+import { recoveryGuideTemplate } from '@/shared/const/recovery-guide-template.const';
 import { ServiceResult } from '@/shared/types/common';
-import { AppLocale } from '@/shared/types/roles';
 
 export type SeedRecoveryGuidesResult = {
   /** Slots that were empty and now hold a draft. */
   inserted: number;
   /** Slots that already existed and were left untouched, edits and all. */
   skipped: number;
+  /** Existing platform defaults whose text was rewritten from the current templates. */
+  refreshed: number;
 };
-
-function bodyFor(locale: AppLocale, manipulationType: string): SeedGuideBody {
-  const family = seedFamilyFor(manipulationType);
-  return locale === 'ka' ? RECOVERY_GUIDE_SEED_KA[family] : RECOVERY_GUIDE_SEED_EN[family];
-}
 
 /**
  * Fills every empty platform-default slot with a conservative draft (PRD 06 §2).
@@ -35,20 +26,32 @@ function bodyFor(locale: AppLocale, manipulationType: string): SeedGuideBody {
  * qualified publishes it. An unpublished default is still better than an empty table: it gives
  * the reviewer something to correct rather than a blank editor to fill from scratch.
  *
- * Idempotent, and deliberately unable to overwrite. Re-running only fills gaps — a slot that
- * already exists is skipped whether it holds an untouched draft or a rewritten, published guide.
+ * Idempotent, and by default unable to overwrite. Re-running only fills gaps — a slot that already
+ * exists is skipped.
+ *
+ * `refresh` is the exception, and it exists because the templates themselves changed. Defaults
+ * seeded before the procedure-specific drafts were written hold the generic surgical text, so
+ * every rhinoplasty patient at a clinic that never wrote its own guide was still reading "swelling
+ * around the treated area" — the mapping was right and the stored rows were stale. Refreshing
+ * rewrites platform content with platform content and cannot reach a clinic's own guide, which
+ * lives under its own `clinicId`. Publication state is left alone: whether a clinician has read a
+ * draft is a fact about a person, not about the text, and a refresh does not un-read it.
+ *
+ * It is off by default all the same. The caller says so explicitly, so nobody rewrites the
+ * platform's clinical reference material by running a seed out of habit.
  */
-export async function seedDefaultRecoveryGuidesService(): Promise<
-  ServiceResult<SeedRecoveryGuidesResult>
-  > {
+export async function seedDefaultRecoveryGuidesService(
+  options: { refresh?: boolean } = {}
+): Promise<ServiceResult<SeedRecoveryGuidesResult>> {
   let inserted = 0;
   let skipped = 0;
+  let refreshed = 0;
 
   for (const manipulationType of SEED_PROCEDURE_KEYS) {
     for (const { value: locale } of LOCALE_OPTIONS) {
-      const body = bodyFor(locale, manipulationType);
+      const body = recoveryGuideTemplate(locale, manipulationType);
 
-      const created = await recoveryGuideRepository.upsertDefault({
+      const payload = {
         clinicId: null,
         manipulationType,
         locale,
@@ -58,12 +61,23 @@ export async function seedDefaultRecoveryGuidesService(): Promise<
         // would attribute clinical content to someone who did not write it.
         updatedByUserId: null,
         isPublished: false,
-      });
+      };
 
-      if (created) inserted += 1;
-      else skipped += 1;
+      const created = await recoveryGuideRepository.upsertDefault(payload);
+
+      if (created) {
+        inserted += 1;
+        continue;
+      }
+
+      if (options.refresh && (await recoveryGuideRepository.refreshDefault(payload))) {
+        refreshed += 1;
+        continue;
+      }
+
+      skipped += 1;
     }
   }
 
-  return { data: { inserted, skipped }, status: 200 };
+  return { data: { inserted, skipped, refreshed }, status: 200 };
 }

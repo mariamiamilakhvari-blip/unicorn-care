@@ -1,4 +1,4 @@
-import { SeedFamily, SeedGuideBody } from '@/shared/const/recovery-guide-seed.const';
+import { SeedBaselineFamily, SeedGuideBody } from '@/shared/const/recovery-guide-seed.const';
 
 /**
  * Platform-default drafts, Georgian. Seeded unpublished — a clinician reviews and publishes.
@@ -199,7 +199,7 @@ const NON_SURGICAL: SeedGuideBody = {
   ],
 };
 
-export const RECOVERY_GUIDE_SEED_KA: Record<SeedFamily, SeedGuideBody> = {
+export const RECOVERY_GUIDE_SEED_KA: Record<SeedBaselineFamily, SeedGuideBody> = {
   surgical: SURGICAL,
   nonSurgical: NON_SURGICAL,
 };

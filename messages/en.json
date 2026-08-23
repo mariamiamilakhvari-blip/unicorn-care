@@ -409,6 +409,7 @@
   "recoveryGuide": {
     "title": "Complications and what is normal",
     "authoringHelp": "Content you write here is shown to your patients in their portal. Nothing is generated automatically.",
+    "resetToTemplate": "Reset to template",
     "emergencyBanner": "This is general guidance from your clinic, not a diagnosis. Contact your clinic with any concern. If something is severe or sudden, seek emergency care immediately.",
     "expectedHeading": "What is expected",
     "warningHeading": "When to contact the clinic",
@@ -432,8 +433,7 @@
     },
     "procedureType": "Procedure type",
     "itemTitle": "Title",
-    "fromDay": "From day",
-    "toDay": "To day",
+    "durationDays": "Number of days",
     "addExpected": "Add expected sign",
     "addWarning": "Add warning sign",
     "yourGuides": "Your guides",

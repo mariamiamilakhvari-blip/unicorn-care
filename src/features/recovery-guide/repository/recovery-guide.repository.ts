@@ -92,6 +92,25 @@ export const recoveryGuideRepository = {
     return result.upsertedCount > 0;
   },
 
+  /**
+   * Rewrites the content of a platform default that already exists, leaving its publication state
+   * alone. Matches on a null `clinicId`, so it can only ever touch platform rows.
+   *
+   * Separate from `upsertDefault` and never called by it, because the two protect different
+   * things. That one must not overwrite; this one exists precisely to, and only for content the
+   * platform owns: a clinic editing a default does not edit the default, it creates its own row
+   * under its own `clinicId` — see `upsertGuideService`. `isPublished` is deliberately not in the
+   * `$set`: whether a draft has been reviewed is a fact about a human, not about the text.
+   */
+  async refreshDefault(data: RecoveryGuideInput): Promise<boolean> {
+    await mongo.connect();
+    const result = await RecoveryGuideModel.updateOne(
+      { clinicId: null, manipulationType: data.manipulationType, locale: data.locale },
+      { $set: { expected: data.expected, warning: data.warning } }
+    );
+    return result.matchedCount > 0;
+  },
+
   async updateById(
     id: string,
     clinicId: string,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/recovery-guide/repository/recovery-guide.repository', () => ({
-  recoveryGuideRepository: { upsertDefault: vi.fn() },
+  recoveryGuideRepository: { upsertDefault: vi.fn(), refreshDefault: vi.fn() },
 }));
 
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
@@ -18,13 +18,14 @@ describe('seedDefaultRecoveryGuidesService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     guides.upsertDefault.mockResolvedValue(true);
+    guides.refreshDefault.mockResolvedValue(true);
   });
 
   it('writes one draft per procedure type per language', async () => {
     const { data } = await seedDefaultRecoveryGuidesService();
 
     expect(guides.upsertDefault).toHaveBeenCalledTimes(SLOTS);
-    expect(data).toEqual({ inserted: SLOTS, skipped: 0 });
+    expect(data).toEqual({ inserted: SLOTS, skipped: 0, refreshed: 0 });
   });
 
   it('covers both languages for every procedure', async () => {
@@ -92,7 +93,7 @@ describe('seedDefaultRecoveryGuidesService', () => {
 
       const { data } = await seedDefaultRecoveryGuidesService();
 
-      expect(data).toEqual({ inserted: 0, skipped: SLOTS });
+      expect(data).toEqual({ inserted: 0, skipped: SLOTS, refreshed: 0 });
     });
 
     it('fills only the gaps when some slots exist', async () => {
@@ -102,11 +103,60 @@ describe('seedDefaultRecoveryGuidesService', () => {
 
       const { data } = await seedDefaultRecoveryGuidesService();
 
-      expect(data).toEqual({ inserted: 1, skipped: SLOTS - 1 });
+      expect(data).toEqual({ inserted: 1, skipped: SLOTS - 1, refreshed: 0 });
     });
   });
 
   it('answers 200', async () => {
     expect((await seedDefaultRecoveryGuidesService()).status).toBe(200);
+  });
+});
+
+/**
+ * Templates changed after the defaults were seeded, so the stored rows went stale: a rhinoplasty
+ * patient at a clinic that never wrote its own guide kept reading the generic surgical text. The
+ * refresh is how the new content reaches them — and it is opt-in, because rewriting the platform's
+ * clinical reference material should never be a side effect of running a seed out of habit.
+ */
+describe('seedDefaultRecoveryGuidesService — refreshing stale defaults', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    guides.upsertDefault.mockResolvedValue(false);
+    guides.refreshDefault.mockResolvedValue(true);
+  });
+
+  it('leaves existing defaults alone unless asked', async () => {
+    const { data } = await seedDefaultRecoveryGuidesService();
+
+    expect(guides.refreshDefault).not.toHaveBeenCalled();
+    expect(data).toEqual({ inserted: 0, skipped: SLOTS, refreshed: 0 });
+  });
+
+  it('rewrites every existing default when asked', async () => {
+    const { data } = await seedDefaultRecoveryGuidesService({ refresh: true });
+
+    expect(guides.refreshDefault).toHaveBeenCalledTimes(SLOTS);
+    expect(data).toEqual({ inserted: 0, skipped: 0, refreshed: SLOTS });
+  });
+
+  /* A slot that was empty is an insert, not a refresh — it was never stale. */
+  it('does not refresh a slot it has just inserted', async () => {
+    guides.upsertDefault.mockResolvedValue(true);
+
+    const { data } = await seedDefaultRecoveryGuidesService({ refresh: true });
+
+    expect(guides.refreshDefault).not.toHaveBeenCalled();
+    expect(data).toEqual({ inserted: SLOTS, skipped: 0, refreshed: 0 });
+  });
+
+  /* The refreshed text is the procedure-specific draft, not the baseline it replaces. */
+  it('writes the procedure-specific draft for a mapped procedure', async () => {
+    await seedDefaultRecoveryGuidesService({ refresh: true });
+
+    const row = guides.refreshDefault.mock.calls
+      .map(call => call[0])
+      .find(candidate => candidate.manipulationType === 'rhinoplasty' && candidate.locale === 'en');
+
+    expect(row?.expected.map(item => item.title).join(' | ')).toContain('nasal congestion');
   });
 });

@@ -6,30 +6,33 @@ import { SYMPTOM_REPORT_STATUSES } from '@/shared/const/recovery.const';
 
 const MANIPULATION_KEYS: readonly string[] = PROCEDURE_TYPES.map(type => type.key);
 
-const ExpectedItemSchema = z
-  .object({
-    title: z.string().min(1).max(160),
-    description: z.string().max(1000).default(''),
-    fromDay: z.number().int().min(0).max(365),
-    toDay: z.number().int().min(0).max(365),
-  })
-  .refine(item => item.toDay >= item.fromDay, {
-    message: 'END_DAY_BEFORE_START_DAY',
-    path: ['toDay'],
-  });
+/**
+ * How many days from the operation this item applies for.
+ *
+ * One number where the editor used to ask for two. A clinic writing "what is normal" is answering
+ * "for how long", and the start of the window was almost always day 0 anyway — the second input
+ * mostly collected a zero and occasionally collected a mistake.
+ *
+ * The stored document still holds a `fromDay`/`toDay` pair, and deliberately so: the daily email
+ * filters guide items by whether today falls inside the window, the portal prints the range, and
+ * expected-sign reminders are scheduled off the start day. `upsertGuideService` maps this number
+ * onto `{ fromDay: 0, toDay: durationDays }`, so those readers are untouched and rows written
+ * before this change keep the windows they have until somebody edits them.
+ */
+const DurationDaysSchema = z.number().int().min(0).max(365);
 
-const WarningItemSchema = z
-  .object({
-    title: z.string().min(1).max(160),
-    description: z.string().max(1000).default(''),
-    severity: z.enum(WARNING_SEVERITIES),
-    fromDay: z.number().int().min(0).max(365).default(0),
-    toDay: z.number().int().min(0).max(365).default(0),
-  })
-  .refine(item => item.toDay >= item.fromDay, {
-    message: 'END_DAY_BEFORE_START_DAY',
-    path: ['toDay'],
-  });
+const ExpectedItemSchema = z.object({
+  title: z.string().min(1).max(160),
+  description: z.string().max(1000).default(''),
+  durationDays: DurationDaysSchema,
+});
+
+const WarningItemSchema = z.object({
+  title: z.string().min(1).max(160),
+  description: z.string().max(1000).default(''),
+  severity: z.enum(WARNING_SEVERITIES),
+  durationDays: DurationDaysSchema.default(0),
+});
 
 /** `clinicId` is never in the body — it comes from `clinicGuard`, like every clinical write. */
 export const UpsertRecoveryGuideSchema = z.object({

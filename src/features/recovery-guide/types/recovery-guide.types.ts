@@ -13,6 +13,14 @@ export type WarningItemView = {
   title: string;
   description: string;
   severity: WarningSeverity;
+  /*
+    The window this sign is worth watching for, in days since the operation. The schema has always
+    stored it and the editor has always had inputs for it, but the view dropped it — so every load
+    handed the form `undefined` and the next save wrote the day range back as 0–0. A guide with
+    real windows silently flattened itself the first time anybody opened and saved it.
+  */
+  fromDay: number;
+  toDay: number;
 };
 
 export type RecoveryGuideView = {

@@ -30,7 +30,7 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => append({ title: '', description: '', fromDay: 0, toDay: 7 })}
+          onClick={() => append({ title: '', description: '', durationDays: 7 })}
         >
           <Plus className="size-4" aria-hidden />
           {t('addExpected')}
@@ -40,13 +40,13 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
       {fields.map((row, index) => (
         <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-3">
           {/* Twelfths, and the same day-column width as the warning rows below: the two lists sit
-              one above the other, so their day fields should line up rather than nearly line up. */}
+              one above the other, so their duration fields should line up rather than nearly. */}
           <div className="grid gap-3 sm:grid-cols-12">
             <FormField
               control={control}
               name={`expected.${index}.title`}
               render={({ field }) => (
-                <FormItem className="min-w-0 sm:col-span-8">
+                <FormItem className="min-w-0 sm:col-span-9">
                   <FormLabel>{t('itemTitle')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -57,33 +57,16 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
             />
             <FormField
               control={control}
-              name={`expected.${index}.fromDay`}
+              name={`expected.${index}.durationDays`}
               render={({ field }) => (
-                <FormItem className="min-w-0 sm:col-span-2">
-                  <FormLabel>{t('fromDay')}</FormLabel>
+                <FormItem className="min-w-0 sm:col-span-3">
+                  <FormLabel>{t('durationDays')}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       min={0}
-                      value={field.value}
-                      onChange={event => field.onChange(Number(event.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name={`expected.${index}.toDay`}
-              render={({ field }) => (
-                <FormItem className="min-w-0 sm:col-span-2">
-                  <FormLabel>{t('toDay')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={field.value}
+                      max={365}
+                      value={field.value ?? 0}
                       onChange={event => field.onChange(Number(event.target.value))}
                     />
                   </FormControl>

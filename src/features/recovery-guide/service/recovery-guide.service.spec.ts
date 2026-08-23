@@ -4,11 +4,17 @@ vi.mock('@/features/recovery-guide/repository/recovery-guide.repository', () => 
   recoveryGuideRepository: {
     findForClinic: vi.fn(),
     findDefault: vi.fn(),
+    findById: vi.fn(),
+    create: vi.fn(),
+    updateById: vi.fn(),
   },
 }));
 
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
-import { resolveGuideService } from '@/features/recovery-guide/service/recovery-guide.service';
+import {
+  resolveGuideService,
+  upsertGuideService,
+} from '@/features/recovery-guide/service/recovery-guide.service';
 import { RecoveryGuideView } from '@/features/recovery-guide/types/recovery-guide.types';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -146,5 +152,82 @@ describe('resolveGuideService', () => {
 
     expect(result.status).toBe(404);
     expect(result.data).toEqual({ error: 'NOT_TRANSLATED' });
+  });
+});
+
+/**
+ * The editor collects one number per item and the document keeps the pair it always had.
+ *
+ * Everything on the patient side works in windows: the daily email asks whether today falls inside
+ * one, the portal prints the range, and an expected sign's reminder fires on its start day. So the
+ * duration is widened back into a window here rather than those readers being taught a new shape.
+ */
+describe('upsertGuideService — a duration becomes a stored window', () => {
+  const USER_ID = '507f1f77bcf86cd799439099';
+
+  const input = {
+    manipulationType: TYPE,
+    locale: 'ka' as const,
+    expected: [{ title: 'Swelling', description: 'Settles', durationDays: 21 }],
+    warning: [
+      { title: 'Fever', description: 'Call us', severity: 'urgent' as const, durationDays: 60 },
+    ],
+    isPublished: true,
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    repo.findForClinic.mockResolvedValue(null);
+    repo.create.mockResolvedValue('new-id');
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'new-id' },
+      manipulationType: TYPE,
+      locale: 'ka',
+      expected: [{ title: 'Swelling', description: 'Settles', fromDay: 0, toDay: 21 }],
+      warning: [
+        { title: 'Fever', description: 'Call us', severity: 'urgent', fromDay: 0, toDay: 60 },
+      ],
+      isPublished: true,
+    } as never);
+  });
+
+  it('stores an expected item as day 0 to its duration', async () => {
+    await upsertGuideService(CLINIC_ID, USER_ID, input);
+
+    const written = repo.create.mock.calls[0][0];
+    expect(written.expected[0]).toMatchObject({ fromDay: 0, toDay: 21 });
+  });
+
+  it('stores a warning the same way, severity intact', async () => {
+    await upsertGuideService(CLINIC_ID, USER_ID, input);
+
+    const written = repo.create.mock.calls[0][0];
+    expect(written.warning[0]).toMatchObject({ fromDay: 0, toDay: 60, severity: 'urgent' });
+  });
+
+  /* `durationDays` is an editor concept. Letting it reach the document would store a dead field. */
+  it('never writes durationDays to the document', async () => {
+    await upsertGuideService(CLINIC_ID, USER_ID, input);
+
+    const written = repo.create.mock.calls[0][0];
+    expect(written.expected[0]).not.toHaveProperty('durationDays');
+    expect(written.warning[0]).not.toHaveProperty('durationDays');
+  });
+
+  it('reads the window back out as a duration', async () => {
+    const { data } = await upsertGuideService(CLINIC_ID, USER_ID, input);
+    const view = data as RecoveryGuideView;
+
+    expect(view.expected[0]).toMatchObject({ fromDay: 0, toDay: 21 });
+  });
+
+  it('widens a zero duration into a same-day window rather than dropping it', async () => {
+    await upsertGuideService(CLINIC_ID, USER_ID, {
+      ...input,
+      warning: [{ title: 'Now', description: '', severity: 'emergency' as const, durationDays: 0 }],
+    });
+
+    const written = repo.create.mock.calls[0][0];
+    expect(written.warning[0]).toMatchObject({ fromDay: 0, toDay: 0 });
   });
 });

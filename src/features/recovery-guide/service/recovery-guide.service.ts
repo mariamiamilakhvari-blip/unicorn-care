@@ -22,6 +22,8 @@ function toView(guide: RecoveryGuideDocument, isDefault: boolean): RecoveryGuide
       title: item.title,
       description: item.description ?? '',
       severity: item.severity,
+      fromDay: item.fromDay ?? 0,
+      toDay: item.toDay ?? 0,
     })),
     isPublished: guide.isPublished,
     isDefault,
@@ -41,6 +43,14 @@ export async function listGuidesService(
  * A clinic's own guide always overrides the platform default; the default is never mutated, so a
  * clinic editing its copy cannot change what other clinics show their patients.
  */
+/** `{ durationDays: 21 }` becomes `{ fromDay: 0, toDay: 21 }` — the shape the document holds. */
+function toStoredWindow<T extends { durationDays: number }>(
+  item: T
+): Omit<T, 'durationDays'> & { fromDay: number; toDay: number } {
+  const { durationDays, ...rest } = item;
+  return { ...rest, fromDay: 0, toDay: durationDays };
+}
+
 export async function upsertGuideService(
   clinicId: string,
   userId: string,
@@ -54,6 +64,15 @@ export async function upsertGuideService(
 
   const payload = {
     ...input,
+    /*
+      The editor collects one number per item; the document keeps the pair it always had. Every
+      patient-side reader works in windows — the daily email asks whether today falls inside one,
+      the portal prints the range, and an expected sign's reminder fires on its start day — so
+      collapsing the storage would have meant rewriting all of them to answer a question they do
+      not ask. A duration is the window starting on the day of the operation.
+    */
+    expected: input.expected.map(toStoredWindow),
+    warning: input.warning.map(toStoredWindow),
     clinicId: new Types.ObjectId(clinicId),
     updatedByUserId: new Types.ObjectId(userId),
   };

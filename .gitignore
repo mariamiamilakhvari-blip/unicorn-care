@@ -43,3 +43,4 @@ next-env.d.ts
 
 # Recovery artefact from prune-to-single-clinic.mjs. Contains patient health data in the clear.
 prune-backup-*.json
+guide-backup-*.json
