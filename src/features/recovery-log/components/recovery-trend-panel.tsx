@@ -6,7 +6,8 @@ import { RecoveryPhotoStrip } from '@/features/recovery-log/components/recovery-
 import { RecoverySparkline } from '@/features/recovery-log/components/recovery-sparkline';
 import { useRecoveryTrend } from '@/features/recovery-log/hooks/use-recovery-trend';
 import { RecoveryLogView } from '@/features/recovery-log/types/recovery-log.types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
+import { SectionTitle } from '@/shared/components/ui/section-title';
 
 /**
  * The clinic's view of a patient's own account of their recovery.
@@ -25,7 +26,7 @@ export function RecoveryTrendPanel({ patientId }: { patientId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{t('clinicTitle')}</CardTitle>
+        <SectionTitle>{t('clinicTitle')}</SectionTitle>
         <p className="text-sm text-muted-foreground">{t('clinicHelp')}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

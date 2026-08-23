@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
+import { SubsectionTitle } from '@/shared/components/ui/section-title';
 import { Textarea } from '@/shared/components/ui/textarea';
 
 /** "What is expected" — normal recovery signs, bounded to a day range after the procedure. */
@@ -25,7 +26,7 @@ export function ExpectedFields({ control }: { control: Control<RecoveryGuideForm
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-heading text-base font-semibold">{t('expectedHeading')}</h3>
+        <SubsectionTitle>{t('expectedHeading')}</SubsectionTitle>
         <Button
           type="button"
           size="sm"

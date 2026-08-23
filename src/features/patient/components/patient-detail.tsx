@@ -13,7 +13,8 @@ import { useProcedures } from '@/features/procedure/hooks/use-procedures';
 import { CreateProcedureType } from '@/features/procedure/validations/procedure.validation';
 import { RecoveryTrendPanel } from '@/features/recovery-log/components/recovery-trend-panel';
 import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
+import { SectionTitle } from '@/shared/components/ui/section-title';
 import { AppLocale } from '@/shared/types/roles';
 
 type PatientDetailProps = {
@@ -107,7 +108,7 @@ export function PatientDetail({
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">{t('plural')}</CardTitle>
+          <SectionTitle>{t('plural')}</SectionTitle>
           <Button size="sm" variant="outline" onClick={() => setIsFormOpen(open => !open)}>
             {isFormOpen ? tCommon('cancel') : t('createProcedure')}
           </Button>
@@ -164,7 +165,7 @@ export function PatientDetail({
       {selectedId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{tCarePlan('title')}</CardTitle>
+            <SectionTitle>{tCarePlan('title')}</SectionTitle>
           </CardHeader>
           <CardContent>
             <CarePlanBuilder

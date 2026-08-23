@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
+import { SectionTitle } from '@/shared/components/ui/section-title';
 
 export function CheckupFields({ control }: { control: Control<CarePlanFormType> }) {
   const t = useTranslations('carePlan');
@@ -22,7 +23,7 @@ export function CheckupFields({ control }: { control: Control<CarePlanFormType> 
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg font-semibold">{t('checkups')}</h2>
+        <SectionTitle>{t('checkups')}</SectionTitle>
         <Button type="button" variant="outline" size="sm" onClick={() => append(EMPTY_CHECKUP)}>
           <Plus className="size-4" aria-hidden />
           {t('addCheckup')}

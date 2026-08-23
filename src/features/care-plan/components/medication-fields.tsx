@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
+import { SectionTitle } from '@/shared/components/ui/section-title';
 import {
   Select,
   SelectContent,
@@ -37,7 +38,7 @@ export function MedicationFields({ control }: { control: Control<CarePlanFormTyp
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg font-semibold">{t('medications')}</h2>
+        <SectionTitle>{t('medications')}</SectionTitle>
         <Button type="button" variant="outline" size="sm" onClick={() => append(EMPTY_MEDICATION)}>
           <Plus className="size-4" aria-hidden />
           {t('addMedication')}

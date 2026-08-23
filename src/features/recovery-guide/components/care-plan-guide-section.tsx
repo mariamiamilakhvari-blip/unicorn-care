@@ -16,6 +16,7 @@ import {
 } from '@/features/recovery-guide/validations/recovery-guide.validation';
 import { Button } from '@/shared/components/ui/button';
 import { Form } from '@/shared/components/ui/form';
+import { SectionTitle } from '@/shared/components/ui/section-title';
 import { Separator } from '@/shared/components/ui/separator';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -143,7 +144,7 @@ export function CarePlanGuideSection({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(saveAll)} className="flex flex-col gap-5">
-        <h2 className="font-heading text-lg font-semibold">{t('title')}</h2>
+        <SectionTitle>{t('title')}</SectionTitle>
 
         <ExpectedFields control={form.control} />
         <Separator />
