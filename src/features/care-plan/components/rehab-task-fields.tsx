@@ -89,7 +89,7 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
               name={`rehabTasks.${index}.durationMinutes`}
               render={({ field: input }) => (
                 <FormItem>
-                  <FormLabel>{t('duration')}</FormLabel>
+                  <FormLabel>{t('sessionLength')}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -99,6 +99,13 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                       onChange={event => input.onChange(Number(event.target.value))}
                     />
                   </FormControl>
+                  {/*
+                    Named for what it is. Labelled "Duration" it sat directly above a start and an
+                    end date and read as a third way of saying the same thing, which is how it came
+                    to look like a redundant field worth deleting — it is neither: it is how long
+                    one session lasts, and it is the `· 10 წთ` the patient reads on the reminder.
+                  */}
+                  <FormDescription>{t('sessionLengthHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
