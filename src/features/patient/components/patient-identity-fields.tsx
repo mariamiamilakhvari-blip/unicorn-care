@@ -2,7 +2,6 @@
 import { useTranslations } from 'next-intl';
 import { Control } from 'react-hook-form';
 
-import { PatientTimezoneField } from '@/features/patient/components/patient-timezone-field';
 import { CreatePatientFormType } from '@/features/patient/validations/patient.validation';
 import {
   FormControl,
@@ -30,11 +29,9 @@ const SEX_KEYS = ['female', 'male', 'other'] as const;
  */
 type PatientIdentityFieldsProps = {
   control: Control<CreatePatientFormType>;
-  /** The zone a patient inherits until they go somewhere else. */
-  clinicTimezone: string;
 };
 
-export function PatientIdentityFields({ control, clinicTimezone }: PatientIdentityFieldsProps) {
+export function PatientIdentityFields({ control }: PatientIdentityFieldsProps) {
   const t = useTranslations('patient');
   const tCommon = useTranslations('common');
 
@@ -184,11 +181,6 @@ export function PatientIdentityFields({ control, clinicTimezone }: PatientIdenti
             <FormMessage />
           </FormItem>
         )}
-      />
-      <PatientTimezoneField
-        control={control}
-        name="timezone"
-        clinicTimezone={clinicTimezone}
       />
     </div>
   );

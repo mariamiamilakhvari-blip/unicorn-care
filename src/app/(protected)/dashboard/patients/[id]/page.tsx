@@ -29,7 +29,6 @@ export default async function PatientDetailPage({ params }: PageProps) {
       patientId={patient.id}
       patientName={`${patient.firstName} ${patient.lastName}`}
       patientLocale={patient.locale}
-      patientTimezone={patient.timezone}
       clinicTimezone={clinicTimezone || DEFAULT_TIMEZONE}
     />
   );

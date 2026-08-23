@@ -1,25 +1,6 @@
 import { z } from 'zod';
 
-import { isValidTimeZone } from '@/shared/const/timezone.const';
 import { requiredConsent } from '@/shared/utils/consent';
-
-/**
- * Where the patient is recovering, as the clinic knows it at intake.
- *
- * Empty is a real answer and the default one: it means "wherever the clinic is", which is where
- * recovery starts. `effectiveTimeZone` resolves the blank at read time, so a clinic that later
- * corrects its own zone carries its inheriting patients with it rather than stranding them on a
- * value copied once.
- *
- * Checked against `Intl` rather than against the picker's list. The list is a convenience, the
- * IANA database is the rule, and a zone `Intl` cannot resolve throws at format time — inside the
- * generator, the portal read and every email at once.
- */
-const PatientTimeZoneField = z
-  .string()
-  .max(64)
-  .refine(value => value === '' || isValidTimeZone(value), { message: 'INVALID_TIMEZONE' })
-  .default('');
 
 /**
  * `dateOfBirth` arrives as an ISO string over JSON, or explicitly as `null`. The `null` branch
@@ -31,6 +12,12 @@ const DateOfBirthSchema = z.union([z.null(), z.coerce.date()]).default(null);
  * Patient fields (PRD 01 §3). `clinicId` is deliberately absent — it is always taken from the
  * session via `clinicGuard`, never from the request body (PRD 02 §"Tenancy guard").
  * There is no archive flag: `DELETE /api/patients/[id]` erases the record outright.
+ *
+ * `timezone` is absent for the same reason `clinicId` is: it is not the clinic's to state. A new
+ * patient is given the clinic's own zone by `createPatientService`, and from then on the only
+ * thing that changes it is the patient's device reporting where they actually are — see
+ * `syncPatientTimezoneService`. Accepting it here would put a hand-typed zone in front of a
+ * measured one, and being wrong about it moves every reminder in the plan by hours.
  */
 /**
  * What the clinic attests to when it enters a patient.
@@ -80,7 +67,6 @@ export const CreatePatientSchema = z.object({
   locale: z.enum(['ka', 'en']).default('ka'),
   allergies: z.array(z.string().min(1).max(120)).max(50).default([]),
   notes: z.string().max(2000).default(''),
-  timezone: PatientTimeZoneField,
   consents: PatientConsentSchema,
 });
 
@@ -101,21 +87,6 @@ export type CreatePatientFormType = z.input<typeof CreatePatientSchema>;
 export const UpdatePatientSchema = CreatePatientSchema.omit({ consents: true }).partial();
 
 export type UpdatePatientType = z.infer<typeof UpdatePatientSchema>;
-
-/**
- * The timezone card's own form: one field, the same rule the full patient schema applies to it.
- *
- * Separate from `UpdatePatientSchema` because that one is a partial of every patient field, and a
- * resolver built on it would let the card submit a payload it has no business carrying.
- */
-export const PatientTimezoneEditSchema = z.object({
-  timezone: PatientTimeZoneField,
-});
-
-export type PatientTimezoneEditType = z.infer<typeof PatientTimezoneEditSchema>;
-
-/** The pre-validation half, for the same reason `CreatePatientFormType` exists: `.default('')`. */
-export type PatientTimezoneEditFormType = z.input<typeof PatientTimezoneEditSchema>;
 
 /**
  * The typed confirmation guarding patient erasure — checked against the patient's own name.

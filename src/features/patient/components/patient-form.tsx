@@ -25,11 +25,9 @@ import { Textarea } from '@/shared/components/ui/textarea';
 type PatientFormProps = {
   onSubmit: (values: CreatePatientType) => Promise<void>;
   isPending: boolean;
-  /** Shown as the default "follow the clinic" choice on the timezone picker. */
-  clinicTimezone: string;
 };
 
-export function PatientForm({ onSubmit, isPending, clinicTimezone }: PatientFormProps) {
+export function PatientForm({ onSubmit, isPending }: PatientFormProps) {
   const t = useTranslations('patient');
   const tConsent = useTranslations('consent');
 
@@ -45,8 +43,6 @@ export function PatientForm({ onSubmit, isPending, clinicTimezone }: PatientForm
       locale: 'ka',
       allergies: [],
       notes: '',
-      // Blank, not the clinic's zone copied in: inheriting is a state the record has to keep.
-      timezone: '',
       consents: {
         personalData: false,
         healthData: false,
@@ -66,7 +62,7 @@ export function PatientForm({ onSubmit, isPending, clinicTimezone }: PatientForm
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
-        <PatientIdentityFields control={form.control} clinicTimezone={clinicTimezone} />
+        <PatientIdentityFields control={form.control} />
 
         <FormField
           control={form.control}
