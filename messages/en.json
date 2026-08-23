@@ -241,6 +241,8 @@
     "performedAt": "Performed at",
     "operator": "Operating surgeon",
     "manipulationType": "Manipulation type",
+    "remindMinutesBefore": "Reminder lead time in minutes",
+    "remindMinutesBeforeHint": "The reminder is sent this many minutes early. 0 = exactly on time.",
     "searchProcedure": "Search procedures",
     "selectProcedure": "Select a procedure",
     "noProcedureFound": "No procedure matches that search",

@@ -12,6 +12,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -109,6 +110,28 @@ export function RehabTaskFields({ control }: { control: Control<CarePlanFormType
                 <FormControl>
                   <Textarea rows={2} {...input} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Same control and same bounds as a dose's lead time — one session, one way to say it. */}
+          <FormField
+            control={control}
+            name={`rehabTasks.${index}.remindMinutesBefore`}
+            render={({ field: input }) => (
+              <FormItem className="sm:max-w-xs">
+                <FormLabel>{t('remindMinutesBefore')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1440}
+                    value={input.value ?? 0}
+                    onChange={event => input.onChange(Number(event.target.value))}
+                  />
+                </FormControl>
+                <FormDescription>{t('remindMinutesBeforeHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

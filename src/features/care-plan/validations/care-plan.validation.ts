@@ -69,6 +69,7 @@ const RehabTaskSchema = z
       .default([0, 1, 2, 3, 4, 5, 6]),
     startsOn: DateSchema,
     endsOn: DateSchema,
+    remindMinutesBefore: z.number().int().min(0).max(1440).default(0),
   })
   .refine(item => item.endsOn.getTime() >= item.startsOn.getTime(), {
     message: 'ENDS_BEFORE_STARTS',

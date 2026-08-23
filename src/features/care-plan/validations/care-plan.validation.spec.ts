@@ -230,3 +230,36 @@ describe('medications and checkups follow the same rule', () => {
     });
   });
 });
+
+
+/**
+ * How early the session reminder goes out, stored per task.
+ *
+ * Bounded rather than free: a negative lead is a reminder after the session, and one longer than a
+ * day is a reminder about the wrong day. The default is 0, which is what every task written before
+ * the field existed keeps doing — the reminder lands on the prescribed time.
+ */
+describe('a rehab task’s reminder lead time', () => {
+  /* `realTask` carries no lead, which is exactly the shape an older client still sends. */
+  it('defaults to none when the key is absent', () => {
+    expect(tasksIn(parse([realTask()]))[0]?.remindMinutesBefore).toBe(0);
+  });
+
+  it('keeps the lead the clinic set', () => {
+    expect(tasksIn(parse([{ ...realTask(), remindMinutesBefore: 30 }]))[0]?.remindMinutesBefore).toBe(30);
+  });
+
+  it.each([0, 1440])('accepts %s minutes', minutes => {
+    expect(parse([{ ...realTask(), remindMinutesBefore: minutes }]).success).toBe(true);
+  });
+
+  /* Past a day the lead stops describing this session and starts describing a different one. */
+  it.each([-1, 1441, 2.5])('rejects %s', minutes => {
+    expect(parse([{ ...realTask(), remindMinutesBefore: minutes }]).success).toBe(false);
+  });
+
+  /* A blank block is still dropped: the lead is a number and says nothing about intent. */
+  it('does not make an untouched block look filled in', () => {
+    expect(tasksIn(parse([{ ...untouchedTask(), remindMinutesBefore: 30 }]))).toHaveLength(0);
+  });
+});

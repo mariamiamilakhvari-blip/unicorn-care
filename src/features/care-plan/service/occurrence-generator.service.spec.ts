@@ -68,6 +68,7 @@ function rehabTask(overrides: Partial<RehabTaskItem> = {}): RehabTaskItem {
     daysOfWeek: [1, 4],
     startsOn: new Date('2025-06-02T00:00:00.000Z'),
     endsOn: new Date('2025-06-08T00:00:00.000Z'),
+    remindMinutesBefore: 0,
     ...overrides,
   };
   return item as RehabTaskItem;
@@ -162,11 +163,46 @@ describe('buildOccurrences — rehab tasks', () => {
   });
 
   /*
-    The clinic-set lead went with the field, so a rehab reminder lands on the prescribed wall clock
-    itself — 09:00 in the plan's zone, which is 07:00Z here.
+    No lead means the reminder lands on the prescribed wall clock itself — 09:00 in the plan's zone,
+    which is 07:00Z here. This is what every task written before the field existed keeps doing.
   */
-  it('fires at the session time, with no lead', () => {
+  it('fires at the session time when no lead is set', () => {
     const drafts = build(makePlan({ rehabTasks: [rehabTask()] }));
+
+    expect(drafts[0].dueAt.toISOString()).toBe('2025-06-02T07:00:00.000Z');
+  });
+
+  /* A session is somewhere to be, so the warning has to arrive with time to get there. */
+  it('fires the lead ahead of the session', () => {
+    const drafts = build(makePlan({ rehabTasks: [rehabTask({ remindMinutesBefore: 30 })] }));
+
+    expect(drafts[0].dueAt.toISOString()).toBe('2025-06-02T06:30:00.000Z');
+  });
+
+  /* The lead shifts the reminder, never the session: the title still names the prescribed time. */
+  it('applies the lead to every occurrence in the window', () => {
+    const drafts = build(makePlan({ rehabTasks: [rehabTask({ remindMinutesBefore: 45 })] }));
+
+    expect(drafts.map(draft => draft.dueAt.toISOString())).toEqual([
+      '2025-06-02T06:15:00.000Z',
+      '2025-06-05T06:15:00.000Z',
+    ]);
+  });
+
+  /* A lead long enough to cross midnight moves the reminder into the previous day, as it should. */
+  it('carries a lead back across midnight', () => {
+    const drafts = build(
+      makePlan({ rehabTasks: [rehabTask({ timesOfDay: ['00:30'], remindMinutesBefore: 60 })] })
+    );
+
+    expect(drafts[0].dueAt.toISOString()).toBe('2025-06-01T21:30:00.000Z');
+  });
+
+  /* Tasks stored before the field existed carry no value at all, and must not produce Invalid Date. */
+  it('treats a missing lead as none', () => {
+    const drafts = build(
+      makePlan({ rehabTasks: [rehabTask({ remindMinutesBefore: undefined })] })
+    );
 
     expect(drafts[0].dueAt.toISOString()).toBe('2025-06-02T07:00:00.000Z');
   });

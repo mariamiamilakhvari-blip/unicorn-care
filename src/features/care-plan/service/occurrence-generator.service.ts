@@ -117,12 +117,13 @@ function medicationDrafts(context: GeneratorContext, item: MedicationItem): Occu
 }
 
 /**
- * Same cadence as a medication, but only on the weekdays the clinic prescribed.
+ * Same cadence as a medication, and now the same lead time, but only on the weekdays the clinic
+ * prescribed.
  *
- * The body is empty, and that is the whole of it. A rehab task is now a name, a window, times and
- * a description — there is no grade and no category left to summarise, and the title is the
- * instruction. This matches medications, whose `instructions` never reached the reminder either:
- * the notification names the task, the portal holds the detail.
+ * The body is empty, and that is the whole of it. A rehab task is a name, a window, times, a
+ * description and how early to warn about it — there is no grade and no category left to
+ * summarise, and the title is the instruction. This matches medications, whose `instructions`
+ * never reached the reminder either: the notification names the task, the portal holds the detail.
  *
  * `intensity` on the draft is null, as it already was for every other kind. The column stays on the
  * occurrence for the rows that were generated with one; nothing new writes it.
@@ -135,8 +136,9 @@ function rehabDrafts(context: GeneratorContext, item: RehabTaskItem): Occurrence
     endsOn: item.endsOn,
     daysOfWeek: configured.length > 0 ? configured : EVERY_DAY,
     timesOfDay: item.timesOfDay,
-    // Rehab reminders arrive at the session time; the clinic-set lead went with the field.
-    remindMinutesBefore: 0,
+    // Same lead time a dose gets. `?? 0` covers tasks stored before the field existed, which is
+    // also the default a clinic that leaves it alone keeps: the reminder lands at the session time.
+    remindMinutesBefore: item.remindMinutesBefore ?? 0,
     build: dueAt => ({
       kind: 'rehab',
       sourceItemId: item._id,

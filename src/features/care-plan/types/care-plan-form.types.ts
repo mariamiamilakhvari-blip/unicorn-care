@@ -24,6 +24,7 @@ export type RehabTaskFormRow = {
   daysOfWeek: number[];
   startsOn: string;
   endsOn: string;
+  remindMinutesBefore: number;
 };
 
 export type CheckupFormRow = {
@@ -62,6 +63,7 @@ export const EMPTY_REHAB_TASK: RehabTaskFormRow = {
   daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
   startsOn: '',
   endsOn: '',
+  remindMinutesBefore: 0,
 };
 
 export const EMPTY_CHECKUP: CheckupFormRow = {

@@ -28,6 +28,9 @@ const RehabTaskSchema = new Schema({
   daysOfWeek: { type: [Number], default: [0, 1, 2, 3, 4, 5, 6] },
   startsOn: { type: Date, required: true },
   endsOn: { type: Date, required: true },
+  // Fires the session reminder this many minutes early, the same way a dose's lead time works.
+  // 0 = at the session time, which is what every plan written before this field existed keeps doing.
+  remindMinutesBefore: { type: Number, default: 0, required: true },
 });
 
 const CheckupSchema = new Schema({

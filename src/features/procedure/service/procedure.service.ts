@@ -31,6 +31,7 @@ export async function createProcedureService(
     manipulationDetail: input.manipulationDetail ?? '',
     anesthesia: input.anesthesia,
     notes: input.notes ?? '',
+    remindMinutesBefore: input.remindMinutesBefore ?? 0,
   });
 
   const created = await procedureRepository.findById(id, clinicId);
@@ -121,6 +122,9 @@ function toProcedurePatch(input: UpdateProcedureType): Partial<ProcedureDocument
   if (input.manipulationDetail !== undefined) patch.manipulationDetail = input.manipulationDetail;
   if (input.anesthesia !== undefined) patch.anesthesia = input.anesthesia;
   if (input.notes !== undefined) patch.notes = input.notes;
+  if (input.remindMinutesBefore !== undefined) {
+    patch.remindMinutesBefore = input.remindMinutesBefore;
+  }
 
   return patch;
 }

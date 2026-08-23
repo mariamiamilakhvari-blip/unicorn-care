@@ -75,6 +75,8 @@ export function toCarePlanFormValues(plan: StoredCarePlan, timeZone: string): Ca
       daysOfWeek: [...item.daysOfWeek],
       startsOn: toDateInput(item.startsOn),
       endsOn: toDateInput(item.endsOn),
+      // `?? 0` for tasks stored before the field existed: no lead means at the session time.
+      remindMinutesBefore: item.remindMinutesBefore ?? 0,
     })),
     checkups: (plan.checkups ?? []).map(item => ({
       scheduledAt: toDateTimeInput(item.scheduledAt, timeZone),

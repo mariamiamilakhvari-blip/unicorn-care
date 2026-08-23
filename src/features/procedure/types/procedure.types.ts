@@ -13,6 +13,7 @@ export type ProcedureView = {
   manipulationDetail: string;
   anesthesia: string;
   notes: string;
+  remindMinutesBefore: number;
   createdAt?: string;
   updatedAt?: string;
 };

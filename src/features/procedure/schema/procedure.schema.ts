@@ -17,6 +17,15 @@ const ProcedureSchema = new Schema(
       required: true,
     },
     notes: { type: String, required: false, default: '' },
+    /*
+      How many minutes before a reminder for this procedure should go out. Recorded at intake so
+      the clinic's intent is captured with the rest of the procedure.
+
+      Nothing reads it yet: reminders are generated from care plan items — medications, rehab
+      tasks, checkups and the recovery log — and a procedure is a record of something that already
+      happened, so no occurrence is scheduled from `performedAt`. 0 is the honest default.
+    */
+    remindMinutesBefore: { type: Number, default: 0, required: true },
   },
   { timestamps: true }
 );
