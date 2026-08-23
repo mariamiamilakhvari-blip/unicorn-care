@@ -16,7 +16,6 @@ import {
 } from '@/features/recovery-guide/validations/recovery-guide.validation';
 import { Button } from '@/shared/components/ui/button';
 import { Form } from '@/shared/components/ui/form';
-import { SectionTitle } from '@/shared/components/ui/section-title';
 import { Separator } from '@/shared/components/ui/separator';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -71,7 +70,6 @@ export function CarePlanGuideSection({
   planError,
   planActions,
 }: CarePlanGuideSectionProps) {
-  const t = useTranslations('recoveryGuide');
   const tCarePlan = useTranslations('carePlan');
   const tCommon = useTranslations('common');
   const { guide, isLoading, isPending, savedAt, error, save } = useProcedureGuide(
@@ -143,9 +141,9 @@ export function CarePlanGuideSection({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(saveAll)} className="flex flex-col gap-5">
-        <SectionTitle>{t('title')}</SectionTitle>
-
+      {/* gap-6 matches the plan form above: with the wrapper heading gone, these sections are
+          peers of Medications and Checkups and should sit at the same rhythm. */}
+      <form onSubmit={form.handleSubmit(saveAll)} className="flex flex-col gap-6">
         <ExpectedFields control={form.control} />
         <Separator />
         <WarningFields control={form.control} locale={locale} />

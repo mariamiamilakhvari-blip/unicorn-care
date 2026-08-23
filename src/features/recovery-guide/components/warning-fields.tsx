@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
-import { SubsectionTitle } from '@/shared/components/ui/section-title';
+import { SectionTitle } from '@/shared/components/ui/section-title';
 import {
   Select,
   SelectContent,
@@ -44,7 +44,7 @@ export function WarningFields({ control, locale }: WarningFieldsProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <SubsectionTitle>{t('warningHeading')}</SubsectionTitle>
+        <SectionTitle>{t('warningHeading')}</SectionTitle>
         <Button
           type="button"
           size="sm"
