@@ -1,6 +1,7 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocale, useTranslations } from 'next-intl';
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { ProcedureView } from '@/features/procedure/types/procedure.types';
@@ -10,6 +11,7 @@ import {
   CreateProcedureType,
 } from '@/features/procedure/validations/procedure.validation';
 import { Button } from '@/shared/components/ui/button';
+import { Combobox, ComboboxOption } from '@/shared/components/ui/combobox';
 import {
   Form,
   FormControl,
@@ -46,6 +48,21 @@ export function ProcedureForm({
   const t = useTranslations('procedure');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+
+  /*
+    Both names go in `keywords`, not just the one being displayed. A clinic works in Georgian and
+    still types `botox`, and a procedure whose Georgian name it cannot spell is otherwise
+    unreachable in a list of ninety-two.
+  */
+  const procedureOptions: ComboboxOption[] = useMemo(
+    () =>
+      PROCEDURE_TYPES.map(type => ({
+        value: type.key,
+        label: locale === 'ka' ? type.ka : type.en,
+        keywords: [type.ka, type.en],
+      })),
+    [locale]
+  );
 
   const form = useForm<CreateProcedureType>({
     resolver: zodResolver(CreateProcedureSchema),
@@ -104,20 +121,16 @@ export function ProcedureForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('manipulationType')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {PROCEDURE_TYPES.map(type => (
-                      <SelectItem key={type.key} value={type.key}>
-                        {locale === 'ka' ? type.ka : type.en}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <Combobox
+                    options={procedureOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={t('selectProcedure')}
+                    searchPlaceholder={t('searchProcedure')}
+                    emptyMessage={t('noProcedureFound')}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
