@@ -6,7 +6,7 @@ vi.mock('@/features/notifications/repository/email-event.repository', () => ({
 }));
 
 vi.mock('@/features/patient/repository/patient.repository', () => ({
-  patientRepository: { findByEmail: vi.fn(), findById: vi.fn(), updateDeliveryState: vi.fn() },
+  patientRepository: { findAllByEmail: vi.fn(), findById: vi.fn(), updateDeliveryState: vi.fn() },
 }));
 
 import { emailEventRepository } from '@/features/notifications/repository/email-event.repository';
@@ -70,7 +70,7 @@ describe('isEmailSuppressed', () => {
 describe('recordEmailDeliveryEventService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    patients.findByEmail.mockResolvedValue(patient());
+    patients.findAllByEmail.mockResolvedValue([patient()]);
     patients.updateDeliveryState.mockResolvedValue(true);
     events.existsByProviderId.mockResolvedValue(false);
     events.create.mockResolvedValue('event-id');
@@ -99,7 +99,7 @@ describe('recordEmailDeliveryEventService', () => {
   });
 
   it('suppresses once soft bounces reach the threshold', async () => {
-    patients.findByEmail.mockResolvedValue(patient({ emailSoftBounces: SOFT_BOUNCE_LIMIT - 1 }));
+    patients.findAllByEmail.mockResolvedValue([patient({ emailSoftBounces: SOFT_BOUNCE_LIMIT - 1 })]);
 
     const result = await recordEmailDeliveryEventService(event({ bounceType: 'Transient' }));
 
@@ -115,7 +115,7 @@ describe('recordEmailDeliveryEventService', () => {
   });
 
   it('resets the soft-bounce run on a delivery', async () => {
-    patients.findByEmail.mockResolvedValue(patient({ emailSoftBounces: 3 }));
+    patients.findAllByEmail.mockResolvedValue([patient({ emailSoftBounces: 3 })]);
 
     await recordEmailDeliveryEventService(event({ kind: 'delivered', bounceType: '' }));
 
@@ -128,9 +128,9 @@ describe('recordEmailDeliveryEventService', () => {
       because a later message happened to land would resume sending to someone who pressed "spam".
       Only the clinic lifts a suppression.
     */
-    patients.findByEmail.mockResolvedValue(
-      patient({ emailSuppressedAt: new Date(), emailSuppressionReason: 'complaint' })
-    );
+    patients.findAllByEmail.mockResolvedValue([
+      patient({ emailSuppressedAt: new Date(), emailSuppressionReason: 'complaint' }),
+    ]);
 
     const result = await recordEmailDeliveryEventService(event({ kind: 'delivered' }));
 
@@ -156,12 +156,100 @@ describe('recordEmailDeliveryEventService', () => {
 
   it('ignores an address that belongs to no patient', async () => {
     // The provider also reports on mail this system did not send a patient.
-    patients.findByEmail.mockResolvedValue(null);
+    patients.findAllByEmail.mockResolvedValue([]);
 
     const result = await recordEmailDeliveryEventService(event());
 
     expect(result.status).toBe(200);
     expect(events.create).not.toHaveBeenCalled();
+  });
+
+  /*
+    A shared address. Patients are clinic records rather than logins, so nothing stops the same
+    inbox appearing on several — and the `findOne` this replaced picked one of them, which marked
+    an arbitrary patient unreachable on their own page while the record whose message actually
+    bounced kept being sent to.
+  */
+  describe('an address held by more than one patient', () => {
+    const OTHER_ID = '507f1f77bcf86cd799439033';
+    const OTHER_CLINIC = '507f1f77bcf86cd799439044';
+
+    const other = (overrides: Partial<PatientDocument> = {}): PatientDocument =>
+      patient({
+        _id: new mongoose.Types.ObjectId(OTHER_ID),
+        clinicId: new mongoose.Types.ObjectId(OTHER_CLINIC),
+        ...overrides,
+      });
+
+    const patchFor = (id: string) =>
+      patients.updateDeliveryState.mock.calls.find(call => call[0] === id)?.[1];
+
+    it('suppresses every record holding the address, not one of them', async () => {
+      patients.findAllByEmail.mockResolvedValue([patient(), other()]);
+
+      const result = await recordEmailDeliveryEventService(event());
+
+      expect(result.data).toMatchObject({ suppressed: true, reason: 'hard_bounce', patients: 2 });
+      expect(patchFor(PATIENT_ID)).toMatchObject({ emailSuppressionReason: 'hard_bounce' });
+      expect(patchFor(OTHER_ID)).toMatchObject({ emailSuppressionReason: 'hard_bounce' });
+    });
+
+    /* The log is per record: "why is this patient suppressed" has to be answerable on each page. */
+    it('writes a delivery-log row against each patient, under its own clinic', async () => {
+      patients.findAllByEmail.mockResolvedValue([patient(), other()]);
+
+      await recordEmailDeliveryEventService(event());
+
+      expect(events.create).toHaveBeenCalledTimes(2);
+      expect(events.create).toHaveBeenCalledWith(
+        expect.objectContaining({ clinicId: new mongoose.Types.ObjectId(CLINIC_ID) })
+      );
+      expect(events.create).toHaveBeenCalledWith(
+        expect.objectContaining({ clinicId: new mongoose.Types.ObjectId(OTHER_CLINIC) })
+      );
+    });
+
+    /*
+      The counter measures a consecutive run of failures against one record's own sends. Pooling
+      the counts across records would trip the threshold in a fraction of the intended allowance.
+    */
+    it('keeps the soft-bounce run per patient', async () => {
+      patients.findAllByEmail.mockResolvedValue([
+        patient({ emailSoftBounces: 0 }),
+        other({ emailSoftBounces: SOFT_BOUNCE_LIMIT - 1 }),
+      ]);
+
+      const result = await recordEmailDeliveryEventService(event({ bounceType: 'Transient' }));
+
+      expect(patchFor(PATIENT_ID)).toEqual({ emailSoftBounces: 1 });
+      expect(patchFor(OTHER_ID)).toMatchObject({ emailSuppressionReason: 'soft_bounce' });
+      // One record suppressed is enough for the event to report a suppression.
+      expect(result.data).toMatchObject({ suppressed: true, reason: 'soft_bounce' });
+    });
+
+    it('resets the run on every record when a delivery lands', async () => {
+      patients.findAllByEmail.mockResolvedValue([
+        patient({ emailSoftBounces: 2 }),
+        other({ emailSoftBounces: 3 }),
+      ]);
+
+      await recordEmailDeliveryEventService(event({ kind: 'delivered', bounceType: '' }));
+
+      expect(patchFor(PATIENT_ID)).toEqual({ emailSoftBounces: 0 });
+      expect(patchFor(OTHER_ID)).toEqual({ emailSoftBounces: 0 });
+    });
+
+    /* One message is one event, however many records hold its address. */
+    it('still ignores a repeat of an event it has already recorded', async () => {
+      patients.findAllByEmail.mockResolvedValue([patient(), other()]);
+      events.existsByProviderId.mockResolvedValue(true);
+
+      const result = await recordEmailDeliveryEventService(event());
+
+      expect(result.data).toMatchObject({ recorded: false, patients: 2 });
+      expect(events.create).not.toHaveBeenCalled();
+      expect(patients.updateDeliveryState).not.toHaveBeenCalled();
+    });
   });
 
   it('records the address as it was, not as it may later be corrected to', async () => {

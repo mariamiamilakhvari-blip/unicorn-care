@@ -38,8 +38,8 @@ export const patientRepository = {
    * rather than against the whole caseload, because most patients have a working address and
    * checking their subscriptions would be work done to prove a negative.
    *
-   * Archived patients are excluded. They are no longer in active care, and a warning about
-   * somebody the clinic has finished with is noise on a screen whose value is that it is quiet.
+   * Every patient the clinic holds, since archiving was retired — a record it has finished with is
+   * erased outright now rather than hidden, so there is no longer a quiet tier to filter out.
    */
   async findWithUnusableEmail(clinicId: string): Promise<PatientDocument[]> {
     await mongo.connect();
@@ -72,16 +72,23 @@ export const patientRepository = {
   },
 
   /**
-   * Looks a patient up by email address, unscoped by clinic.
+   * Every patient holding an email address, unscoped by clinic.
    *
    * The one query here that crosses the tenancy boundary, and it has to: a provider webhook
    * carries an address and nothing else — no clinic, no patient id — so there is no tenant to
-   * scope by until the row is found. Only the webhook path calls it, and it reads rather than
-   * exposes: the caller records an event against whatever clinic owns the row.
+   * scope by until the rows are found.
+   *
+   * Returns a list rather than one row because an address is not an identifier here. A patient is
+   * a clinic's record, not a login, so nothing stops the same address appearing on several of
+   * them — a family sharing an inbox, a clinic entering its own address, the same person treated
+   * at two clinics on the platform. The `findOne` this replaced picked whichever row the index
+   * happened to yield, which made a bounce suppress an arbitrary patient and a portal-link request
+   * mint a credential into an arbitrary record. Callers must decide what to do with more than one;
+   * they can no longer do the wrong thing without noticing.
    */
-  async findByEmail(email: string): Promise<PatientDocument | null> {
+  async findAllByEmail(email: string): Promise<PatientDocument[]> {
     await mongo.connect();
-    return PatientModel.findOne({ email }).lean<PatientDocument>().exec();
+    return PatientModel.find({ email }).lean<PatientDocument[]>().exec();
   },
 
   /**

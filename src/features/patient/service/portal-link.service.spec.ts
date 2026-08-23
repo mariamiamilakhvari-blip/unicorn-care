@@ -11,7 +11,7 @@ vi.mock('@/features/patient/repository/patient-portal-link.repository', () => ({
 }));
 
 vi.mock('@/features/patient/repository/patient.repository', () => ({
-  patientRepository: { findByEmail: vi.fn(), findById: vi.fn() },
+  patientRepository: { findAllByEmail: vi.fn(), findById: vi.fn() },
 }));
 
 vi.mock('@/features/clinic/repository/clinic.repository', () => ({
@@ -86,12 +86,15 @@ describe('requestPortalLinkService', () => {
    * answered differently from an invented one, that list could be walked from a browser.
    */
   it.each([
-    ['an unknown address', null],
+    ['an unknown address', []],
     // The archived-patient case retired with archiving itself: a patient now either exists or has
     // been erased, and an erased one is indistinguishable from an unknown address above.
-    ['a patient with no email on file', patient({ email: null as never })],
+    ['a patient with no email on file', [patient({ email: null as never })]],
+    // An address on two records. Picking one would mint a credential into whichever the index
+    // happened to yield — see the note on the service.
+    ['an address shared by two patients', [patient(), patient()]],
   ])('answers the same for %s as for a real one', async (_label, found) => {
-    patients.findByEmail.mockResolvedValue(found as never);
+    patients.findAllByEmail.mockResolvedValue(found as never);
 
     const { data, status } = await requestPortalLinkService({ email: 'someone@example.com' });
 
@@ -101,8 +104,46 @@ describe('requestPortalLinkService', () => {
     expect(links.create).not.toHaveBeenCalled();
   });
 
+  /*
+    The reason this endpoint stopped using `findOne`. An address is a contact detail here, not an
+    identifier, so it can sit on two records — and minting for whichever the index yielded hands a
+    working door into a medical record to somebody who may not be its patient. Refused instead, and
+    staff issue the link from the patient's own page where the record has already been chosen.
+  */
+  describe('an address held by more than one patient', () => {
+    const otherClinic = () =>
+      patient({
+        _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439055'),
+        clinicId: new mongoose.Types.ObjectId('507f1f77bcf86cd799439066'),
+      });
+
+    it('mints nothing and sends nothing, even across clinics', async () => {
+      patients.findAllByEmail.mockResolvedValue([patient(), otherClinic()] as never);
+
+      const { data, status } = await requestPortalLinkService({ email: 'patient@example.com' });
+
+      expect(status).toBe(200);
+      expect(data).toEqual({ message: 'PORTAL_LINK_REQUESTED' });
+      expect(links.create).not.toHaveBeenCalled();
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    /* A record whose address was since cleared is not a second holder of it. */
+    it('still sends when only one of the matches still carries the address', async () => {
+      patients.findAllByEmail.mockResolvedValue([
+        patient(),
+        patient({ _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439055'), email: '' }),
+      ] as never);
+
+      await requestPortalLinkService({ email: 'patient@example.com' });
+
+      expect(sendEmail).toHaveBeenCalledOnce();
+      expect(links.create).toHaveBeenCalledOnce();
+    });
+  });
+
   it('sends a link to a patient in their own language', async () => {
-    patients.findByEmail.mockResolvedValue(patient({ locale: 'en' }) as never);
+    patients.findAllByEmail.mockResolvedValue([patient({ locale: 'en' })] as never);
 
     await requestPortalLinkService({ email: 'patient@example.com' });
 
@@ -115,7 +156,7 @@ describe('requestPortalLinkService', () => {
   });
 
   it('stores only the hash, never the token that was emailed', async () => {
-    patients.findByEmail.mockResolvedValue(patient() as never);
+    patients.findAllByEmail.mockResolvedValue([patient()] as never);
 
     await requestPortalLinkService({ email: 'patient@example.com' });
 
@@ -135,7 +176,7 @@ describe('requestPortalLinkService', () => {
    * the one that finally arrived.
    */
   it('leaves the patient’s other outstanding links alone', async () => {
-    patients.findByEmail.mockResolvedValue(patient() as never);
+    patients.findAllByEmail.mockResolvedValue([patient()] as never);
 
     await requestPortalLinkService({ email: 'patient@example.com' });
 

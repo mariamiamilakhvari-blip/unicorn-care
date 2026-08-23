@@ -25,6 +25,8 @@ export type EmailDeliveryResult = {
   recorded: boolean;
   suppressed: boolean;
   reason: SuppressionReason;
+  /** How many patient records hold the address this event was about. Usually one. */
+  patients: number;
 };
 
 /**
@@ -61,28 +63,92 @@ function isHardBounce(bounceType: string): boolean {
  * the address, not observations of one bad day, and clearing them silently would resume sending
  * to someone who asked to be left alone. The clinic lifts a suppression, deliberately.
  *
+ * **Applied to every patient holding the address, not to one of them.** A patient is a clinic's
+ * record rather than a login, so the same address can sit on several — a family sharing an inbox,
+ * a clinic entering its own, one person treated at two clinics. The `findOne` this replaced picked
+ * whichever row the index yielded, so a bounce marked an arbitrary patient unreachable while the
+ * one whose message actually bounced kept being sent to. Both halves of that were wrong, and the
+ * visible half was a patient flagged on their own page for a failure that was never theirs.
+ *
+ * The soft-bounce counter stays per patient. It measures a consecutive run of failures against a
+ * mailbox, and each record reached it through its own sends, so pooling the counts would suppress
+ * an address in a fraction of the intended allowance.
+ *
  * Never throws: this is called from a webhook, and a 500 makes the provider retry an event that
  * has already been recorded.
  */
 export async function recordEmailDeliveryEventService(
   event: EmailDeliveryEvent
 ): Promise<ServiceResult<EmailDeliveryResult>> {
-  const patient = await patientRepository.findByEmail(event.email);
-  if (!patient) {
+  const matched = await patientRepository.findAllByEmail(event.email);
+  if (matched.length === 0) {
     // Not an error: the provider also delivers mail this system did not send a patient.
-    return { data: { recorded: false, suppressed: false, reason: '' }, status: 200 };
+    return { data: { recorded: false, suppressed: false, reason: '', patients: 0 }, status: 200 };
   }
 
   /*
     Webhook delivery is at-least-once, so the same bounce can arrive twice. Without this, one
     bounce could increment the soft-bounce run repeatedly and suppress an address that failed once.
+
+    Checked once for the event rather than once per patient: the provider id identifies the
+    message, and one message is one event however many records happen to hold its address.
   */
   if (event.providerId && (await emailEventRepository.existsByProviderId(event.providerId))) {
-    return { data: { recorded: false, suppressed: isEmailSuppressed(patient), reason: '' }, status: 200 };
+    return {
+      data: {
+        recorded: false,
+        suppressed: matched.some(isEmailSuppressed),
+        reason: '',
+        patients: matched.length,
+      },
+      status: 200,
+    };
   }
 
   const hard = event.kind === 'bounced' && isHardBounce(event.bounceType);
 
+  let suppressedAny = false;
+  let reason: SuppressionReason = '';
+
+  for (const patient of matched) {
+    const applied = await applyDeliveryEvent(patient, event, hard);
+    if (applied) {
+      suppressedAny = true;
+      // The first reason reached. They can differ only when one record is over the soft-bounce
+      // threshold and another is not, and the response reports the event, not the per-record split.
+      reason = reason || applied;
+    }
+  }
+
+  if (event.kind === 'delivered') {
+    return {
+      data: {
+        recorded: true,
+        suppressed: matched.some(isEmailSuppressed),
+        reason: '',
+        patients: matched.length,
+      },
+      status: 200,
+    };
+  }
+
+  return {
+    data: { recorded: true, suppressed: suppressedAny, reason, patients: matched.length },
+    status: 200,
+  };
+}
+
+/**
+ * One event against one record: the delivery log row, then the standing.
+ *
+ * Returns the reason this record was suppressed, or `''` if it was not. Every write is scoped to
+ * the single patient, so a shared address never lets one record's history decide another's.
+ */
+async function applyDeliveryEvent(
+  patient: PatientDocument,
+  event: EmailDeliveryEvent,
+  hard: boolean
+): Promise<SuppressionReason> {
   await emailEventRepository.create({
     patientId: patient._id,
     clinicId: patient.clinicId,
@@ -101,7 +167,7 @@ export async function recordEmailDeliveryEventService(
     if (softBounces > 0) {
       await patientRepository.updateDeliveryState(patient._id.toString(), { emailSoftBounces: 0 });
     }
-    return { data: { recorded: true, suppressed: isEmailSuppressed(patient), reason: '' }, status: 200 };
+    return '';
   }
 
   let reason: SuppressionReason = '';
@@ -113,7 +179,7 @@ export async function recordEmailDeliveryEventService(
     await patientRepository.updateDeliveryState(patient._id.toString(), {
       emailSoftBounces: softBounces + 1,
     });
-    return { data: { recorded: true, suppressed: false, reason: '' }, status: 200 };
+    return '';
   }
 
   await patientRepository.updateDeliveryState(patient._id.toString(), {
@@ -122,7 +188,7 @@ export async function recordEmailDeliveryEventService(
     emailSoftBounces: event.kind === 'bounced' && !hard ? softBounces + 1 : softBounces,
   });
 
-  return { data: { recorded: true, suppressed: true, reason }, status: 200 };
+  return reason;
 }
 
 /**

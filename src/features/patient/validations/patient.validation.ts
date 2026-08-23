@@ -30,7 +30,7 @@ const DateOfBirthSchema = z.union([z.null(), z.coerce.date()]).default(null);
 /**
  * Patient fields (PRD 01 §3). `clinicId` is deliberately absent — it is always taken from the
  * session via `clinicGuard`, never from the request body (PRD 02 §"Tenancy guard").
- * `isArchived` is absent too: archiving goes through `DELETE /api/patients/[id]`.
+ * There is no archive flag: `DELETE /api/patients/[id]` erases the record outright.
  */
 /**
  * What the clinic attests to when it enters a patient.

@@ -6,6 +6,7 @@ import { clinicRepository } from '@/features/clinic/repository/clinic.repository
 import { sendPortalLinkEmailService } from '@/features/notifications/service/portal-link-email.service';
 import { patientPortalLinkRepository } from '@/features/patient/repository/patient-portal-link.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { PatientDocument } from '@/features/patient/schema/patient.schema';
 import { mintAccessToken, tokenTag } from '@/features/patient/service/patient-access.service';
 import { PortalLinkRequestType } from '@/features/patient/validations/portal-link.validation';
 import { PATIENT_PORTAL_ROUTE, PORTAL_LOGIN_ROUTE } from '@/shared/const/routes.const';
@@ -96,28 +97,61 @@ export async function portalLinkForEmail(
 /**
  * Emails a patient a fresh way into their portal.
  *
- * **Always answers 200.** Known address, unknown address, archived patient — one response. A
- * patient list is a list of people who have had surgery at a named clinic, so an endpoint that
- * answered differently for a real address would leak exactly that, to anyone with a browser.
+ * **Always answers 200.** Known address, unknown address, an address on several records — one
+ * response. A patient list is a list of people who have had surgery at a named clinic, so an
+ * endpoint that answered differently for a real address would leak exactly that, to anyone with a
+ * browser.
  *
- * An archived patient is skipped. Archiving is how a clinic ends a relationship, and a link that
- * re-opens the record afterwards would make that meaningless.
+ * **Refuses an address that resolves to more than one patient**, and that refusal is the point
+ * rather than a limitation worked around. A patient is a clinic's record, not a login, so the same
+ * address legitimately sits on several — a parent and child sharing an inbox, one person treated at
+ * two clinics on the platform. There are three things this could do with such a request and two of
+ * them are breaches:
+ *
+ *   - Pick one. That is what `findOne` did, and it mints a credential into whichever record the
+ *     index yielded — potentially a different person's medical record, at a different clinic.
+ *   - Send a link for each. The mailbox then learns how many patients share it and which clinics
+ *     hold them, and in the shared-inbox case one family member is handed a working door into the
+ *     other's record.
+ *   - Send nothing, and say the same thing it says to everyone.
+ *
+ * The third is the only safe answer, and it is not a dead end: staff issue a link directly from the
+ * patient's page, where the record has already been chosen by someone who knows which is which.
  */
 export async function requestPortalLinkService(
   input: PortalLinkRequestType
 ): Promise<ServiceResult<{ message: string }>> {
   const accepted = { data: { message: 'PORTAL_LINK_REQUESTED' }, status: 200 };
 
-  const patient = await patientRepository.findByEmail(input.email);
   /*
-    No patient, an archived one, or one whose address was since cleared — all one answer, and all
-    one log line. Archiving is how a clinic ends a relationship, and a link that re-opened the
-    record afterwards would make that meaningless.
+    An address still on the record. A patient whose address was cleared since — by an erasure, or
+    by the clinic correcting a typo — is not reachable at it, whatever the row still matches.
   */
-  if (!patient || !patient.email) {
+  const matched = (await patientRepository.findAllByEmail(input.email)).filter(
+    // A type predicate rather than a bare truthiness filter, so `email` is a string from here on
+    // and the recipient never needs a cast to be handed to the sender.
+    (candidate): candidate is PatientDocument & { email: string } => Boolean(candidate.email)
+  );
+
+  // No patient, or one whose address was since cleared: one answer, one log line, no address in it.
+  if (matched.length === 0) {
     console.warn('[portal-link] request for an address with no reachable patient');
     return accepted;
   }
+
+  /*
+    Ambiguous, so nothing is sent. Logged with the count and never the address, because this line
+    is the only way a clinic finds out why a patient says the link never arrives — and because an
+    address in a log is a patient's contact detail sitting outside the record it belongs to.
+  */
+  if (matched.length > 1) {
+    console.warn('[portal-link] refused: address is on more than one patient', {
+      patients: matched.length,
+    });
+    return accepted;
+  }
+
+  const [patient] = matched;
 
   const recipient = patient.email;
 
@@ -195,10 +229,10 @@ export async function redeemPortalLinkService(
   const patientId = link.patientId.toString();
   const clinicId = link.clinicId.toString();
 
-  // The patient can have been archived in the hours since the link was sent.
+  // The patient can have been erased in the hours since the link was sent.
   const patient = await patientRepository.findById(patientId, clinicId);
   if (!patient) {
-    console.warn('[portal-link] rejected: patient inactive', { token: tag, patientId });
+    console.warn('[portal-link] rejected: no such patient', { token: tag, patientId });
     return rejected;
   }
 

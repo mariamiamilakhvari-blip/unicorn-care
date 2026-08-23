@@ -9,7 +9,12 @@ const PatientSchema = new Schema(
     lastName: { type: String, required: true },
     // Display only — the product has no SMS channel, this is never used to send anything.
     phone: { type: String, required: false, default: '' },
-    // Contact detail for the clinic's own records only. The product never sends email.
+    /*
+      Where this patient's reminders, portal links and summaries are sent. Not an identifier and
+      deliberately not unique: a patient is a clinic's record rather than a login, so the same
+      address may sit on several — a family sharing an inbox, one person treated at two clinics.
+      Readers must handle that; see `patientRepository.findAllByEmail`.
+    */
     email: { type: String, required: false, default: '' },
     dateOfBirth: { type: Date, required: false, default: null },
     sex: {
