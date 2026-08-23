@@ -30,6 +30,29 @@ describe('every procedure type is covered', () => {
 });
 
 /**
+ * Retiring a key from the dropdown does not retire it from the database. Procedures created before
+ * the catalogue changed still carry these, and they still have to resolve to the draft they were
+ * resolving to yesterday.
+ */
+describe('procedures stored under a retired key', () => {
+  it.each(['breast_lift', 'breast_reduction', 'otoplasty', 'brazilian_butt_lift', 'hair_transplant'])(
+    '%s still resolves to the surgical baseline',
+    key => {
+      expect(seedFamilyFor(key)).toBe('surgical');
+    }
+  );
+
+  /*
+    The one retired key where the fallback would be a real loss: a clinician wrote this draft for
+    breast augmentation, and dropping to the generic surgical baseline would swap reviewed content
+    for a general one under patients who are already mid-recovery.
+  */
+  it('keeps breast augmentation on the draft written for it', () => {
+    expect(seedFamilyFor('breast_augmentation')).toBe('breastAugmentation');
+  });
+});
+
+/**
  * The two languages must stay item for item identical. A patient reading Georgian must not get
  * fewer warnings, milder severities or narrower day windows than one reading English — that is a
  * clinical difference produced by a translation gap, and it would be invisible.
