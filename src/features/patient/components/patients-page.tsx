@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ import { Input } from '@/shared/components/ui/input';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 
 export function PatientsPage() {
+  const router = useRouter();
   const t = useTranslations('patient');
   const tCommon = useTranslations('common');
   const [search, setSearch] = useState('');
@@ -31,6 +33,17 @@ export function PatientsPage() {
   const [writeError, setWriteError] = useState<PatientWriteError | null>(null);
 
   /*
+    Intake ends on the new patient's own page, not back on the list.
+
+    Registering someone is the first half of a job — the procedure and the care plan are the rest
+    of it, and they live on that patient's page. Landing back on the list meant finding the row
+    just created and clicking into it, which is a search for something the clinic had at hand a
+    moment ago.
+
+    `isPending` is deliberately left true through the push. Clearing it would re-enable the submit
+    button for the moment the next route takes to load, and a second click there creates a second
+    patient. The component unmounts on navigation, so the flag has nothing left to reset.
+
     A refused write is an answer, not a crash. Without this catch the rejection escaped to the
     error overlay and the clinic saw `SUBSCRIPTION_INACTIVE` as a stack trace, with the form
     contents lost and nothing to click. The form stays open so the typed details survive.
@@ -39,11 +52,11 @@ export function PatientsPage() {
     setIsPending(true);
     setWriteError(null);
     try {
-      await create(values);
+      const created = await create(values);
       setIsFormOpen(false);
+      router.push(`/dashboard/patients/${created.id}`);
     } catch (caught) {
       setWriteError(toPatientWriteError(caught));
-    } finally {
       setIsPending(false);
     }
   }

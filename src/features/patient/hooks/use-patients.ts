@@ -11,7 +11,8 @@ type PatientsState = {
   isLoading: boolean;
   hasError: boolean;
   reload: () => Promise<void>;
-  create: (input: CreatePatientType) => Promise<void>;
+  /** The patient the server created — the caller needs its id to navigate to it. */
+  create: (input: CreatePatientType) => Promise<PatientSummary>;
   remove: (id: string, confirmationName: string) => Promise<void>;
 };
 
@@ -37,12 +38,17 @@ export function usePatients(query?: string): PatientsState {
     void reload();
   }, [reload]);
 
+  /*
+    Returns the created patient rather than swallowing the response: intake ends on that patient's
+    own page, and the id to go to is only in this body.
+
+    The list is deliberately not re-read afterwards. Every caller leaves for the new patient the
+    moment this resolves, so a second GET would fetch a list nobody is going to see and hold the
+    redirect open for the length of the round trip.
+  */
   const create = useCallback(
-    async (input: CreatePatientType) => {
-      await http.post<PatientSummary>('/patients', input);
-      await reload();
-    },
-    [reload]
+    async (input: CreatePatientType) => http.post<PatientSummary>('/patients', input),
+    []
   );
 
   /*
