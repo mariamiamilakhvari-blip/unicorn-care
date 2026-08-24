@@ -2,23 +2,34 @@ import { Types } from 'mongoose';
 
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
 import { RecoveryGuideDocument } from '@/features/recovery-guide/schema/recovery-guide.schema';
+import { resolveGuideBody } from '@/features/recovery-guide/service/guide-resolution.service';
 import { RecoveryGuideView } from '@/features/recovery-guide/types/recovery-guide.types';
 import { UpsertRecoveryGuideType } from '@/features/recovery-guide/validations/recovery-guide.validation';
 import { ServiceResult } from '@/shared/types/common';
 import { AppLocale } from '@/shared/types/roles';
 
-function toView(guide: RecoveryGuideDocument, isDefault: boolean): RecoveryGuideView {
+/**
+ * One row as the reader sees it. `fallback` supplies a list the row left empty — see
+ * `resolveGuideBody` for why that choice is made per list rather than per row.
+ */
+function toView(
+  guide: RecoveryGuideDocument,
+  isDefault: boolean,
+  fallback: RecoveryGuideDocument | null = null
+): RecoveryGuideView {
+  const body = resolveGuideBody(guide, isDefault ? null : fallback);
+
   return {
     id: guide._id.toString(),
     manipulationType: guide.manipulationType,
     locale: guide.locale,
-    expected: (guide.expected ?? []).map(item => ({
+    expected: body.expected.map(item => ({
       title: item.title,
       description: item.description ?? '',
       fromDay: item.fromDay,
       toDay: item.toDay,
     })),
-    warning: (guide.warning ?? []).map(item => ({
+    warning: body.warning.map(item => ({
       title: item.title,
       description: item.description ?? '',
       severity: item.severity,
@@ -26,7 +37,8 @@ function toView(guide: RecoveryGuideDocument, isDefault: boolean): RecoveryGuide
       toDay: item.toDay ?? 0,
     })),
     isPublished: guide.isPublished,
-    isDefault,
+    // A row that turned out to hold nothing of its own is the platform's content, whoever owns it.
+    isDefault: isDefault || !body.usedOwn,
   };
 }
 
@@ -125,9 +137,15 @@ export async function resolveGuideService(
   locale: AppLocale
 ): Promise<ServiceResult<RecoveryGuideView>> {
   const own = await recoveryGuideRepository.findForClinic(clinicId, manipulationType, locale);
-  if (own && own.isPublished) return { data: toView(own, false), status: 200 };
-
   const fallback = await recoveryGuideRepository.findDefault(manipulationType, locale);
+
+  /*
+    The clinic's row wins for every list it actually filled in, and the default supplies only the
+    lists it left empty. Never both within one list: a patient reading "when to call your clinic"
+    must be reading their clinic, not their clinic followed by the platform's generic seven.
+  */
+  if (own && own.isPublished) return { data: toView(own, false, fallback), status: 200 };
+
   if (fallback) return { data: toView(fallback, true), status: 200 };
 
   /*

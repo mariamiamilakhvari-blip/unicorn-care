@@ -231,3 +231,99 @@ describe('upsertGuideService — a duration becomes a stored window', () => {
     expect(written.warning[0]).toMatchObject({ fromDay: 0, toDay: 0 });
   });
 });
+
+/**
+ * P1 — the platform's generic guidance was rendering underneath the clinic's own on the portal,
+ * and a patient reading "when to call your clinic" could not tell which lines their own surgeon
+ * had written. Resolution is now per list: whatever the clinic said on a subject is the whole of
+ * what the patient is shown on that subject.
+ */
+describe('resolveGuideService — custom content is never padded with the default', () => {
+  const body = (
+    expected: string[],
+    warning: string[],
+    isPublished = true
+  ) => ({
+    _id: { toString: () => 'row' },
+    manipulationType: TYPE,
+    locale: 'en',
+    expected: expected.map(title => ({ title, description: '', fromDay: 0, toDay: 3 })),
+    warning: warning.map(title => ({
+      title,
+      description: '',
+      severity: 'call_clinic',
+      fromDay: 0,
+      toDay: 14,
+    })),
+    isPublished,
+  });
+
+  const view = (result: Awaited<ReturnType<typeof resolveGuideService>>) =>
+    result.data as RecoveryGuideView;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    repo.findForClinic.mockResolvedValue(null);
+    repo.findDefault.mockResolvedValue(
+      body(['platform norm'], ['platform red flag']) as never
+    );
+  });
+
+  it('shows only the clinic red flags when the clinic wrote red flags', async () => {
+    repo.findForClinic.mockResolvedValueOnce(
+      body(['clinic norm'], ['clinic red flag']) as never
+    );
+
+    const result = view(await resolveGuideService(CLINIC_ID, TYPE, 'en'));
+
+    expect(result.warning.map(item => item.title)).toEqual(['clinic red flag']);
+    expect(result.expected.map(item => item.title)).toEqual(['clinic norm']);
+  });
+
+  /**
+   * The half-written guide. A clinic with an opinion about red flags and none about what is normal
+   * used to publish an empty "what to expect", because its row won whole — empty list included.
+   */
+  it('fills only the half the clinic left empty', async () => {
+    repo.findForClinic.mockResolvedValueOnce(body([], ['clinic red flag']) as never);
+
+    const result = view(await resolveGuideService(CLINIC_ID, TYPE, 'en'));
+
+    expect(result.warning.map(item => item.title)).toEqual(['clinic red flag']);
+    expect(result.expected.map(item => item.title)).toEqual(['platform norm']);
+  });
+
+  /** One clinic item is an opinion, not a gap — it is not topped up to the platform's list. */
+  it('does not top up a shorter clinic list', async () => {
+    repo.findDefault.mockResolvedValue(
+      body(['p1'], ['w1', 'w2', 'w3']) as never
+    );
+    repo.findForClinic.mockResolvedValueOnce(body(['c1'], ['only one']) as never);
+
+    const result = view(await resolveGuideService(CLINIC_ID, TYPE, 'en'));
+
+    expect(result.warning).toHaveLength(1);
+  });
+
+  /** The reader-facing flag has to follow the content, not the row it was read from. */
+  it('still reports the platform as the source for a clinic row with nothing in it', async () => {
+    repo.findForClinic.mockResolvedValueOnce(body([], []) as never);
+
+    const result = view(await resolveGuideService(CLINIC_ID, TYPE, 'en'));
+
+    expect(result.isDefault).toBe(true);
+    expect(result.expected.map(item => item.title)).toEqual(['platform norm']);
+  });
+
+  /** Unpublished clinic content is absent, so the default stands alone rather than merging in. */
+  it('ignores an unpublished clinic row entirely', async () => {
+    repo.findForClinic.mockResolvedValueOnce(
+      body(['draft norm'], ['draft red flag'], false) as never
+    );
+
+    const result = view(await resolveGuideService(CLINIC_ID, TYPE, 'en'));
+
+    expect(result.expected.map(item => item.title)).toEqual(['platform norm']);
+    expect(result.warning.map(item => item.title)).toEqual(['platform red flag']);
+  });
+});
