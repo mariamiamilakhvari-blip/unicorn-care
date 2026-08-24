@@ -5,6 +5,7 @@ import {
   section,
   shell,
   toPlainText,
+  zonedDate,
 } from '@/features/notifications/service/email-layout.service';
 import { EmailClinic } from '@/features/notifications/types/email.types';
 import { emailCopy } from '@/shared/const/email-copy.const';
@@ -18,6 +19,15 @@ type PortalLinkEmailInput = {
   clinic: EmailClinic;
   portalUrl: string;
   ttlHours: number;
+  /**
+   * The day this patient's link stops working, when it was cut to their own recovery rather than
+   * to a fixed window.
+   *
+   * Absent for a link that is not tied to a plan — the requested one, and the fallback used when a
+   * plan has no end date or has already finished. The copy then states a duration instead, because
+   * naming a date the link is not actually pinned to would be a promise the row does not keep.
+   */
+  activeUntil?: Date | null;
 };
 
 /** Two days, below which a window is still something a person counts in hours. */
@@ -31,11 +41,24 @@ const DAYS_THRESHOLD_HOURS = 48;
  * link is a day long and reads correctly as hours, so the unit follows the window rather than
  * being fixed for both.
  */
-function expiryLine(copy: EmailCopy, ttlHours: number): string {
-  if (ttlHours >= DAYS_THRESHOLD_HOURS && ttlHours % 24 === 0) {
-    return copy.portalLinkExpiryDays.replace('{days}', String(ttlHours / 24));
+function expiryLine(copy: EmailCopy, input: PortalLinkEmailInput): string {
+  /*
+    A date beats a duration whenever there is a real one to name. "Active until 14/09/2026" is
+    something a post-operative patient can hold against their own recovery; "stops working after
+    720 hours" is a number they would have to convert, and one that stops being true the moment
+    the link's window is cut to their plan rather than to a fixed month.
+  */
+  if (input.activeUntil) {
+    return copy.portalLinkActiveUntil.replace(
+      '{formattedEndDate}',
+      zonedDate(input.activeUntil, input.clinic.timezone)
+    );
   }
-  return copy.portalLinkExpiry.replace('{hours}', String(ttlHours));
+
+  if (input.ttlHours >= DAYS_THRESHOLD_HOURS && input.ttlHours % 24 === 0) {
+    return copy.portalLinkExpiryDays.replace('{days}', String(input.ttlHours / 24));
+  }
+  return copy.portalLinkExpiry.replace('{hours}', String(input.ttlHours));
 }
 
 /**
@@ -57,7 +80,7 @@ export async function sendPortalLinkEmailService(input: PortalLinkEmailInput): P
     }
 
     const copy = emailCopy(input.locale);
-    const expiry = expiryLine(copy, input.ttlHours);
+    const expiry = expiryLine(copy, input);
 
     const sections = [
       section('🔗', copy.portalLinkHeadline, paragraph(copy.portalLinkIntro)),

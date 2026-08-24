@@ -85,6 +85,8 @@ export const EMAIL_COPY_EN: EmailCopy = {
   portalLinkCta: 'Open my plan',
   portalLinkExpiry: 'This link works once and stops working after {hours} hours.',
   portalLinkExpiryDays: 'This link works once and stops working after {days} days.',
+  portalLinkActiveUntil:
+    'This link is active throughout your recovery period (until {formattedEndDate}).',
   portalLinkIgnore:
     'If you did not ask for this, ignore this email. Nobody can open your plan without this link.',
 };

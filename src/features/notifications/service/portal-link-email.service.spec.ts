@@ -62,6 +62,49 @@ describe('sendPortalLinkEmailService', () => {
     expect(bothParts()).toContain('30 დღე');
   });
 
+  /*
+    A date beats a duration whenever there is a real one to name. It is what a post-operative
+    patient can hold against their own recovery, and the link is now cut to that recovery rather
+    than to a fixed month, so a duration would also be the less accurate of the two.
+  */
+  describe('a link tied to the recovery period', () => {
+    const ACTIVE_UNTIL = new Date('2026-09-11T00:00:00.000Z');
+
+    it('names the end of the recovery rather than a duration', async () => {
+      await sendPortalLinkEmailService(input({ activeUntil: ACTIVE_UNTIL }));
+
+      expect(bothParts()).toContain('recovery period');
+      expect(bothParts()).toContain('11/09/2026');
+    });
+
+    it('says it in Georgian for a Georgian patient', async () => {
+      await sendPortalLinkEmailService(input({ locale: 'ka', activeUntil: ACTIVE_UNTIL }));
+
+      expect(bothParts()).toContain('სარეაბილიტაციო პერიოდის დასრულებამდე');
+      expect(bothParts()).toContain('11/09/2026');
+    });
+
+    /** The date the patient reads is the day it is where their clinic is, not in UTC. */
+    it('prints the date in the clinic zone', async () => {
+      await sendPortalLinkEmailService(
+        input({
+          activeUntil: new Date('2026-09-10T21:00:00.000Z'),
+          clinic: { ...input().clinic, timezone: 'Asia/Tbilisi' },
+        })
+      );
+
+      // 21:00 UTC is already the 11th in Tbilisi.
+      expect(bothParts()).toContain('11/09/2026');
+    });
+
+    it('states a duration when there is no end date to name', async () => {
+      await sendPortalLinkEmailService(input({ activeUntil: null, ttlHours: 30 * 24 }));
+
+      expect(bothParts()).toContain('30 days');
+      expect(bothParts()).not.toContain('recovery period');
+    });
+  });
+
   it('reports false rather than throwing when Resend is not configured', async () => {
     resend.isConfigured.mockReturnValue(false);
 

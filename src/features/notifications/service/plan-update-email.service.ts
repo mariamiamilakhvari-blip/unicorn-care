@@ -8,7 +8,48 @@ import {
   NOTIFICATION_LINK_TTL_MINUTES,
 } from '@/features/patient/service/portal-link.service';
 import { DEFAULT_TIMEZONE } from '@/shared/const/timezone.const';
+import { clock } from '@/shared/lib/clock';
 import { AppLocale } from '@/shared/types/roles';
+
+const MS_PER_MINUTE = 60 * 1000;
+
+/**
+ * One day past the last day of rehab.
+ *
+ * `rehabEndsAt` is the end of the recovery the plan describes, and a link that died at midnight on
+ * that exact instant would go dead while the patient was still reading the final day's tasks. A
+ * day is enough to cover the tail of it without turning the link into a standing key.
+ */
+const GRACE_DAYS_AFTER_REHAB = 1;
+
+/**
+ * How long this patient's link should live, and the date to print on it.
+ *
+ * Cut to the plan rather than to a fixed month. The link's whole purpose is to let somebody read
+ * the plan they are currently living on, so the recovery it describes is the natural end of it —
+ * a patient six weeks into a twelve-week rehab should not be handed a credential that dies
+ * halfway, and one whose rehab ends on Friday has no use for a month.
+ *
+ * Falls back to the fixed window in the two cases where the plan cannot answer: no end date on the
+ * record, and a rehab that has already finished. Both return a null date, so the email states a
+ * duration instead of naming a day that would be wrong or already past.
+ */
+function linkWindowFor(
+  plan: CarePlanDocument,
+  now: Date
+): { ttlMinutes: number; activeUntil: Date | null } {
+  const fixed = { ttlMinutes: NOTIFICATION_LINK_TTL_MINUTES, activeUntil: null };
+
+  if (!plan.rehabEndsAt) return fixed;
+
+  const activeUntil = clock.addDays(plan.rehabEndsAt, GRACE_DAYS_AFTER_REHAB);
+  const ttlMinutes = Math.ceil((activeUntil.getTime() - now.getTime()) / MS_PER_MINUTE);
+
+  // The rehab is already over. The plan is still readable, so the patient still gets a link.
+  if (ttlMinutes <= 0) return fixed;
+
+  return { ttlMinutes, activeUntil };
+}
 
 /**
  * Emails the patient a fresh way into their portal, because what they were looking at has changed.
@@ -22,11 +63,11 @@ import { AppLocale } from '@/shared/types/roles';
  * the transition into `active`, precisely so a dosage typo does not re-send the largest email the
  * product has to somebody who already read it. This is the small one: a door, not a document.
  *
- * Given the notification lifetime rather than the requested-link one, which is a day. Nobody is
- * waiting by their phone for this: it goes out when the clinic happens to save an edit, and a
- * patient who reads their mail at the weekend must still find a door rather than a second dead
- * link. A month is the span of a recovery, and the link is still single-use — walking through it
- * spends it, and the schema's TTL index then deletes the row.
+ * The link lasts as long as the recovery it opens — see `linkWindowFor`. Nobody is waiting by
+ * their phone for this: it goes out when the clinic happens to save an edit, and a patient who
+ * reads their mail at the weekend must still find a door rather than a second dead link. The link
+ * is still single-use — walking through it spends it and sets the session cookie, and the schema's
+ * TTL index then deletes the row.
  *
  * Never throws and never fails the save. A plan edit rolled back because a mail provider was down
  * would leave the clinic's correction unapplied, which is strictly worse than an email that did
@@ -52,11 +93,9 @@ export async function sendPlanUpdatedLinkService(
     if (patient.portalAccessRevokedAt) return false;
     if (isEmailSuppressed(patient)) return false;
 
-    const portalUrl = await issuePortalLink(
-      patientId,
-      plan.clinicId,
-      NOTIFICATION_LINK_TTL_MINUTES
-    );
+    const window = linkWindowFor(plan, clock.now());
+
+    const portalUrl = await issuePortalLink(patientId, plan.clinicId, window.ttlMinutes);
 
     return await sendPortalLinkEmailService({
       to: patient.email,
@@ -71,7 +110,8 @@ export async function sendPlanUpdatedLinkService(
         timezone: clinic.timezone || DEFAULT_TIMEZONE,
       },
       portalUrl,
-      ttlHours: NOTIFICATION_LINK_TTL_MINUTES / 60,
+      ttlHours: window.ttlMinutes / 60,
+      activeUntil: window.activeUntil,
     });
   } catch (caught) {
     console.error('[email] plan-updated link threw', plan._id.toString(), caught);

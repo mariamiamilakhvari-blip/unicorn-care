@@ -84,6 +84,8 @@ export const EMAIL_COPY_KA: EmailCopy = {
   portalLinkCta: 'გეგმის გახსნა',
   portalLinkExpiry: 'ეს ბმული მუშაობს ერთხელ და ძალას კარგავს {hours} საათში.',
   portalLinkExpiryDays: 'ეს ბმული მუშაობს ერთხელ და ძალას კარგავს {days} დღეში.',
+  portalLinkActiveUntil:
+    'ეს ბმული აქტიურია თქვენი სარეაბილიტაციო პერიოდის დასრულებამდე ({formattedEndDate}).',
   portalLinkIgnore:
     'თუ ეს თქვენ არ მოგითხოვიათ, უგულებელყავით ეს წერილი. ამ ბმულის გარეშე თქვენი გეგმის ' +
     'გახსნა შეუძლებელია.',

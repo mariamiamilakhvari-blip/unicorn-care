@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/features/patient/repository/patient.repository', () => ({
   patientRepository: { findById: vi.fn() },
@@ -37,12 +37,20 @@ const PLAN_ID = '507f1f77bcf86cd799439044';
 
 const PORTAL_URL = 'https://example.test/p/login/tok';
 
-const plan = () =>
+/** Rehab runs to 10 September; "now" is 1 September, so ten days remain plus the grace day. */
+const NOW = new Date('2026-09-01T00:00:00.000Z');
+const REHAB_ENDS_AT = new Date('2026-09-10T00:00:00.000Z');
+
+const plan = (over: Partial<CarePlanDocument> = {}) =>
   ({
     _id: new Types.ObjectId(PLAN_ID),
     patientId: new Types.ObjectId(PATIENT_ID),
     clinicId: new Types.ObjectId(CLINIC_ID),
+    rehabEndsAt: REHAB_ENDS_AT,
+    ...over,
   }) as CarePlanDocument;
+
+const MINUTES_PER_DAY = 24 * 60;
 
 const clinic = (over: Partial<ClinicDocument> = {}) =>
   ({
@@ -70,10 +78,14 @@ const patient = (over: Record<string, unknown> = {}) =>
 describe('sendPlanUpdatedLinkService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     patients.findById.mockResolvedValue(patient());
     mintLink.mockResolvedValue(PORTAL_URL);
     sendEmail.mockResolvedValue(true);
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it('mints a link and emails it to the patient', async () => {
     const sent = await sendPlanUpdatedLinkService(plan(), clinic());
@@ -94,15 +106,50 @@ describe('sendPlanUpdatedLinkService', () => {
     expect(sendEmail.mock.calls[0][0].ttlHours).toBe(ttlMinutes / 60);
   });
 
-  /**
-   * The notification lifetime, not the requested-link one. This email is not asked for — it goes
-   * out when a clinic saves an edit, and a patient who reads their mail days later must not find a
-   * second dead link where the fix was meant to be.
-   */
-  it('issues a link that lasts the month, not the day', async () => {
-    await sendPlanUpdatedLinkService(plan(), clinic());
+  /*
+    The link is cut to the recovery it opens. A patient six weeks into a twelve-week rehab must not
+    be handed a credential that dies halfway through it, and one whose rehab ends on Friday has no
+    use for a month.
+  */
+  describe('the window follows the plan', () => {
+    it('lasts until one day past the end of rehab', async () => {
+      await sendPlanUpdatedLinkService(plan(), clinic());
 
-    expect(mintLink.mock.calls[0][2]).toBe(30 * 24 * 60);
+      // 1 Sept → 11 Sept: the nine days left of rehab, plus the grace day.
+      expect(mintLink.mock.calls[0][2]).toBe(10 * MINUTES_PER_DAY);
+    });
+
+    /** The date is what the email prints, so it has to be the one the row was minted against. */
+    it('hands the email the same day the link expires on', async () => {
+      await sendPlanUpdatedLinkService(plan(), clinic());
+
+      const activeUntil = sendEmail.mock.calls[0][0].activeUntil;
+      expect(activeUntil?.toISOString()).toBe('2026-09-11T00:00:00.000Z');
+    });
+
+    /** A long rehab gets a long link — there is no month-shaped ceiling on it. */
+    it('outlasts the old fixed month for a long recovery', async () => {
+      await sendPlanUpdatedLinkService(
+        plan({ rehabEndsAt: new Date('2026-12-01T00:00:00.000Z') }),
+        clinic()
+      );
+
+      expect(mintLink.mock.calls[0][2]).toBeGreaterThan(30 * MINUTES_PER_DAY);
+    });
+
+    /*
+      Two cases the plan cannot answer, both falling back to the fixed window with no date on the
+      email — naming a day that is absent or already past would be a promise the row does not keep.
+    */
+    it.each([
+      ['the plan has no end date', { rehabEndsAt: null }],
+      ['the rehab is already over', { rehabEndsAt: new Date('2026-08-01T00:00:00.000Z') }],
+    ])('falls back to the fixed month when %s', async (_case, over) => {
+      await sendPlanUpdatedLinkService(plan(over as Partial<CarePlanDocument>), clinic());
+
+      expect(mintLink.mock.calls[0][2]).toBe(30 * MINUTES_PER_DAY);
+      expect(sendEmail.mock.calls[0][0].activeUntil).toBeNull();
+    });
   });
 
   /** The patient's own language wins; the clinic's is the fallback for a record predating it. */
