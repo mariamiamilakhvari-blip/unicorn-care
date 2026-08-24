@@ -41,8 +41,25 @@ export type ClinicRatingSummary = {
   threshold: number;
 };
 
+/**
+ * One doctor as their own clinic sees them.
+ *
+ * Named rather than identified: the roster comes from the operating surgeon written on each
+ * procedure, so a visiting surgeon with no staff account still appears.
+ *
+ * The average is shown whatever the count, unlike the clinic's public standing. The threshold
+ * exists so nobody is *ranked* on two ratings, and a clinic reading its own doctors is not being
+ * ranked — it is given the count beside the average and can weigh it itself.
+ */
+export type ClinicDoctorRating = {
+  name: string;
+  ratingCount: number;
+  avgDoctorScore: number;
+};
+
 export type ClinicRatingListView = {
   summary: ClinicRatingSummary;
+  doctors: ClinicDoctorRating[];
   items: (RatingView & { patientName: string })[];
 };
 

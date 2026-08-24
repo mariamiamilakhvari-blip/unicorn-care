@@ -7,6 +7,7 @@ import { procedureRepository } from '@/features/procedure/repository/procedure.r
 import { ratingRepository } from '@/features/rating/repository/rating.repository';
 import { RatingDocument } from '@/features/rating/schema/rating.schema';
 import {
+  ClinicDoctorRating,
   ClinicRatingListView,
   ClinicRatingSummary,
   RatablePlanView,
@@ -128,13 +129,18 @@ export async function submitRatingService(
     operatorUserId: procedure.operatorUserId ?? null,
     doctorScore: input.doctorScore,
     clinicScore: input.clinicScore,
+    /*
+      The detail scores and the free-text comment are no longer asked for. The columns stay so a
+      rating filed before that still reads back in full, and a new one is written blank rather
+      than left absent — an absent subdocument and an empty one read differently downstream.
+    */
     subscores: {
-      communication: input.subscores.communication ?? null,
-      cleanliness: input.subscores.cleanliness ?? null,
-      painManagement: input.subscores.painManagement ?? null,
-      resultSatisfaction: input.subscores.resultSatisfaction ?? null,
+      communication: null,
+      cleanliness: null,
+      painManagement: null,
+      resultSatisfaction: null,
     },
-    comment: input.comment,
+    comment: '',
     submittedAt: now,
     editableUntil: new Date(now.getTime() + RATING_EDIT_WINDOW_HOURS * 60 * 60 * 1000),
     clinicResponse: '',
@@ -172,17 +178,16 @@ export async function reviseRatingService(
     return { data: { error: 'EDIT_WINDOW_CLOSED' }, status: 409 };
   }
 
+  /*
+    Only the two stars are written. `subscores` and `comment` are left untouched rather than
+    cleared: a patient correcting a mis-tap on the doctor's score has said nothing about the
+    comment they left before the field was withdrawn, and blanking it would erase what they told
+    the clinic. `editableUntil` is deliberately not extended — the window runs from the first
+    submission.
+  */
   await ratingRepository.updateById(ratingId, {
     doctorScore: input.doctorScore,
     clinicScore: input.clinicScore,
-    subscores: {
-      communication: input.subscores.communication ?? null,
-      cleanliness: input.subscores.cleanliness ?? null,
-      painManagement: input.subscores.painManagement ?? null,
-      resultSatisfaction: input.subscores.resultSatisfaction ?? null,
-    },
-    comment: input.comment,
-    // `editableUntil` is deliberately not extended — the window runs from the first submission.
   });
 
   await refreshClinicAggregate(rating.clinicId.toString());
@@ -205,15 +210,29 @@ function toSummary(count: number, doctor: number, clinic: number): ClinicRatingS
   };
 }
 
-/** What a clinic sees: its standing, and every rating with the patient who wrote it. */
+/**
+ * What a clinic sees: its own standing, each doctor's, and every rating with the patient who
+ * wrote it.
+ *
+ * The per-doctor breakdown is the question a clinic actually asks of this page — a single house
+ * average tells it whether patients are happy, and not with whom.
+ */
 export async function listClinicRatingsService(
   clinicId: string
 ): Promise<ServiceResult<ClinicRatingListView>> {
   const now = clock.now();
-  const [aggregate, ratings] = await Promise.all([
+  const [aggregate, doctorRows, ratings] = await Promise.all([
     ratingRepository.aggregateForClinic(clinicId),
+    ratingRepository.aggregateDoctorsForClinic(clinicId),
     ratingRepository.findByClinic(clinicId, CLINIC_LIST_LIMIT),
   ]);
+
+  const doctors: ClinicDoctorRating[] = doctorRows.map(row => ({
+    name: row._id,
+    ratingCount: row.ratingCount,
+    // One decimal, matching every other average the product prints on a five-point scale.
+    avgDoctorScore: Math.round(row.avgDoctorScore * 10) / 10,
+  }));
 
   const items = [];
   for (const rating of ratings) {
@@ -231,6 +250,7 @@ export async function listClinicRatingsService(
         Math.round(aggregate.avgDoctorScore * 10) / 10,
         Math.round(aggregate.avgClinicScore * 10) / 10
       ),
+      doctors,
       items,
     },
     status: 200,

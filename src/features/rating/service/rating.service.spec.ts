@@ -9,6 +9,7 @@ vi.mock('@/features/rating/repository/rating.repository', () => ({
     findByClinic: vi.fn(),
     updateById: vi.fn(),
     aggregateForClinic: vi.fn(),
+    aggregateDoctorsForClinic: vi.fn(),
   },
 }));
 vi.mock('@/features/procedure/repository/procedure.repository', () => ({
@@ -82,8 +83,6 @@ const rating = (over: Partial<RatingDocument> = {}): RatingDocument =>
     procedureId: new mongoose.Types.ObjectId(PROCEDURE),
     doctorScore: 4,
     clinicScore: 5,
-    subscores: {},
-    comment: '',
     submittedAt: NOW,
     editableUntil: new Date('2026-08-10T12:00:00.000Z'),
     clinicResponse: '',
@@ -102,6 +101,7 @@ describe('rating service', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.spyOn(clock, 'now').mockReturnValue(NOW);
+    ratings.aggregateDoctorsForClinic.mockResolvedValue([]);
     ratings.aggregateForClinic.mockResolvedValue({
       ratingCount: 0,
       avgDoctorScore: 0,
@@ -190,8 +190,6 @@ describe('rating service', () => {
       const { status } = await reviseRatingService(RATING, PATIENT, {
         doctorScore: 2,
         clinicScore: 2,
-        subscores: {},
-        comment: '',
       });
 
       expect(status).toBe(200);
@@ -206,8 +204,6 @@ describe('rating service', () => {
       const { status, data } = await reviseRatingService(RATING, PATIENT, {
         doctorScore: 1,
         clinicScore: 1,
-        subscores: {},
-        comment: '',
       });
 
       expect(status).toBe(409);
@@ -222,8 +218,6 @@ describe('rating service', () => {
       await reviseRatingService(RATING, PATIENT, {
         doctorScore: 3,
         clinicScore: 3,
-        subscores: {},
-        comment: '',
       });
 
       expect(ratings.updateById.mock.calls[0][1]).not.toHaveProperty('editableUntil');
@@ -235,8 +229,6 @@ describe('rating service', () => {
       const { status } = await reviseRatingService(RATING, OTHER, {
         doctorScore: 1,
         clinicScore: 1,
-        subscores: {},
-        comment: '',
       });
 
       expect(status).toBe(404);
@@ -359,5 +351,135 @@ describe('rating service', () => {
     const { data } = await listClinicRatingsService(CLINIC);
 
     expect('items' in data && data.items[0].patientName).toBe('Nino Beridze');
+  });
+});
+
+/**
+ * The rating form was reduced to its two star questions — four optional detail scores behind a
+ * fold and a free-text box were costing completions without adding signal. The stored columns
+ * stay, so a rating filed before that still reads back in full for the clinic.
+ */
+describe('a rating is two stars and nothing else', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.spyOn(clock, 'now').mockReturnValue(NOW);
+    ratings.aggregateDoctorsForClinic.mockResolvedValue([]);
+    ratings.aggregateForClinic.mockResolvedValue({
+      ratingCount: 0,
+      avgDoctorScore: 0,
+      avgClinicScore: 0,
+    });
+    procedures.findById.mockResolvedValue(procedure());
+    plans.findByProcedureId.mockResolvedValue(plan('completed'));
+    ratings.findByProcedure.mockResolvedValue(null);
+    ratings.create.mockResolvedValue(RATING);
+    ratings.findById.mockResolvedValue(rating());
+    ratings.updateById.mockResolvedValue(true);
+  });
+
+  it('writes a new rating blank on both withdrawn fields', async () => {
+    await submitRatingService(PATIENT, CLINIC, {
+      procedureId: PROCEDURE,
+      doctorScore: 4,
+      clinicScore: 5,
+    });
+
+    const written = ratings.create.mock.calls[0][0];
+    expect(written.comment).toBe('');
+    expect(written.subscores).toEqual({
+      communication: null,
+      cleanliness: null,
+      painManagement: null,
+      resultSatisfaction: null,
+    });
+  });
+
+  it('still records the two star ratings', async () => {
+    await submitRatingService(PATIENT, CLINIC, {
+      procedureId: PROCEDURE,
+      doctorScore: 4,
+      clinicScore: 5,
+    });
+
+    expect(ratings.create.mock.calls[0][0]).toMatchObject({ doctorScore: 4, clinicScore: 5 });
+  });
+
+  /**
+   * A patient correcting a mis-tapped star has said nothing about the comment they left before the
+   * field was withdrawn. Blanking it would erase what they had already told the clinic.
+   */
+  it('leaves an older rating’s comment and subscores untouched on revision', async () => {
+    ratings.findById.mockResolvedValue(rating({ comment: 'they were kind' }));
+
+    await reviseRatingService(RATING, PATIENT, { doctorScore: 2, clinicScore: 3 });
+
+    const patch = ratings.updateById.mock.calls[0][1];
+    expect(patch).toEqual({ doctorScore: 2, clinicScore: 3 });
+    expect(patch).not.toHaveProperty('comment');
+    expect(patch).not.toHaveProperty('subscores');
+  });
+});
+
+/**
+ * A single house average tells a clinic whether its patients are happy, and not with whom. The
+ * per-doctor breakdown is the question the page is actually asked.
+ */
+describe('the clinic sees each doctor’s own average', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.spyOn(clock, 'now').mockReturnValue(NOW);
+    ratings.aggregateForClinic.mockResolvedValue({
+      ratingCount: 0,
+      avgDoctorScore: 0,
+      avgClinicScore: 0,
+    });
+    ratings.findByClinic.mockResolvedValue([]);
+    ratings.aggregateDoctorsForClinic.mockResolvedValue([]);
+  });
+
+  it('carries one entry per operating surgeon', async () => {
+    ratings.aggregateDoctorsForClinic.mockResolvedValue([
+      { _id: 'Dr Nino Beridze', ratingCount: 7, avgDoctorScore: 4.9 },
+      { _id: 'Dr Giorgi Kapanadze', ratingCount: 3, avgDoctorScore: 4.2 },
+    ] as never);
+
+    const { data } = await listClinicRatingsService(CLINIC);
+
+    expect('doctors' in data && data.doctors).toEqual([
+      { name: 'Dr Nino Beridze', ratingCount: 7, avgDoctorScore: 4.9 },
+      { name: 'Dr Giorgi Kapanadze', ratingCount: 3, avgDoctorScore: 4.2 },
+    ]);
+  });
+
+  /** One decimal, matching every other average the product prints on a five-point scale. */
+  it('rounds the average to one decimal', async () => {
+    ratings.aggregateDoctorsForClinic.mockResolvedValue([
+      { _id: 'Dr Nino Beridze', ratingCount: 3, avgDoctorScore: 4.666666666 },
+    ] as never);
+
+    const { data } = await listClinicRatingsService(CLINIC);
+
+    expect('doctors' in data && data.doctors[0].avgDoctorScore).toBe(4.7);
+  });
+
+  /**
+   * Unlike the public board, no minimum applies. The threshold exists so nobody is *ranked* on two
+   * ratings, and a clinic reading its own doctors is not being ranked — it gets the count beside
+   * the average and can weigh it itself.
+   */
+  it('shows an average that stands on a single rating', async () => {
+    ratings.aggregateDoctorsForClinic.mockResolvedValue([
+      { _id: 'Dr Nino Beridze', ratingCount: 1, avgDoctorScore: 5 },
+    ] as never);
+
+    const { data } = await listClinicRatingsService(CLINIC);
+
+    expect('doctors' in data && data.doctors[0]).toMatchObject({ ratingCount: 1, avgDoctorScore: 5 });
+  });
+
+  it('is empty rather than absent when no rating names a surgeon', async () => {
+    const { data } = await listClinicRatingsService(CLINIC);
+
+    expect('doctors' in data && data.doctors).toEqual([]);
   });
 });

@@ -5,7 +5,10 @@ import { useTranslations } from 'next-intl';
 
 import { RatingRow } from '@/features/rating/components/rating-row';
 import { useClinicRatings } from '@/features/rating/hooks/use-clinic-ratings';
-import { ClinicRatingSummary } from '@/features/rating/types/rating.types';
+import {
+  ClinicDoctorRating,
+  ClinicRatingSummary,
+} from '@/features/rating/types/rating.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 
 /**
@@ -53,6 +56,48 @@ function Average({ label, value }: { label: string; value: number | null }) {
   );
 }
 
+/**
+ * Each doctor's own average, which is the question a clinic actually asks of this page.
+ *
+ * A single house average says whether patients are happy and not with whom. Ordered best first,
+ * ties broken by volume, with the count printed beside every figure: unlike the public board this
+ * shows an average however few ratings stand behind it, because a clinic reading its own numbers
+ * is not being ranked and can weigh two ratings for what they are.
+ *
+ * Renders nothing until at least one rating names a surgeon — an empty "by doctor" heading reads
+ * as a fault rather than as an absence.
+ */
+function DoctorBreakdown({ doctors }: { doctors: ClinicDoctorRating[] }) {
+  const t = useTranslations('rating');
+
+  if (doctors.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-4">
+      <p className="text-xs text-muted-foreground">{t('byDoctor')}</p>
+      <ul className="flex flex-col gap-1">
+        {doctors.map(doctor => (
+          <li
+            key={doctor.name}
+            className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{doctor.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('doctorRatingCount', { count: doctor.ratingCount })}
+              </p>
+            </div>
+            <span className="flex shrink-0 items-center gap-1 font-heading text-lg font-semibold">
+              <Star className="size-4 fill-current text-moss" aria-hidden />
+              {doctor.avgDoctorScore.toFixed(1)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function ClinicRatingsPanel() {
   const t = useTranslations('rating');
   const tCommon = useTranslations('common');
@@ -71,6 +116,7 @@ export function ClinicRatingsPanel() {
         {data && (
           <>
             <Summary summary={data.summary} />
+            <DoctorBreakdown doctors={data.doctors} />
             {data.items.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('none')}</p>
             ) : (

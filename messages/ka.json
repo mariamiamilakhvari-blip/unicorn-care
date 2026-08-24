@@ -628,13 +628,6 @@
     "doctorScore": "ექიმი {name}",
     "clinicScore": "კლინიკა",
     "scoreOf": "{score} 5-დან",
-    "addDetail": "დეტალური შეფასების დამატება",
-    "subscore_communication": "კომუნიკაცია",
-    "subscore_cleanliness": "სისუფთავე",
-    "subscore_painManagement": "ტკივილის მართვა",
-    "subscore_resultSatisfaction": "შედეგით კმაყოფილება",
-    "comment": "კომენტარი (სურვილისამებრ)",
-    "commentPlaceholder": "რა ჩაიარა კარგად და რა შეიძლება გაუმჯობესდეს?",
     "submit": "შეფასების გაგზავნა",
     "saveFailed": "შეფასება ვერ გაიგზავნა. სცადეთ მოგვიანებით.",
     "thanks": "მადლობა შეფასებისთვის",
@@ -654,7 +647,9 @@
     "responsePlaceholder": "თქვენი პასუხი პაციენტის შეფასებაზე",
     "sendResponse": "პასუხის გაგზავნა",
     "cancelResponse": "გაუქმება",
-    "yourResponse": "კლინიკის პასუხი"
+    "yourResponse": "კლინიკის პასუხი",
+    "byDoctor": "ექიმების მიხედვით",
+    "doctorRatingCount": "{count} შეფასება"
   },
   "recoveryLog": {
     "title": "როგორ მიმდინარეობს აღდგენა?",

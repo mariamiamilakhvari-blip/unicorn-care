@@ -19,6 +19,20 @@ export type PublicClinicAggregate = {
 };
 
 /**
+ * One doctor's standing inside a single clinic, for that clinic's own dashboard.
+ *
+ * Grouped on the operating surgeon's *name* rather than `operatorUserId`, for the same reason the
+ * public board is: the roster is derived from what is written on each procedure, and
+ * `operatorUserId` is null for a visiting surgeon or anyone without a staff account. Grouping on
+ * the account id would drop those doctors from a clinic's own view of itself.
+ */
+export type ClinicDoctorAggregate = {
+  _id: string;
+  ratingCount: number;
+  avgDoctorScore: number;
+};
+
+/**
  * One doctor's public standing.
  *
  * Keyed by clinic *and* name because a doctor is not a record here — `listDoctorsService` derives
@@ -88,6 +102,41 @@ export const ratingRepository = {
     ]).exec();
 
     return result ?? { ratingCount: 0, avgDoctorScore: 0, avgClinicScore: 0 };
+  },
+
+  /**
+   * Every doctor at one clinic, with the average their own patients gave them.
+   *
+   * Clinic-scoped in the `$match` that runs *first*, so the pipeline can never see another
+   * tenant's ratings — the scope is not something a later stage filters back out.
+   *
+   * No minimum applies here and that is deliberate: the threshold exists so a clinic is not ranked
+   * publicly on two ratings, and a clinic looking at its own doctors is not being ranked. It is
+   * told the count beside each average and can judge for itself.
+   */
+  async aggregateDoctorsForClinic(clinicId: string): Promise<ClinicDoctorAggregate[]> {
+    await mongo.connect();
+    return RatingModel.aggregate<ClinicDoctorAggregate>([
+      { $match: { clinicId: new mongoose.Types.ObjectId(clinicId) } },
+      {
+        $lookup: {
+          from: 'procedures',
+          localField: 'procedureId',
+          foreignField: '_id',
+          as: 'procedure',
+        },
+      },
+      { $unwind: '$procedure' },
+      {
+        $group: {
+          _id: '$procedure.operatorName',
+          ratingCount: { $sum: 1 },
+          avgDoctorScore: { $avg: '$doctorScore' },
+        },
+      },
+      // Ties broken by volume, as the public board does: more ratings is the stronger average.
+      { $sort: { avgDoctorScore: -1, ratingCount: -1 } },
+    ]).exec();
   },
 
   /**

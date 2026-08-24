@@ -628,13 +628,6 @@
     "doctorScore": "Dr {name}",
     "clinicScore": "The clinic",
     "scoreOf": "{score} out of 5",
-    "addDetail": "Add a more detailed rating",
-    "subscore_communication": "Communication",
-    "subscore_cleanliness": "Cleanliness",
-    "subscore_painManagement": "Pain management",
-    "subscore_resultSatisfaction": "Satisfaction with the result",
-    "comment": "Comment (optional)",
-    "commentPlaceholder": "What went well, and what could be better?",
     "submit": "Send rating",
     "saveFailed": "The rating could not be sent. Please try again later.",
     "thanks": "Thank you for your rating",
@@ -654,7 +647,9 @@
     "responsePlaceholder": "Your reply to this patient's rating",
     "sendResponse": "Send reply",
     "cancelResponse": "Cancel",
-    "yourResponse": "Clinic reply"
+    "yourResponse": "Clinic reply",
+    "byDoctor": "By doctor",
+    "doctorRatingCount": "{count, plural, one {# rating} other {# ratings}}"
   },
   "recoveryLog": {
     "title": "How is your recovery going?",

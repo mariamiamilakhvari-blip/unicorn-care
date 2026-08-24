@@ -8,10 +8,6 @@ import { ScorePicker } from '@/features/rating/components/score-picker';
 import { usePortalRatings } from '@/features/rating/hooks/use-portal-ratings';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Textarea } from '@/shared/components/ui/textarea';
-import { RATING_SUBSCORE_KEYS, RatingSubscoreKey } from '@/shared/const/rating.const';
-
-type Subscores = Partial<Record<RatingSubscoreKey, number>>;
 
 /**
  * Asked once, at the end, and never again.
@@ -19,6 +15,11 @@ type Subscores = Partial<Record<RatingSubscoreKey, number>>;
  * Shown only when a care plan has completed — a patient three days post-op is rating their pain,
  * not their care. There is no push and no email behind it: this waits in the portal for a patient
  * who chooses to open it, which is the difference between asking and chasing.
+ *
+ * Two questions, both stars. It carried four optional detail scores behind a fold and a free-text
+ * box beneath them, which is six things to answer at the end of a recovery — and everything past
+ * the second question cost completions rather than adding signal. A rating nobody finishes is
+ * worth less than a rating of two stars that everybody does.
  */
 export function PortalRatingCard() {
   const t = useTranslations('rating');
@@ -26,9 +27,6 @@ export function PortalRatingCard() {
 
   const [doctorScore, setDoctorScore] = useState<number | null>(null);
   const [clinicScore, setClinicScore] = useState<number | null>(null);
-  const [subscores, setSubscores] = useState<Subscores>({});
-  const [comment, setComment] = useState('');
-  const [showDetail, setShowDetail] = useState(false);
 
   const target = ratable[0];
 
@@ -52,13 +50,7 @@ export function PortalRatingCard() {
 
   async function handleSubmit() {
     if (doctorScore === null || clinicScore === null || !target) return;
-    await submit({
-      procedureId: target.procedureId,
-      doctorScore,
-      clinicScore,
-      subscores,
-      comment: comment.trim(),
-    });
+    await submit({ procedureId: target.procedureId, doctorScore, clinicScore });
   }
 
   return (
@@ -80,39 +72,6 @@ export function PortalRatingCard() {
           onChange={setClinicScore}
           describeScore={score => t('scoreOf', { score })}
         />
-
-        {/* The detail questions are folded away: two answers is a complete rating, and a form
-            that opens with six of them is a form most patients close. */}
-        {showDetail ? (
-          <div className="flex flex-col gap-4 border-t border-border pt-4">
-            {RATING_SUBSCORE_KEYS.map(key => (
-              <ScorePicker
-                key={key}
-                label={t(`subscore_${key}`)}
-                value={subscores[key] ?? null}
-                onChange={score => setSubscores(current => ({ ...current, [key]: score }))}
-                describeScore={score => t('scoreOf', { score })}
-              />
-            ))}
-          </div>
-        ) : (
-          <Button variant="ghost" className="self-start px-0" onClick={() => setShowDetail(true)}>
-            {t('addDetail')}
-          </Button>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium" htmlFor="rating-comment">
-            {t('comment')}
-          </label>
-          <Textarea
-            id="rating-comment"
-            value={comment}
-            maxLength={2000}
-            placeholder={t('commentPlaceholder')}
-            onChange={event => setComment(event.target.value)}
-          />
-        </div>
 
         {hasError && <p className="text-sm text-destructive">{t('saveFailed')}</p>}
 

@@ -6,22 +6,18 @@ const Score = z.coerce.number().int().min(1).max(5);
 /**
  * `POST /api/patient-portal/ratings`.
  *
- * Both headline scores are required and every subscore is optional: a patient who wants to give a
- * number and leave is the common case, and a form that demands six answers gets fewer of all six.
+ * Two stars, and nothing else. The form used to carry four optional detail scores behind a fold
+ * and a free-text box beneath them; a patient who wanted to give a number and leave was the common
+ * case, and everything past the second question cost completions without adding signal.
+ *
+ * The stored document keeps its `subscores` and `comment` columns, so ratings filed before this
+ * still read back in full for the clinic. Nothing new arrives in either, so neither is accepted
+ * from the client — a field the form cannot produce is a field the API should not take.
  */
 export const SubmitRatingSchema = z.object({
   procedureId: z.string().min(24).max(24),
   doctorScore: Score,
   clinicScore: Score,
-  subscores: z
-    .object({
-      communication: Score.nullish(),
-      cleanliness: Score.nullish(),
-      painManagement: Score.nullish(),
-      resultSatisfaction: Score.nullish(),
-    })
-    .default({}),
-  comment: z.string().trim().max(2000).default(''),
 });
 
 export type SubmitRatingType = z.infer<typeof SubmitRatingSchema>;

@@ -10,13 +10,11 @@ const PROCEDURE = '507f1f77bcf86cd799439033';
 const base = { procedureId: PROCEDURE, doctorScore: 4, clinicScore: 5 };
 
 describe('SubmitRatingSchema', () => {
-  it('accepts the two headline scores alone', () => {
+  it('accepts the two star ratings, which are the whole form', () => {
     const result = SubmitRatingSchema.safeParse(base);
 
     expect(result.success).toBe(true);
-    // The common case: a patient gives two numbers and leaves.
-    expect(result.success && result.data.comment).toBe('');
-    expect(result.success && result.data.subscores).toEqual({});
+    expect(result.success && result.data).toEqual(base);
   });
 
   it.each([
@@ -39,20 +37,23 @@ describe('SubmitRatingSchema', () => {
     );
   });
 
-  it('accepts a partial set of subscores', () => {
-    const result = SubmitRatingSchema.safeParse({ ...base, subscores: { cleanliness: 3 } });
+  /*
+    The detail scores and the free-text comment are no longer collected, so the API no longer takes
+    them. Stripped rather than rejected: Zod drops unknown keys by default, and a portal left open
+    in a tab across the deploy still submits the old shape — failing that request would cost the
+    patient their rating over two fields nobody reads any more.
+  */
+  describe('the withdrawn fields', () => {
+    it.each([
+      ['a comment', { comment: 'a paragraph nobody asked for' }],
+      ['subscores', { subscores: { cleanliness: 3 } }],
+      ['both', { comment: 'text', subscores: { communication: 5 } }],
+    ])('accepts a stale submission carrying %s, and keeps neither', (_case, extra) => {
+      const result = SubmitRatingSchema.safeParse({ ...base, ...extra });
 
-    expect(result.success).toBe(true);
-  });
-
-  it('trims the comment, so whitespace is not stored as a review', () => {
-    const result = SubmitRatingSchema.safeParse({ ...base, comment: '  fine  ' });
-
-    expect(result.success && result.data.comment).toBe('fine');
-  });
-
-  it('rejects a comment past the 2000-character limit', () => {
-    expect(SubmitRatingSchema.safeParse({ ...base, comment: 'x'.repeat(2001) }).success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.success && result.data).toEqual(base);
+    });
   });
 
   it('rejects an id that is not an ObjectId', () => {
