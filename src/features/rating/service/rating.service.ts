@@ -145,7 +145,6 @@ export async function submitRatingService(
     editableUntil: new Date(now.getTime() + RATING_EDIT_WINDOW_HOURS * 60 * 60 * 1000),
     clinicResponse: '',
     respondedAt: null,
-    isPublic: false,
   });
 
   await refreshClinicAggregate(clinicId);

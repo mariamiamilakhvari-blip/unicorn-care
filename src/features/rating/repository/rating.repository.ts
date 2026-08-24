@@ -210,22 +210,6 @@ export const ratingRepository = {
     ]).exec();
   },
 
-  /**
-   * Reviews a patient has agreed may be shown publicly.
-   *
-   * `isPublic` is the only gate, and it defaults to `false` on the schema — a review is published
-   * because someone chose to publish it, never because nobody objected.
-   */
-  async findPublicReviews(limit: number): Promise<RatingDocument[]> {
-    await mongo.connect();
-    return RatingModel.find({ isPublic: true, comment: { $ne: '' } }, null, {
-      sort: { submittedAt: -1 },
-      limit,
-    })
-      .lean<RatingDocument[]>()
-      .exec();
-  },
-
   /** Purged with the rest of a clinic's records on account deletion. */
   async deleteAllByClinic(clinicId: string): Promise<number> {
     await mongo.connect();

@@ -53,9 +53,6 @@ const RatingSchema = new Schema(
     /** The clinic may reply, and may never delete. Its answer sits beside the rating, not over it. */
     clinicResponse: { type: String, required: false, default: '', maxlength: 2000 },
     respondedAt: { type: Date, required: false, default: null },
-
-    /** Reserved for a future public profile. Nothing reads it yet; nothing is published. */
-    isPublic: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );

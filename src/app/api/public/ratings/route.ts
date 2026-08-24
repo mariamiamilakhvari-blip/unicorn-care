@@ -12,8 +12,8 @@ export const runtime = 'nodejs';
  * guard should be able to tell at a glance which routes are meant to have none. The namespace is
  * the signal.
  *
- * What keeps it safe is the service, not a filter here: it returns aggregates plus comments a
- * patient explicitly published, and `PublicRatingsView` has nowhere to put a patient id or a name.
+ * What keeps it safe is the service, not a filter here: it returns aggregates and nothing else,
+ * and `PublicRatingsView` has nowhere to put a patient id, a name or a sentence somebody wrote.
  */
 export async function GET() {
   try {
