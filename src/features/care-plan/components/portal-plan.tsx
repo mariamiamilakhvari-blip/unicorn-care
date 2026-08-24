@@ -60,8 +60,6 @@ export function PortalPlan() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PushOptIn />
-
       {plan.nextCheckup && (
         <Card>
           <CardHeader>
@@ -116,6 +114,11 @@ export function PortalPlan() {
       {/* Renders nothing until a plan has actually finished, so it never competes with today's
           doses. Last on the page for the same reason. */}
       <PortalRatingCard />
+
+      {/* Renders nothing at all where notifications cannot work. Moved down here from the top of
+          the plan: it is an optional convenience, and it was pushing the doses a patient opened
+          the portal to read below a line about browser capabilities. */}
+      <PushOptIn />
 
       {/* The way to consent settings, the data export and the correction/erasure form. A quiet
           footer link on purpose: it has to be findable without asking, and it is not what a

@@ -356,7 +356,6 @@
     "permissionDenied": "Notification permission denied",
     "iosInstallHint": "Tap Share, then choose Add to Home Screen",
     "reminderTitle": "Reminder",
-    "unsupported": "Your browser does not support notifications",
     "howToFix": "How to fix",
     "howToFixTitle": "Turn notifications back on",
     "howToFixIntro": "Your browser will not ask again, so this has to be changed in its settings.",

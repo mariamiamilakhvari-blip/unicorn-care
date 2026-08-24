@@ -43,6 +43,12 @@ const resolveStatus = (subscription: PushSubscription | null): PushStatus => {
  *
  * `enable()` must be called from a real user gesture. Nothing here prompts on mount — a
  * drive-by permission prompt gets dismissed permanently and the patient can never be asked again.
+ *
+ * It also refuses to prompt where a prompt cannot succeed: no Push API, or iOS outside the
+ * installed app. Safari there resolves `requestPermission` without showing anything and the
+ * subscribe that follows throws, which spends the patient's one chance to be asked on a browser
+ * that never asked them. Guarded in the hook rather than only in the component, so a second caller
+ * cannot reintroduce it.
  */
 export const usePushSubscription = () => {
   const [permissionStatus, setPermissionStatus] = useState<PushStatus>('idle');
@@ -65,7 +71,7 @@ export const usePushSubscription = () => {
   }, []);
 
   const enable = useCallback(async () => {
-    if (!isPushSupported()) return;
+    if (!isPushSupported() || needsHomeScreenInstall()) return;
     setPermissionStatus('pending');
 
     try {
