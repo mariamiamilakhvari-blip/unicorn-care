@@ -345,7 +345,7 @@
     "portalLoginHelp": "Press the button to open your plan on this device. This link works once.",
     "portalLoginSubmit": "Open my plan",
     "portalLoginOpening": "Opening…",
-    "portalLoginFailed": "This link is no longer valid. Ask for a new one below."
+    "portalLoginFailed": "This link has expired, or the plan has changed. Please check your email for a new link."
   },
   "push": {
     "enableNotifications": "Enable notifications",

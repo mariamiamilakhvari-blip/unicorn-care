@@ -21,6 +21,7 @@ import {
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { canClinicWrite, resolveStatus } from '@/features/clinic/service/subscription.service';
 import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
+import { sendPlanUpdatedLinkService } from '@/features/notifications/service/plan-update-email.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 import { occurrenceTranslator } from '@/shared/const/occurrence-copy.const';
@@ -107,9 +108,23 @@ export async function updateCarePlanService(
 
   const updated = await carePlanRepository.findById(id, clinicId);
   if (!updated) return { data: { error: 'NOT_FOUND' }, status: 404 };
+  /*
+    A draft is not something the patient can read yet, so editing one sends nothing. Activation is
+    what puts a plan in front of them, and it has its own email.
+  */
   if (updated.status !== 'active') return { data: updated, status: 200 };
 
-  return activateCarePlanService(clinicId, id);
+  const reactivated = await activateCarePlanService(clinicId, id);
+
+  /*
+    After activation, not before: the link this email carries lands on a portal that must already
+    be showing the edit and the rebuilt reminders, or the patient opens it to the version they had
+    complained about. Only on success — a rebuild that failed its own validation left the plan as
+    it was, and there is nothing new to go and read.
+  */
+  if (reactivated.status === 200) await sendPlanUpdatedLinkService(updated, clinic);
+
+  return reactivated;
 }
 
 /**

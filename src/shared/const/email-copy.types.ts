@@ -90,5 +90,6 @@ export type EmailCopy = {
   portalLinkIntro: string;
   portalLinkCta: string;
   portalLinkExpiry: string;
+  portalLinkExpiryDays: string;
   portalLinkIgnore: string;
 };

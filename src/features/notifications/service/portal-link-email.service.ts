@@ -8,6 +8,7 @@ import {
 } from '@/features/notifications/service/email-layout.service';
 import { EmailClinic } from '@/features/notifications/types/email.types';
 import { emailCopy } from '@/shared/const/email-copy.const';
+import { EmailCopy } from '@/shared/const/email-copy.types';
 import { resendClient } from '@/shared/lib/resend-client';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -18,6 +19,24 @@ type PortalLinkEmailInput = {
   portalUrl: string;
   ttlHours: number;
 };
+
+/** Two days, below which a window is still something a person counts in hours. */
+const DAYS_THRESHOLD_HOURS = 48;
+
+/**
+ * States the link's lifetime in the unit a person would use for it.
+ *
+ * A month-long link rendered through the hours string reads "stops working after 720 hours",
+ * which is true and tells the patient nothing — nobody converts that in their head. The requested
+ * link is a day long and reads correctly as hours, so the unit follows the window rather than
+ * being fixed for both.
+ */
+function expiryLine(copy: EmailCopy, ttlHours: number): string {
+  if (ttlHours >= DAYS_THRESHOLD_HOURS && ttlHours % 24 === 0) {
+    return copy.portalLinkExpiryDays.replace('{days}', String(ttlHours / 24));
+  }
+  return copy.portalLinkExpiry.replace('{hours}', String(ttlHours));
+}
 
 /**
  * Sends one patient a way back into their portal.
@@ -38,7 +57,7 @@ export async function sendPortalLinkEmailService(input: PortalLinkEmailInput): P
     }
 
     const copy = emailCopy(input.locale);
-    const expiry = copy.portalLinkExpiry.replace('{hours}', String(input.ttlHours));
+    const expiry = expiryLine(copy, input.ttlHours);
 
     const sections = [
       section('🔗', copy.portalLinkHeadline, paragraph(copy.portalLinkIntro)),

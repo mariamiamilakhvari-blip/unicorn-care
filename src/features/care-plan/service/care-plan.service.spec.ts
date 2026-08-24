@@ -43,12 +43,18 @@ vi.mock('@/features/notifications/service/email-dispatch.service', () => ({
   sendWelcomeEmailService: vi.fn(),
 }));
 
+/* Same reasoning: editing a live plan now mints a portal link and sends it. Both are I/O. */
+vi.mock('@/features/notifications/service/plan-update-email.service', () => ({
+  sendPlanUpdatedLinkService: vi.fn(),
+}));
+
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { reminderOccurrenceRepository } from '@/features/care-plan/repository/reminder-occurrence.repository';
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { CreateCarePlanType } from '@/features/care-plan/validations/care-plan.validation';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { sendWelcomeEmailService } from '@/features/notifications/service/email-dispatch.service';
+import { sendPlanUpdatedLinkService } from '@/features/notifications/service/plan-update-email.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { resolveGuideForProcedure } from '@/features/recovery-guide/service/resolve-guide.service';
 import { clock } from '@/shared/lib/clock';
@@ -654,5 +660,62 @@ describe('occurrence copy follows the patient language', () => {
     await regeneratePlansForTimezoneService(PATIENT_ID, CLINIC_ID, 'Asia/Tbilisi');
 
     expect(medicationBody()).toContain('საკვებთან ერთად');
+  });
+});
+
+/**
+ * A patient whose plan was corrected was being told to open a link that no longer worked. Every
+ * emailed portal link is single-use, so by the time a clinic edits the plan the one in the
+ * patient's inbox is usually spent — and the edit is precisely the moment they have a reason to
+ * go and look.
+ */
+describe('a plan edit emails the patient a fresh portal link', () => {
+  it('sends when a live plan is saved', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'active' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(sendPlanUpdatedLinkService).toHaveBeenCalledTimes(1);
+  });
+
+  /** A draft is not visible to the patient, so there is nothing yet to send them back to. */
+  it('stays silent when the plan is still a draft', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'draft' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(sendPlanUpdatedLinkService).not.toHaveBeenCalled();
+  });
+
+  /** Nothing was written, so there is nothing new to go and read. */
+  it('stays silent when the edit matched no plan in this clinic', async () => {
+    plans.updateById.mockResolvedValue(false);
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(sendPlanUpdatedLinkService).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The rebuild refused the plan, so it stands as it was. A link to an unchanged plan under the
+   * subject "open your recovery plan" is a message about nothing.
+   */
+  it('stays silent when the re-activation fails', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'active', medications: [] }));
+
+    const result = await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(result.status).toBe(422);
+    expect(sendPlanUpdatedLinkService).not.toHaveBeenCalled();
+  });
+
+  /** It is the small "here is your door" email, never the whole plan the patient already read. */
+  it('does not re-send the welcome email alongside it', async () => {
+    plans.findById.mockResolvedValue(planDoc({ status: 'active' }));
+
+    await updateCarePlanService(CLINIC_ID, PLAN_ID, createInput());
+
+    expect(sendPlanUpdatedLinkService).toHaveBeenCalledTimes(1);
+    expect(sendWelcomeEmailService).not.toHaveBeenCalled();
   });
 });
