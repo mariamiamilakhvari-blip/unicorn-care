@@ -122,10 +122,13 @@ export async function redeemTokenService(
  * PRD 02 §B "Revoking". Push subscriptions die with the link — otherwise a revoked patient would
  * keep receiving reminders they can no longer open.
  *
- * The unspent portal links in the patient's inbox die with it too. Every notification email now
+ * The portal links in the patient's inbox die with it too, opened or not. Every notification email
  * carries one, and each is a standing offer to mint a fresh access token — so revoking only the
- * tokens would leave a month of reminders in that mailbox, any one of which hands back exactly the
- * access the clinic just withdrew.
+ * tokens would leave a recovery's worth of reminders in that mailbox, any one of which hands back
+ * exactly the access the clinic just withdrew.
+ *
+ * They are deleted rather than flagged. Links are reusable until they expire, so "already opened"
+ * no longer stops anything: absence is the only mark redemption cannot read past.
  */
 export async function revokeAccessService(
   clinicId: string,
@@ -142,7 +145,7 @@ export async function revokeAccessService(
     now
   );
 
-  await patientPortalLinkRepository.markAllUsedForPatient(patientId, now);
+  await patientPortalLinkRepository.revokeAllForPatient(patientId);
 
   const deactivatedSubscriptions =
     await pushSubscriptionRepository.deactivateAllForPatient(patientId);

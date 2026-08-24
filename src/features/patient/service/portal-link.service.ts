@@ -189,11 +189,21 @@ export async function requestPortalLinkService(
 }
 
 /**
- * Spends an emailed link and mints the durable access token behind it.
+ * Redeems an emailed link and mints the durable access token behind it.
  *
- * Single use, and *only* the link that was followed. Every notification email carries its own link
- * now, so spending the patient's whole outstanding set here would mean opening today's reminder
- * silently killed every other message in the inbox — the lockout this flow exists to end.
+ * **Reusable until it expires.** The link's window is now the patient's whole recovery, and over
+ * that span one message is the way in on more than one device — a phone in week one, a laptop in
+ * week six, the same phone again after the cookies were cleared. Spending it on first use meant the
+ * second device was told the link was invalid, which is the lockout this flow exists to end,
+ * arriving through the flow itself.
+ *
+ * Nothing is spent, so nothing is claimed. The race the old code guarded against — two taps both
+ * minting a token — is no longer a fault: a patient opening the link twice wanted in twice, and two
+ * access tokens is what two devices need. `markUsed` still runs, but only to stamp the first
+ * redemption for the audit trail, and its answer is ignored.
+ *
+ * What ends a link is the date on it, or the clinic deleting it — `revokeAccessService` removes the
+ * rows outright, so a revoked link fails the lookup below rather than a flag inside it.
  *
  * The access token that comes out is additive, exactly as a staff-issued one is: a patient still
  * holding a working session on another device keeps it.
@@ -207,14 +217,14 @@ export async function redeemPortalLinkService(
     status: 401,
   };
 
+  /*
+    Unknown *or* revoked: revocation deletes the row, so both arrive here as a miss. They are not
+    told apart on purpose — the endpoint is unauthenticated, and a reply that distinguished
+    "never existed" from "withdrawn" would confirm a real patient to anyone holding an old URL.
+  */
   const link = await patientPortalLinkRepository.findByTokenHash(hashPassword(rawToken));
   if (!link) {
-    console.warn('[portal-link] rejected: unknown link', { token: tag });
-    return rejected;
-  }
-  // Truthy check, not `!== null`: the field is nullable *and* optional in the inferred type.
-  if (link.usedAt) {
-    console.warn('[portal-link] rejected: already used', { token: tag });
+    console.warn('[portal-link] rejected: unknown or revoked link', { token: tag });
     return rejected;
   }
 
@@ -235,15 +245,11 @@ export async function redeemPortalLinkService(
   }
 
   /*
-    The claim is the write, not the `usedAt` check above: two taps on the same link — the ordinary
-    behaviour of a mail client prefetching a URL and the patient then following it — must not both
-    mint an access token.
+    Audit only. The filter inside keeps the stamp at the first redemption, so this is a no-op on
+    every later one; the result is deliberately not read, because failing to write an audit stamp is
+    not a reason to refuse a patient their portal.
   */
-  const claimed = await patientPortalLinkRepository.markUsed(link._id.toString(), now);
-  if (!claimed) {
-    console.warn('[portal-link] rejected: lost the race to spend it', { token: tag });
-    return rejected;
-  }
+  await patientPortalLinkRepository.markUsed(link._id.toString(), now);
 
   const accessToken = await mintAccessToken(patientId, clinicId);
 

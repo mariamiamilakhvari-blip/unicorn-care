@@ -15,8 +15,8 @@ export const patientPortalLinkRepository = {
 
   /**
    * Redemption lookup. Not clinic-scoped, for the same reason as the access tokens: the token is
-   * the credential and the row is what says who it belongs to. The caller checks `usedAt` and
-   * `expiresAt`.
+   * the credential and the row is what says who it belongs to. The caller checks `expiresAt`; the
+   * row existing at all is the rest of the answer, because revocation deletes it.
    */
   async findByTokenHash(tokenHash: string): Promise<PatientPortalLinkDocument | null> {
     await mongo.connect();
@@ -24,10 +24,11 @@ export const patientPortalLinkRepository = {
   },
 
   /**
-   * Spends one link and only that link.
+   * Stamps the first redemption, for the audit trail.
    *
-   * `usedAt: null` is part of the filter rather than something the caller checks first, so two
-   * requests carrying the same token cannot both be told they redeemed it.
+   * `usedAt: null` stays in the filter so the stamp records the *first* use rather than the latest,
+   * and so a later redemption is a no-op rather than a write. It no longer gates anything: the
+   * caller does not consult the return value, because a link is reusable until it expires.
    */
   async markUsed(id: string, usedAt: Date): Promise<boolean> {
     await mongo.connect();
@@ -38,13 +39,18 @@ export const patientPortalLinkRepository = {
     return result.modifiedCount > 0;
   },
 
-  async markAllUsedForPatient(patientId: string, usedAt: Date): Promise<number> {
+  /**
+   * Kills every link in one patient's inbox, whether or not it has been opened.
+   *
+   * A delete rather than a flag, and that is the load-bearing part of making links reusable. The
+   * old revocation marked rows `usedAt`, which worked only because redemption refused a used row —
+   * the moment reuse was allowed, that same call would have left every emailed link live. Absence
+   * is the one signal redemption cannot misread.
+   */
+  async revokeAllForPatient(patientId: string): Promise<number> {
     await mongo.connect();
-    const result = await PatientPortalLinkModel.updateMany(
-      { patientId, usedAt: null },
-      { $set: { usedAt } }
-    );
-    return result.modifiedCount;
+    const result = await PatientPortalLinkModel.deleteMany({ patientId });
+    return result.deletedCount;
   },
 
   /** Purges every row this clinic owns. Only the cascade-deletion services call this. */

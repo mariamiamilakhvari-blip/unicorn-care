@@ -6,7 +6,7 @@ vi.mock('@/features/patient/repository/patient-portal-link.repository', () => ({
     create: vi.fn(),
     findByTokenHash: vi.fn(),
     markUsed: vi.fn(),
-    markAllUsedForPatient: vi.fn(),
+    revokeAllForPatient: vi.fn(),
   },
 }));
 
@@ -181,12 +181,12 @@ describe('requestPortalLinkService', () => {
     await requestPortalLinkService({ email: 'patient@example.com' });
 
     expect(links.create).toHaveBeenCalledOnce();
-    expect(links.markAllUsedForPatient).not.toHaveBeenCalled();
+    expect(links.revokeAllForPatient).not.toHaveBeenCalled();
   });
 });
 
 describe('redeemPortalLinkService', () => {
-  it('mints an access token and spends the link', async () => {
+  it('mints an access token and stamps the first redemption', async () => {
     links.findByTokenHash.mockResolvedValue(link() as never);
     patients.findById.mockResolvedValue(patient() as never);
 
@@ -198,37 +198,65 @@ describe('redeemPortalLinkService', () => {
   });
 
   /**
-   * Only the link that was followed. Opening today's reminder must not kill the rest of the
-   * inbox — those older emails are what a patient reaches for from a device with no session.
+   * Opening today's reminder must not kill the rest of the inbox — those older emails are what a
+   * patient reaches for from a device with no session.
    */
-  it('spends the followed link and no other', async () => {
+  it('touches the followed link and no other', async () => {
     links.findByTokenHash.mockResolvedValue(link() as never);
     patients.findById.mockResolvedValue(patient() as never);
 
     await redeemPortalLinkService('raw');
 
-    expect(links.markAllUsedForPatient).not.toHaveBeenCalled();
+    expect(links.revokeAllForPatient).not.toHaveBeenCalled();
   });
 
-  /**
-   * The write is the claim. Two requests carrying the same token — a mail client prefetching the
-   * URL and the patient then pressing the button — must not both come away with a session.
-   */
-  it('refuses the loser of a race for the same link', async () => {
-    links.findByTokenHash.mockResolvedValue(link() as never);
-    patients.findById.mockResolvedValue(patient() as never);
-    links.markUsed.mockResolvedValue(false);
+  /*
+    The link is reusable for the length of the patient's recovery, because over that span one
+    message is the way in on more than one device. Refusing the second was the lockout this whole
+    flow exists to end, arriving through the flow itself.
+  */
+  describe('reuse', () => {
+    it('mints again for a link that has already been redeemed', async () => {
+      links.findByTokenHash.mockResolvedValue(link({ usedAt: NOW }) as never);
+      patients.findById.mockResolvedValue(patient() as never);
 
-    const { status } = await redeemPortalLinkService('raw');
+      const { status, data } = await redeemPortalLinkService('raw');
 
-    expect(status).toBe(401);
-    expect(mint).not.toHaveBeenCalled();
+      expect(status).toBe(200);
+      expect(data).toEqual({ accessToken: 'fresh-access-token' });
+    });
+
+    /** A phone in week one and a laptop in week six each need their own session. */
+    it('gives a second device its own access token', async () => {
+      links.findByTokenHash.mockResolvedValue(link() as never);
+      patients.findById.mockResolvedValue(patient() as never);
+
+      await redeemPortalLinkService('raw');
+      await redeemPortalLinkService('raw');
+
+      expect(mint).toHaveBeenCalledTimes(2);
+    });
+
+    /**
+     * The stamp is an audit record, not a gate. `markUsed` reports false on every redemption after
+     * the first, and refusing on that would restore single use through the back door.
+     */
+    it('lets the patient in even when the audit stamp does not write', async () => {
+      links.findByTokenHash.mockResolvedValue(link({ usedAt: NOW }) as never);
+      patients.findById.mockResolvedValue(patient() as never);
+      links.markUsed.mockResolvedValue(false);
+
+      const { status } = await redeemPortalLinkService('raw');
+
+      expect(status).toBe(200);
+      expect(mint).toHaveBeenCalledOnce();
+    });
   });
 
   /** Every rejection is the same 401: the difference is only ever useful to someone guessing. */
   it.each([
-    ['an unknown link', null, null],
-    ['a link already used', link({ usedAt: NOW }), null],
+    // A revoked link is deleted, so it arrives here as a miss — indistinguishable on purpose.
+    ['an unknown or revoked link', null, null],
     ['an expired link', link({ expiresAt: new Date(NOW.getTime() - 1) }), null],
     // A link whose patient no longer exists is the `null` patient case, which the row above covers.
     ['a link whose patient is gone', link(), null],
@@ -243,16 +271,19 @@ describe('redeemPortalLinkService', () => {
     expect(mint).not.toHaveBeenCalled();
   });
 
-  /** A link is single use: the second visit to the same URL must not open a second session. */
-  it('does not mint twice for the same link', async () => {
-    links.findByTokenHash.mockResolvedValueOnce(link() as never);
+  /**
+   * Expiry is the only thing left bounding a link, now that opening it no longer spends it. A row
+   * past its date must refuse however many times it has or has not been used.
+   */
+  it('still refuses an expired link that was previously redeemed', async () => {
+    links.findByTokenHash.mockResolvedValue(
+      link({ usedAt: NOW, expiresAt: new Date(NOW.getTime() - 1) }) as never
+    );
     patients.findById.mockResolvedValue(patient() as never);
-    await redeemPortalLinkService('raw');
 
-    links.findByTokenHash.mockResolvedValueOnce(link({ usedAt: NOW }) as never);
     const { status } = await redeemPortalLinkService('raw');
 
     expect(status).toBe(401);
-    expect(mint).toHaveBeenCalledOnce();
+    expect(mint).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,7 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
 }));
 
 vi.mock('@/features/patient/repository/patient-portal-link.repository', () => ({
-  patientPortalLinkRepository: { markAllUsedForPatient: vi.fn() },
+  patientPortalLinkRepository: { revokeAllForPatient: vi.fn() },
 }));
 
 vi.mock('@/features/notifications/repository/push-subscription.repository', () => ({
@@ -60,7 +60,7 @@ beforeEach(() => {
   tokens.revokeAllForPatient.mockResolvedValue(0);
   tokens.touchLastUsed.mockResolvedValue(true);
   pushSubscriptions.deactivateAllForPatient.mockResolvedValue(0);
-  portalLinks.markAllUsedForPatient.mockResolvedValue(0);
+  portalLinks.revokeAllForPatient.mockResolvedValue(0);
 });
 
 describe('issueTokenService', () => {
@@ -154,12 +154,17 @@ describe('revokeAccessService', () => {
   });
 
   /*
-    Every notification email carries an unspent portal link, and each one is a standing offer to
-    mint a fresh access token. Revoking the tokens alone would leave a month of reminders in the
+    Every notification email carries a portal link, and each one is a standing offer to mint a fresh
+    access token. Revoking the tokens alone would leave a recovery's worth of reminders in the
     mailbox, any one of which hands back the access that was just withdrawn.
+
+    It deletes them rather than flagging them, and that is load-bearing rather than incidental:
+    links are reusable until they expire, so "already opened" stops nothing. Absence is the only
+    mark redemption cannot read past — the old `markAllUsedForPatient` would now leave every one of
+    those emails live.
   */
-  it('spends the portal links sitting in the patient’s inbox', async () => {
+  it('deletes the portal links sitting in the patient’s inbox', async () => {
     await revokeAccessService(CLINIC_ID, PATIENT_ID);
-    expect(portalLinks.markAllUsedForPatient).toHaveBeenCalledWith(PATIENT_ID, expect.any(Date));
+    expect(portalLinks.revokeAllForPatient).toHaveBeenCalledWith(PATIENT_ID);
   });
 });
