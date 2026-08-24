@@ -152,19 +152,46 @@ describe('sendPlanUpdatedLinkService', () => {
     });
   });
 
-  /** The patient's own language wins; the clinic's is the fallback for a record predating it. */
-  it('writes in the patient language', async () => {
-    await sendPlanUpdatedLinkService(plan(), clinic({ locale: 'ka' }));
+  /*
+    The language the email is written in. The person reading it is the one whose preference
+    decides, so the patient's own choice wins over the clinic's default in both directions — a
+    Georgian clinic may treat somebody who asked for English, and an English-defaulted clinic may
+    treat somebody who asked for Georgian.
+  */
+  describe('language', () => {
+    it('writes in the patient language, not the clinic one', async () => {
+      await sendPlanUpdatedLinkService(plan(), clinic({ locale: 'ka' }));
 
-    expect(sendEmail.mock.calls[0][0].locale).toBe('en');
-  });
+      expect(sendEmail.mock.calls[0][0].locale).toBe('en');
+    });
 
-  it('falls back to the clinic language when the record has none', async () => {
-    patients.findById.mockResolvedValue(patient({ locale: null }));
+    it('writes Georgian for a Georgian patient at an English-defaulted clinic', async () => {
+      patients.findById.mockResolvedValue(patient({ locale: 'ka' }));
 
-    await sendPlanUpdatedLinkService(plan(), clinic({ locale: 'ka' }));
+      await sendPlanUpdatedLinkService(plan(), clinic({ locale: 'en' }));
 
-    expect(sendEmail.mock.calls[0][0].locale).toBe('ka');
+      expect(sendEmail.mock.calls[0][0].locale).toBe('ka');
+    });
+
+    it('falls back to the clinic language when the record has none', async () => {
+      patients.findById.mockResolvedValue(patient({ locale: null }));
+
+      await sendPlanUpdatedLinkService(plan(), clinic({ locale: 'ka' }));
+
+      expect(sendEmail.mock.calls[0][0].locale).toBe('ka');
+    });
+
+    /**
+     * The value comes out of Mongo, and it used to be cast rather than checked. A row holding
+     * something the product does not speak must not travel onward as though it did.
+     */
+    it('ignores a stored language the product does not speak', async () => {
+      patients.findById.mockResolvedValue(patient({ locale: 'ka-GE' }));
+
+      await sendPlanUpdatedLinkService(plan(), clinic({ locale: 'ka' }));
+
+      expect(sendEmail.mock.calls[0][0].locale).toBe('ka');
+    });
   });
 
   /** The footer carries the clinic a patient would actually call, as every patient email does. */

@@ -8,7 +8,7 @@ import { resolveGuideForProcedure } from '@/features/recovery-guide/service/reso
 import { occurrenceTranslator } from '@/shared/const/occurrence-copy.const';
 import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
-import { AppLocale } from '@/shared/types/roles';
+import { resolvePatientLocale } from '@/shared/utils/patient-locale';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -68,7 +68,7 @@ async function extendPlan(plan: CarePlanDocument, now: Date): Promise<boolean> {
   */
   const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
   const timezone = effectiveTimeZone(patient?.timezone ?? '', clinic.timezone);
-  const locale = (patient?.locale ?? clinic.locale) as AppLocale;
+  const locale = resolvePatientLocale(patient, clinic);
 
   /*
     The guide has to be resolved here too, not just at activation.

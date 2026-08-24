@@ -16,6 +16,7 @@ import { recoveryGuideRepository } from '@/features/recovery-guide/repository/re
 import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { AppLocale } from '@/shared/types/roles';
+import { resolvePatientLocale } from '@/shared/utils/patient-locale';
 
 /**
  * Turns documents into the plain data the email builders take.
@@ -84,7 +85,7 @@ export async function toWelcomeInput(
   const patient = await patientRepository.findById(plan.patientId.toString(), clinicId);
   if (!patient) return null;
 
-  const locale = (patient.locale ?? clinic.locale) as AppLocale;
+  const locale = resolvePatientLocale(patient, clinic);
   const procedure = await procedureRepository.findById(plan.procedureId.toString(), clinicId);
 
   return {
@@ -148,7 +149,7 @@ export async function toDailyInput(
     from the email they were sent to replace.
   */
   const zone = effectiveTimeZone(patient.timezone ?? '', clinic.timezone);
-  const locale = (patient.locale ?? clinic.locale) as AppLocale;
+  const locale = resolvePatientLocale(patient, clinic);
   const weekday = clock.weekdayInZone(now, zone);
 
   const upcoming = plan.checkups.filter(item => item.scheduledAt.getTime() >= now.getTime());

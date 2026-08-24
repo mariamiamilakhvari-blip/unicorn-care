@@ -14,7 +14,7 @@ import { emailCopy } from '@/shared/const/email-copy.const';
 import { DASHBOARD_ROUTE } from '@/shared/const/routes.const';
 import { SITE_URL } from '@/shared/const/seo.const';
 import { resendClient } from '@/shared/lib/resend-client';
-import { AppLocale } from '@/shared/types/roles';
+import { resolveClinicLocale } from '@/shared/utils/patient-locale';
 
 /**
  * Tells a clinic that one of its patients filed a symptom report.
@@ -61,7 +61,7 @@ export async function sendSymptomAlertService(
     const patient = await patientRepository.findById(patientId, clinicId);
     if (!patient) return false;
 
-    const copy = emailCopy((clinic.locale ?? 'ka') as AppLocale);
+    const copy = emailCopy(resolveClinicLocale(clinic));
     const patientName = `${patient.firstName} ${patient.lastName}`.trim();
     const queueUrl = `${SITE_URL}${DASHBOARD_ROUTE}`;
     const emailClinic = {

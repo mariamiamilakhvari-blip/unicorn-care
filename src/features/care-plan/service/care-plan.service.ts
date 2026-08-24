@@ -30,6 +30,7 @@ import { effectiveTimeZone, isValidTimeZone } from '@/shared/const/timezone.cons
 import { clock } from '@/shared/lib/clock';
 import { PaginatedResult, ServiceResult } from '@/shared/types/common';
 import { AppLocale } from '@/shared/types/roles';
+import { resolvePatientLocale } from '@/shared/utils/patient-locale';
 
 type CarePlanResult = ServiceResult<CarePlanDocument>;
 
@@ -193,7 +194,7 @@ export async function regeneratePlansForTimezoneService(
 
   const plans = await carePlanRepository.findActiveByPatient(patientId, clinicId);
   const patient = await patientRepository.findById(patientId, clinicId);
-  const locale = (patient?.locale ?? clinic.locale) as AppLocale;
+  const locale = resolvePatientLocale(patient, clinic);
 
   let occurrences = 0;
   for (const plan of plans) {
@@ -255,7 +256,7 @@ export async function activateCarePlanService(
 
   // Same rule the emails follow: the patient's own language wins, the clinic's is the fallback for
   // a record written before the field existed.
-  await rebuildPlanOccurrences(plan, timezone, (patient?.locale ?? clinic.locale) as AppLocale);
+  await rebuildPlanOccurrences(plan, timezone, resolvePatientLocale(patient, clinic));
 
   await carePlanRepository.updateById(id, clinicId, { status: 'active' });
 

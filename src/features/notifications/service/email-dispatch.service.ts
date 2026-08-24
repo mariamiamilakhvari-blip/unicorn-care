@@ -15,7 +15,7 @@ import { effectiveTimeZone } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { resendClient } from '@/shared/lib/resend-client';
 import { ServiceResult } from '@/shared/types/common';
-import { AppLocale } from '@/shared/types/roles';
+import { resolvePatientLocale } from '@/shared/utils/patient-locale';
 
 /** Patient-local hour the day's email goes out. Morning, before the first doses are usually due. */
 const DIGEST_HOUR = 8;
@@ -146,7 +146,7 @@ export function createReminderEmailSender() {
           email: patient.email,
           // The patient's own language wins; the clinic's is the fallback for a record that
           // predates the field. Same rule the welcome and daily emails already follow.
-          locale: (patient.locale ?? clinic.locale) as AppLocale,
+          locale: resolvePatientLocale(patient, clinic),
         },
         clinic: {
           name: clinic.name,

@@ -9,7 +9,7 @@ import {
 } from '@/features/patient/service/portal-link.service';
 import { DEFAULT_TIMEZONE } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
-import { AppLocale } from '@/shared/types/roles';
+import { resolvePatientLocale } from '@/shared/utils/patient-locale';
 
 const MS_PER_MINUTE = 60 * 1000;
 
@@ -101,7 +101,7 @@ export async function sendPlanUpdatedLinkService(
       to: patient.email,
       // The patient's own language wins; the clinic's is the fallback for a record that predates
       // the field. Same rule the welcome, daily and reminder emails follow.
-      locale: (patient.locale ?? clinic.locale) as AppLocale,
+      locale: resolvePatientLocale(patient, clinic),
       clinic: {
         name: clinic.name,
         addressLine: clinic.addressLine ?? '',

@@ -8,7 +8,7 @@ import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { resendClient } from '@/shared/lib/resend-client';
 import { ServiceResult } from '@/shared/types/common';
-import { AppLocale } from '@/shared/types/roles';
+import { resolveClinicLocale } from '@/shared/utils/patient-locale';
 
 export type ReportSendResult = {
   sent: true;
@@ -56,7 +56,7 @@ export async function sendQuarterlyReportService(
       firstName: owner?.name ?? clinic.name,
       lastName: '',
       email: to,
-      locale: (clinic.locale ?? 'ka') as AppLocale,
+      locale: resolveClinicLocale(clinic),
     }
   );
 
