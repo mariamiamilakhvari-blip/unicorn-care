@@ -10,10 +10,10 @@ import { PatientDocument } from '@/features/patient/schema/patient.schema';
 import { mintAccessToken, tokenTag } from '@/features/patient/service/patient-access.service';
 import { PortalLinkRequestType } from '@/features/patient/validations/portal-link.validation';
 import { PATIENT_PORTAL_ROUTE, PORTAL_LOGIN_ROUTE } from '@/shared/const/routes.const';
-import { SITE_URL } from '@/shared/const/seo.const';
 import { DEFAULT_TIMEZONE } from '@/shared/const/timezone.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
+import { linkOrigin } from '@/shared/utils/link-origin';
 import { hashPassword } from '@/shared/utils/password';
 
 const TOKEN_BYTES = 32;
@@ -41,8 +41,6 @@ export const PORTAL_LINK_TTL_MINUTES = 24 * 60;
  * through or the month is out — the schema's TTL index then deletes the row.
  */
 export const NOTIFICATION_LINK_TTL_MINUTES = 30 * 24 * 60;
-
-const linkOrigin = (): string => process.env.NEXTAUTH_URL || SITE_URL;
 
 /**
  * Writes one single-use portal link and returns the URL to put in an email.

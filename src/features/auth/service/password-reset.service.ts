@@ -10,22 +10,13 @@ import {
 } from '@/features/auth/validations/auth.validation';
 import { sendPasswordResetEmailService } from '@/features/notifications/service/password-reset-email.service';
 import { RESET_PASSWORD_ROUTE } from '@/shared/const/routes.const';
-import { SITE_URL } from '@/shared/const/seo.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 import { AppLocale } from '@/shared/types/roles';
+import { linkOrigin } from '@/shared/utils/link-origin';
 import { hashPassword } from '@/shared/utils/password';
 
 const TOKEN_BYTES = 32;
-
-/**
- * The origin the reset link points at.
- *
- * `NEXTAUTH_URL` first, matching the patient magic link — it is the origin the auth system is
- * already configured for, so a link minted while running locally opens the local app instead of
- * production. `SITE_URL` is the fallback for a deployment that only sets the public one.
- */
-const linkOrigin = (): string => process.env.NEXTAUTH_URL || SITE_URL;
 
 /**
  * How long a reset link stays alive.
