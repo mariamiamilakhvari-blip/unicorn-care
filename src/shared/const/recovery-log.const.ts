@@ -29,23 +29,3 @@ export type MoodLevel = (typeof MOOD_LEVELS)[number];
 /** 0–10, the scale a patient is asked in every clinic already. */
 export const PAIN_SCALE_MIN = 0;
 export const PAIN_SCALE_MAX = 10;
-
-/**
- * The wording a patient agrees to when attaching a photograph, recorded per upload.
- *
- * Versioned because consent is only meaningful against the text that was shown. Bump this
- * whenever `recoveryLog.photoConsent` changes in the message files, or the stored record starts
- * claiming agreement to wording nobody saw.
- */
-export const PHOTO_CONSENT_VERSION = '2026-08-09';
-
-/** Photographs of a healing surgical site. Kept small enough to upload on clinic wifi. */
-export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
-
-/**
- * Allowlist, not a blocklist. Anything the browser might execute — SVG above all — is a stored
- * cross-site-scripting payload wearing an image's extension, and a photograph is never one.
- */
-export const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const;
-
-export const MAX_PHOTOS_PER_LOG = 3;

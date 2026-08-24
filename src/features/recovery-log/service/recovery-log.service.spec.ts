@@ -10,9 +10,6 @@ vi.mock('@/features/recovery-log/repository/recovery-log.repository', () => ({
     updateById: vi.fn(),
   },
 }));
-vi.mock('@/features/recovery-log/repository/patient-photo.repository', () => ({
-  patientPhotoRepository: { findById: vi.fn() },
-}));
 vi.mock('@/features/care-plan/repository/care-plan.repository', () => ({
   carePlanRepository: { findActiveByPatient: vi.fn() },
 }));
@@ -24,7 +21,6 @@ import { carePlanRepository } from '@/features/care-plan/repository/care-plan.re
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
-import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
 import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { RecoveryLogDocument } from '@/features/recovery-log/schema/recovery-log.schema';
 import {
@@ -34,7 +30,6 @@ import {
 import { clock } from '@/shared/lib/clock';
 
 const logs = vi.mocked(recoveryLogRepository);
-const photos = vi.mocked(patientPhotoRepository);
 const plans = vi.mocked(carePlanRepository);
 const clinics = vi.mocked(clinicRepository);
 
@@ -42,7 +37,6 @@ const PATIENT = '507f1f77bcf86cd799439011';
 const CLINIC = '507f1f77bcf86cd799439022';
 const PLAN = '507f1f77bcf86cd799439033';
 const PHOTO = '507f1f77bcf86cd799439044';
-const OTHER = '507f1f77bcf86cd7994390aa';
 
 /** Day 0 is 1 August; "now" is the evening of 8 August in Tbilisi, so day 7. */
 const NOW = new Date('2026-08-08T16:00:00.000Z');
@@ -71,7 +65,7 @@ const log = (over: Partial<RecoveryLogDocument> = {}): RecoveryLogDocument =>
     ...over,
   }) as RecoveryLogDocument;
 
-const input = { painLevel: 4, swelling: 'mild' as const, mood: null, note: '', photoIds: [] };
+const input = { painLevel: 4, swelling: 'mild' as const, mood: null };
 
 describe('createRecoveryLogService', () => {
   beforeEach(() => {
@@ -127,61 +121,32 @@ describe('createRecoveryLogService', () => {
       expect(logs.updateById.mock.calls[0][1]).toMatchObject({ painLevel: 4 });
     });
 
-    it('keeps photographs already attached to that day', async () => {
-      // A correction to the pain score must not silently drop a photograph already filed.
-      const existing = new mongoose.Types.ObjectId(PHOTO);
-      logs.findByPlanAndDay.mockResolvedValue(log({ photoIds: [existing] }));
+    /**
+     * The note and the photographs are no longer collected from the patient, but entries filed
+     * before they were dropped still carry them. A correction to the pain score writes only the
+     * readings, so neither column is touched — updating them to empty would erase what the
+     * patient had already told the clinic.
+     */
+    it('leaves a pre-existing note and photographs untouched', async () => {
+      logs.findByPlanAndDay.mockResolvedValue(
+        log({ note: 'stitches itch', photoIds: [new mongoose.Types.ObjectId(PHOTO)] })
+      );
 
       await createRecoveryLogService(PATIENT, CLINIC, input);
 
-      expect(logs.updateById.mock.calls[0][1].photoIds).toHaveLength(1);
+      const patch = logs.updateById.mock.calls[0][1];
+      expect(patch).not.toHaveProperty('note');
+      expect(patch).not.toHaveProperty('photoIds');
     });
   });
 
-  describe('attached photographs', () => {
-    it('accepts one belonging to this patient', async () => {
-      photos.findById.mockResolvedValue({
-        _id: new mongoose.Types.ObjectId(PHOTO),
-        patientId: new mongoose.Types.ObjectId(PATIENT),
-      } as never);
+  /** Nothing new arrives with either field, so a fresh entry is filed blank on both. */
+  it('files a new entry with no note and no photographs', async () => {
+    await createRecoveryLogService(PATIENT, CLINIC, input);
 
-      const { status } = await createRecoveryLogService(PATIENT, CLINIC, {
-        ...input,
-        photoIds: [PHOTO],
-      });
-
-      expect(status).toBe(201);
-      expect(logs.create.mock.calls[0][0].photoIds).toHaveLength(1);
-    });
-
-    /** Otherwise a request could attach somebody else's photograph by guessing an id. */
-    it('refuses one belonging to another patient', async () => {
-      photos.findById.mockResolvedValue({
-        _id: new mongoose.Types.ObjectId(PHOTO),
-        patientId: new mongoose.Types.ObjectId(OTHER),
-      } as never);
-
-      const { status, data } = await createRecoveryLogService(PATIENT, CLINIC, {
-        ...input,
-        photoIds: [PHOTO],
-      });
-
-      expect(status).toBe(404);
-      expect(data).toEqual({ error: 'PHOTO_NOT_FOUND' });
-      expect(logs.create).not.toHaveBeenCalled();
-    });
-
-    it('refuses an id that matches nothing', async () => {
-      photos.findById.mockResolvedValue(null);
-
-      const { status } = await createRecoveryLogService(PATIENT, CLINIC, {
-        ...input,
-        photoIds: [PHOTO],
-      });
-
-      expect(status).toBe(404);
-    });
+    expect(logs.create.mock.calls[0][0]).toMatchObject({ note: '', photoIds: [] });
   });
+
 });
 
 describe('getRecoveryTrendService', () => {

@@ -16,7 +16,6 @@ type RecoveryLogState = {
   isSaving: boolean;
   hasError: boolean;
   submit: (input: CreateRecoveryLogType) => Promise<boolean>;
-  uploadPhoto: (file: File) => Promise<string | null>;
 };
 
 type ListResponse = { items: RecoveryLogView[]; todayIndex: number };
@@ -63,28 +62,6 @@ export function useRecoveryLog(): RecoveryLogState {
     [reload]
   );
 
-  /**
-   * Multipart, so this goes through `fetch` rather than the JSON client. Consent rides with the
-   * file: the server refuses the upload without it, before the bytes are stored.
-   */
-  const uploadPhoto = useCallback(async (file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('consentGranted', 'true');
-
-    try {
-      const response = await fetch('/api/patient-portal/recovery-logs/photos', {
-        method: 'POST',
-        body: form,
-      });
-      if (!response.ok) return null;
-      const created = (await response.json()) as { id: string };
-      return created.id;
-    } catch {
-      return null;
-    }
-  }, []);
-
   return {
     items,
     todayIndex,
@@ -93,6 +70,5 @@ export function useRecoveryLog(): RecoveryLogState {
     isSaving,
     hasError,
     submit,
-    uploadPhoto,
   };
 }

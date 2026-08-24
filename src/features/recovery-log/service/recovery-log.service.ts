@@ -3,7 +3,6 @@ import { Types } from 'mongoose';
 import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
-import { patientPhotoRepository } from '@/features/recovery-log/repository/patient-photo.repository';
 import { recoveryLogRepository } from '@/features/recovery-log/repository/recovery-log.repository';
 import { RecoveryLogDocument } from '@/features/recovery-log/schema/recovery-log.schema';
 import { RecoveryLogView, RecoveryTrendView } from '@/features/recovery-log/types/recovery-log.types';
@@ -44,6 +43,11 @@ async function activePlanFor(patientId: string, clinicId: string) {
 /**
  * Files one point on the recovery curve.
  *
+ * The entry carries pain, swelling and mood. A note and photographs are no longer collected from
+ * the patient, so neither is written here — an entry filed before they were dropped keeps both,
+ * because a resubmit updates the readings and leaves those columns untouched rather than blanking
+ * what the patient already told the clinic.
+ *
  * Re-submitting the same day replaces the entry rather than adding a second. A patient who
  * reports pain, then remembers the swelling got worse, is correcting one reading — two rows for
  * one day would put a vertical line in the chart and make the day's real value ambiguous. The
@@ -63,21 +67,6 @@ export async function createRecoveryLogService(
   const now = clock.now();
   const dayIndex = dayIndexFor(plan, clinic.timezone, now);
 
-  /*
-    Photographs are claimed, not trusted. Each id must already exist, belong to this patient, and
-    have been uploaded through the endpoint that captured consent — otherwise a request could
-    attach somebody else's photograph to its own log entry by guessing an id.
-  */
-  const photoIds: Types.ObjectId[] = [];
-  for (const photoId of input.photoIds) {
-    const photo = await patientPhotoRepository.findById(photoId);
-    if (!photo) return { data: { error: 'PHOTO_NOT_FOUND' }, status: 404 };
-    if (photo.patientId.toString() !== patientId) {
-      return { data: { error: 'PHOTO_NOT_FOUND' }, status: 404 };
-    }
-    photoIds.push(photo._id);
-  }
-
   const existing = await recoveryLogRepository.findByPlanAndDay(plan._id.toString(), dayIndex);
 
   if (existing) {
@@ -86,9 +75,6 @@ export async function createRecoveryLogService(
       painLevel: input.painLevel,
       swelling: input.swelling,
       mood: input.mood ?? null,
-      note: input.note,
-      // Appended, not replaced: a correction should not silently drop a photograph already filed.
-      photoIds: [...(existing.photoIds ?? []), ...photoIds],
     });
 
     const updated = await recoveryLogRepository.findById(existing._id.toString());
@@ -105,8 +91,8 @@ export async function createRecoveryLogService(
     painLevel: input.painLevel,
     swelling: input.swelling,
     mood: input.mood ?? null,
-    note: input.note,
-    photoIds,
+    note: '',
+    photoIds: [],
   });
 
   const created = await recoveryLogRepository.findById(id);
