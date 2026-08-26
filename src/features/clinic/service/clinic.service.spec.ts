@@ -43,9 +43,11 @@ const registerInput = {
   clinic: {
     name: 'Unicorn Clinic!',
     brandName: '',
+    nameEn: '',
     country: 'Georgia',
     city: 'Tbilisi',
     addressLine: '12 Rustaveli',
+    addressLineEn: '',
     phone: '+995555000111',
     email: 'hello@clinic.ge',
     taxId: '204567891',
@@ -265,10 +267,14 @@ describe('getClinicService', () => {
       id: CLINIC_ID,
       name: 'Unicorn Clinic',
       brandName: '',
+      // `fakeClinic` carries neither English field, standing in for every clinic row written
+      // before they existed — they must come back as empty strings, not as `undefined`.
+      nameEn: '',
       slug: 'unicorn-clinic-abcd1234',
       country: 'Georgia',
       city: 'Tbilisi',
       addressLine: '12 Rustaveli',
+      addressLineEn: '',
       phone: '+995555000111',
       email: 'hello@clinic.ge',
       taxId: '204567891',

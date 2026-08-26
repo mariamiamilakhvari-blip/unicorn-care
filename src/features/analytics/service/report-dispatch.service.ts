@@ -6,6 +6,7 @@ import { buildReportEmail } from '@/features/analytics/service/report-email.serv
 import { SendReportType } from '@/features/analytics/validations/analytics.validation';
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { toEmailClinic } from '@/features/notifications/service/email-clinic.service';
 import { resendClient } from '@/shared/lib/resend-client';
 import { ServiceResult } from '@/shared/types/common';
 import { resolveClinicLocale } from '@/shared/utils/patient-locale';
@@ -43,22 +44,16 @@ export async function sendQuarterlyReportService(
   const to = clinic.email || owner?.email || '';
   if (!to) return { data: { error: 'NO_RECIPIENT' }, status: 422 };
 
-  const email = buildReportEmail(
-    data,
-    {
-      name: clinic.name,
-      addressLine: clinic.addressLine ?? '',
-      phone: clinic.phone ?? '',
-      email: clinic.email ?? '',
-      timezone: clinic.timezone,
-    },
-    {
-      firstName: owner?.name ?? clinic.name,
-      lastName: '',
-      email: to,
-      locale: resolveClinicLocale(clinic),
-    }
-  );
+  const locale = resolveClinicLocale(clinic);
+  const emailClinic = toEmailClinic(clinic, locale, clinic.timezone);
+
+  const email = buildReportEmail(data, emailClinic, {
+    // The clinic's own name as this report is written, so the salutation and the footer agree.
+    firstName: owner?.name ?? emailClinic.name,
+    lastName: '',
+    email: to,
+    locale,
+  });
 
   const result = await resendClient.send({
     to,

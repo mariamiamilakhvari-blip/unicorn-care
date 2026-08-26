@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Control, FieldValues, Path } from 'react-hook-form';
 
+import { ClinicEnglishFields } from '@/features/clinic/components/clinic-english-fields';
 import { ClinicPreferenceFields } from '@/features/clinic/components/clinic-preference-fields';
 import { ClinicTaxIdField } from '@/features/clinic/components/clinic-tax-id-field';
 import { CodedFormMessage } from '@/shared/components/coded-form-message';
@@ -42,6 +43,17 @@ type ClinicProfileFieldsProps<T extends FieldValues> = {
   legalNameField: Path<T>;
   /** The optional public-facing name. Drawn under the legal name, since it qualifies it. */
   brandNameField: Path<T>;
+  /*
+    The name and address English-language emails use. Drawn together by `ClinicEnglishFields`, so
+    they are passed as a pair or not at all.
+
+    Optional, and passed by the settings form alone. Registration is already the longest form in
+    the product and asks this at the worst moment — a clinic signing up has not sent an email yet,
+    so it has no reason to know why a second name is wanted. Settings is where a clinic goes once
+    it has seen one.
+  */
+  nameEnField?: Path<T>;
+  addressEnField?: Path<T>;
   phoneField: Path<T>;
   /*
     Optional for the same reason `nameField` is: the registration form asks for the owner's login
@@ -62,6 +74,8 @@ export function ClinicProfileFields<T extends FieldValues>({
   nameField,
   legalNameField,
   brandNameField,
+  nameEnField,
+  addressEnField,
   phoneField,
   emailField,
   cityField,
@@ -185,6 +199,14 @@ export function ClinicProfileFields<T extends FieldValues>({
           </FormItem>
         )}
       />
+      {/* After the Georgian address and phone, since it restates what they already said. */}
+      {nameEnField && addressEnField && (
+        <ClinicEnglishFields
+          control={control}
+          nameEnField={nameEnField}
+          addressEnField={addressEnField}
+        />
+      )}
       <ClinicTaxIdField
         control={control}
         taxIdField={taxIdField}

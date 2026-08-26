@@ -39,11 +39,13 @@ function toClinicProfile(clinic: ClinicDocument): ClinicProfile {
     id: clinic._id.toString(),
     name: clinic.name,
     brandName: clinic.brandName ?? '',
+    nameEn: clinic.nameEn ?? '',
     slug: clinic.slug,
     // Schema defaults these to '' but the inferred type stays nullable — normalise for the wire.
     country: clinic.country ?? '',
     city: clinic.city ?? '',
     addressLine: clinic.addressLine ?? '',
+    addressLineEn: clinic.addressLineEn ?? '',
     phone: clinic.phone ?? '',
     email: clinic.email ?? '',
     taxId: clinic.taxId ?? '',

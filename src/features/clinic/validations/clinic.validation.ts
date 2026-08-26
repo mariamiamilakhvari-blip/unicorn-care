@@ -21,9 +21,18 @@ const ClinicProfileBase = z.object({
     reject every clinic that trades under its own legal name.
   */
   brandName: z.string().max(120).default(''),
+  /*
+    The English name and address, used by emails written in English and empty for most clinics.
+
+    No `.min()` on either, for the same reason `brandName` has none: they are optional, so the
+    empty string is a legitimate value and a minimum would reject every clinic that has not filled
+    them in. The caps mirror the Georgian fields they stand in for.
+  */
+  nameEn: z.string().max(120).default(''),
   country: z.string().max(80).default(''),
   city: z.string().max(80).default(''),
   addressLine: z.string().max(200).default(''),
+  addressLineEn: z.string().max(200).default(''),
   phone: z.string().max(40).default(''),
   /*
     The clinic's contact address, not the owner's login. Optional — a clinic must be able to save

@@ -1,5 +1,6 @@
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
+import { toEmailClinic } from '@/features/notifications/service/email-clinic.service';
 import { nextCheckup } from '@/features/notifications/service/welcome-email.service';
 import {
   DailyEmailInput,
@@ -95,14 +96,8 @@ export async function toWelcomeInput(
       email: patient.email ?? '',
       locale,
     },
-    clinic: {
-      name: clinic.name,
-      addressLine: clinic.addressLine ?? '',
-      phone: clinic.phone ?? '',
-      email: clinic.email ?? '',
-      // Where the patient is, not where the clinic is — every time in this email is printed in it.
-      timezone: effectiveTimeZone(patient.timezone ?? '', clinic.timezone),
-    },
+    // Where the patient is, not where the clinic is — every time in this email is printed in it.
+    clinic: toEmailClinic(clinic, locale, effectiveTimeZone(patient.timezone ?? '', clinic.timezone)),
     procedure: procedure
       ? {
         manipulationType: procedure.manipulationType,
@@ -162,13 +157,7 @@ export async function toDailyInput(
       email: patient.email ?? '',
       locale,
     },
-    clinic: {
-      name: clinic.name,
-      addressLine: clinic.addressLine ?? '',
-      phone: clinic.phone ?? '',
-      email: clinic.email ?? '',
-      timezone: zone,
-    },
+    clinic: toEmailClinic(clinic, locale, zone),
     portalUrl: await portalLinkForEmail(patient._id.toString(), patient.clinicId),
     medications: toMedications(plan).filter(item => runsToday(item, now, zone)),
     // A rehab task also has to fall on a weekday the clinic prescribed, unlike a medication.

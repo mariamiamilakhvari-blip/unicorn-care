@@ -9,10 +9,14 @@ export type ClinicProfile = {
   name: string;
   /** Public-facing name where it differs from the registered one. Empty when there is no separate one. */
   brandName: string;
+  /** The name English-language emails use. Empty when the clinic has supplied none, and the Georgian `name` then stands in. */
+  nameEn: string;
   slug: string;
   country: string;
   city: string;
   addressLine: string;
+  /** The address English-language emails use, under the same fallback as `nameEn`. */
+  addressLineEn: string;
   phone: string;
   /** The clinic's contact address, not the owner's login. Empty string when none is set. */
   email: string;

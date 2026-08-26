@@ -4,6 +4,7 @@ import { ReminderOccurrenceDocument } from '@/features/care-plan/schema/reminder
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
 import { buildDailyEmail } from '@/features/notifications/service/daily-email.service';
+import { toEmailClinic } from '@/features/notifications/service/email-clinic.service';
 import { isEmailSuppressed } from '@/features/notifications/service/email-delivery.service';
 import { toDailyInput, toWelcomeInput } from '@/features/notifications/service/email-input.service';
 import { buildReminderEmail } from '@/features/notifications/service/reminder-email.service';
@@ -139,24 +140,24 @@ export function createReminderEmailSender() {
         portalLinks.set(patientId, await portalLinkForEmail(patientId, patient.clinicId));
       }
 
+      // The patient's own language wins; the clinic's is the fallback for a record that
+      // predates the field. Same rule the welcome and daily emails already follow.
+      const locale = resolvePatientLocale(patient, clinic);
+
       const email = buildReminderEmail({
         patient: {
           firstName: patient.firstName,
           lastName: patient.lastName,
           email: patient.email,
-          // The patient's own language wins; the clinic's is the fallback for a record that
-          // predates the field. Same rule the welcome and daily emails already follow.
-          locale: resolvePatientLocale(patient, clinic),
+          locale,
         },
-        clinic: {
-          name: clinic.name,
-          addressLine: clinic.addressLine ?? '',
-          phone: clinic.phone ?? '',
-          email: clinic.email ?? '',
-          // The dose time this email prints is wall clock where the patient is. Printing it in the
-          // clinic's zone is what told a patient recovering abroad to take a 09:30 tablet at 07:30.
-          timezone: effectiveTimeZone(patient.timezone ?? '', clinic.timezone),
-        },
+        // The dose time this email prints is wall clock where the patient is. Printing it in the
+        // clinic's zone is what told a patient recovering abroad to take a 09:30 tablet at 07:30.
+        clinic: toEmailClinic(
+          clinic,
+          locale,
+          effectiveTimeZone(patient.timezone ?? '', clinic.timezone)
+        ),
         title: occurrence.title,
         body: occurrence.body ?? '',
         dueAt: occurrence.dueAt,

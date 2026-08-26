@@ -41,9 +41,11 @@ export function ClinicProfileForm({
     defaultValues: {
       name: clinic.name,
       brandName: clinic.brandName,
+      nameEn: clinic.nameEn,
       country: clinic.country,
       city: clinic.city,
       addressLine: clinic.addressLine,
+      addressLineEn: clinic.addressLineEn,
       phone: clinic.phone,
       email: clinic.email,
       taxId: clinic.taxId,
@@ -62,6 +64,8 @@ export function ClinicProfileForm({
           nameField="name"
           legalNameField="name"
           brandNameField="brandName"
+          nameEnField="nameEn"
+          addressEnField="addressLineEn"
           phoneField="phone"
           emailField="email"
           cityField="city"

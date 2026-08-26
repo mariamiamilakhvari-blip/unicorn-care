@@ -1,5 +1,6 @@
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { toEmailClinic } from '@/features/notifications/service/email-clinic.service';
 import {
   button,
   escapeHtml,
@@ -61,19 +62,14 @@ export async function sendSymptomAlertService(
     const patient = await patientRepository.findById(patientId, clinicId);
     if (!patient) return false;
 
-    const copy = emailCopy(resolveClinicLocale(clinic));
+    const locale = resolveClinicLocale(clinic);
+    const copy = emailCopy(locale);
     const patientName = `${patient.firstName} ${patient.lastName}`.trim();
     const queueUrl = `${SITE_URL}${DASHBOARD_ROUTE}`;
-    const emailClinic = {
-      name: clinic.name,
-      addressLine: clinic.addressLine ?? '',
-      phone: clinic.phone ?? '',
-      email: clinic.email ?? '',
-      timezone: clinic.timezone,
-    };
+    const emailClinic = toEmailClinic(clinic, locale, clinic.timezone);
 
     const sections = [
-      section('🩺', copy.symptomIntro, paragraph(escapeHtml(clinic.name))),
+      section('🩺', copy.symptomIntro, paragraph(escapeHtml(emailClinic.name))),
       section(
         '',
         copy.symptomPatient,

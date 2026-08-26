@@ -20,10 +20,29 @@ const ClinicSchema = new Schema(
       has to decide which of the two it wants.
     */
     brandName: { type: String, required: false, default: '' },
+    /*
+      The clinic's own name and address written in English, for the emails that go out in English.
+
+      A patient can be written to in English while the clinic is a Georgian practice, and until
+      this existed the footer of that email printed "Address:" — translated — followed by
+      "საბურთალო: ვაჟა-ფშაველას გამზ. N40". The labels were localised and the values could not be,
+      because the record held exactly one string per field.
+
+      Not a translation the platform performs. A clinic's name in English is whatever that clinic
+      says it is — a transliteration, a trading name, sometimes neither — and the address has to be
+      the one a courier or a patient can actually follow, which is a decision only the practice can
+      make. So this is typed by the clinic in its own settings, and empty is the normal case.
+
+      Empty falls back to the Georgian original rather than to nothing: a name a patient cannot
+      read still tells them which clinic wrote, and a blank footer does not.
+    */
+    nameEn: { type: String, required: false, default: '' },
     slug: { type: String, required: true, unique: true },
     country: { type: String, required: false, default: '' },
     city: { type: String, required: false, default: '' },
     addressLine: { type: String, required: false, default: '' },
+    /** The English address, paired with `nameEn` above and governed by the same fallback. */
+    addressLineEn: { type: String, required: false, default: '' },
     phone: { type: String, required: false, default: '' },
     /*
       The clinic's contact address — where the platform writes to the practice, as distinct from

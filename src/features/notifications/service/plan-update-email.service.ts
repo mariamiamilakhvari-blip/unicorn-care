@@ -1,5 +1,6 @@
 import { CarePlanDocument } from '@/features/care-plan/schema/care-plan.schema';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
+import { toEmailClinic } from '@/features/notifications/service/email-clinic.service';
 import { isEmailSuppressed } from '@/features/notifications/service/email-delivery.service';
 import { sendPortalLinkEmailService } from '@/features/notifications/service/portal-link-email.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
@@ -97,18 +98,14 @@ export async function sendPlanUpdatedLinkService(
 
     const portalUrl = await issuePortalLink(patientId, plan.clinicId, window.ttlMinutes);
 
+    // The patient's own language wins; the clinic's is the fallback for a record that predates
+    // the field. Same rule the welcome, daily and reminder emails follow.
+    const locale = resolvePatientLocale(patient, clinic);
+
     return await sendPortalLinkEmailService({
       to: patient.email,
-      // The patient's own language wins; the clinic's is the fallback for a record that predates
-      // the field. Same rule the welcome, daily and reminder emails follow.
-      locale: resolvePatientLocale(patient, clinic),
-      clinic: {
-        name: clinic.name,
-        addressLine: clinic.addressLine ?? '',
-        phone: clinic.phone ?? '',
-        email: clinic.email ?? '',
-        timezone: clinic.timezone || DEFAULT_TIMEZONE,
-      },
+      locale,
+      clinic: toEmailClinic(clinic, locale, clinic.timezone || DEFAULT_TIMEZONE),
       portalUrl,
       ttlHours: window.ttlMinutes / 60,
       activeUntil: window.activeUntil,

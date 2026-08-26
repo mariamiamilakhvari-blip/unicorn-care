@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { Types } from 'mongoose';
 
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
+import { toEmailClinic } from '@/features/notifications/service/email-clinic.service';
 import { sendPortalLinkEmailService } from '@/features/notifications/service/portal-link-email.service';
 import { patientPortalLinkRepository } from '@/features/patient/repository/patient-portal-link.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
@@ -174,13 +175,7 @@ export async function requestPortalLinkService(
     locale: patient.locale,
     // The email is sent on the clinic's behalf, so its footer carries the clinic a patient would
     // actually call. A missing clinic is not worth failing over — the link still works.
-    clinic: {
-      name: clinic?.name ?? '',
-      addressLine: clinic?.addressLine ?? '',
-      phone: clinic?.phone ?? '',
-      email: clinic?.email ?? '',
-      timezone: clinic?.timezone ?? DEFAULT_TIMEZONE,
-    },
+    clinic: toEmailClinic(clinic, patient.locale, clinic?.timezone ?? DEFAULT_TIMEZONE),
     portalUrl,
     ttlHours: PORTAL_LINK_TTL_MINUTES / 60,
   });
