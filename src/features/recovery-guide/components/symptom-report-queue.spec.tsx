@@ -72,6 +72,34 @@ describe('SymptomReportQueue', () => {
   });
 
   /*
+    The combined shape the unified portal form can now send: a sign the clinic itself named, plus
+    the patient's own words about it. Both have to survive to the queue — the title is what makes
+    the row triageable at a glance, and the note is the part no list could have anticipated.
+  */
+  it('shows the clinic’s own warning title and the patient’s words together', () => {
+    reportsHook.mockReturnValue(
+      state([report({ warningTitle: 'temperature 39', note: 'since last night, with chills' })])
+    );
+
+    render(<SymptomReportQueue />);
+
+    expect(screen.getByText('temperature 39')).toBeInTheDocument();
+    expect(screen.getByText('since last night, with chills')).toBeInTheDocument();
+  });
+
+  /* Free text alone still reads as a patient description rather than as a nameless row. */
+  it('labels a report that carries only the patient’s words', () => {
+    reportsHook.mockReturnValue(
+      state([report({ warningTitle: '', note: 'Is this normal on day 4?' })])
+    );
+
+    render(<SymptomReportQueue />);
+
+    expect(screen.getByText('freeTextReport')).toBeInTheDocument();
+    expect(screen.getByText('Is this normal on day 4?')).toBeInTheDocument();
+  });
+
+  /*
     A dead `tel:` link is worse than none — it looks actionable and does nothing. The same rule the
     patient-facing guide panel follows for the clinic's own number.
   */

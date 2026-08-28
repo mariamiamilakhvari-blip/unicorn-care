@@ -2,12 +2,10 @@
 
 import { AlertTriangle, CircleCheck, PhoneCall, Siren } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useState } from 'react';
 
+import { ConcernReportSection } from '@/features/recovery-guide/components/concern-report-section';
 import { useRecoveryGuide } from '@/features/recovery-guide/hooks/use-recovery-guide';
-import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Textarea } from '@/shared/components/ui/textarea';
 import { WarningSeverity } from '@/shared/const/recovery.const';
 import { cn } from '@/shared/lib/utils';
 
@@ -26,27 +24,12 @@ const SEVERITY_CLASS: Record<WarningSeverity, string> = {
 
 export function RecoveryGuidePanel() {
   const t = useTranslations('recoveryGuide');
-  const tCommon = useTranslations('common');
   const locale = useLocale();
-  const { guide, absence, isLoading, isReporting, reportedAt, error, report } = useRecoveryGuide();
+  const { guide, absence, isLoading } = useRecoveryGuide();
   /** Two languages, so "the one they are not reading" is the other one. */
   const otherLocale = locale === 'ka' ? 'en' : 'ka';
-  const [note, setNote] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
 
   if (isLoading) return null;
-
-  async function flag(warningTitle: string, severity: string) {
-    await report({ warningTitle, severity, note: '' });
-    setIsFormOpen(false);
-  }
-
-  async function submitNote() {
-    if (note.trim().length === 0) return;
-    await report({ warningTitle: '', severity: '', note });
-    setNote('');
-    setIsFormOpen(false);
-  }
 
   return (
     <Card>
@@ -130,15 +113,6 @@ export function RecoveryGuidePanel() {
                       ) : (
                         <p className="text-xs font-medium">{t(`severity.${item.severity}`)}</p>
                       )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={isReporting}
-                        onClick={() => void flag(item.title, item.severity)}
-                      >
-                        {t('flagThis')}
-                      </Button>
                     </div>
                   </li>
                 );
@@ -164,49 +138,13 @@ export function RecoveryGuidePanel() {
           <p className="text-sm text-muted-foreground">{t('noGuide')}</p>
         )}
 
-        <section className="flex flex-col gap-2">
-          {reportedAt ? (
-            <p className="text-sm font-medium text-moss">{t('reportSent')}</p>
-          ) : (
-            /*
-              Destructive styling and an icon, not the outline used by every other control here.
-              This is the escalation path: a patient who cannot find their symptom in the list
-              above must be able to spot it at a glance, one-handed, possibly frightened.
-            */
-            <Button
-              type="button"
-              variant="destructive"
-              size="lg"
-              className="w-full gap-2 font-semibold"
-              onClick={() => setIsFormOpen(open => !open)}
-            >
-              <AlertTriangle className="size-5 shrink-0" aria-hidden />
-              {t('somethingWrong')}
-            </Button>
-          )}
-
-          {isFormOpen && !reportedAt && (
-            <div className="flex flex-col gap-2">
-              <Textarea
-                rows={3}
-                value={note}
-                onChange={event => setNote(event.target.value)}
-                placeholder={t('describePlaceholder')}
-                aria-label={t('describePlaceholder')}
-              />
-              <Button
-                type="button"
-                disabled={isReporting || note.trim().length === 0}
-                onClick={() => void submitNote()}
-                className="self-start"
-              >
-                {isReporting ? tCommon('loading') : t('sendToClinic')}
-              </Button>
-            </div>
-          )}
-
-          {error && <p className="text-sm font-medium text-destructive">{tCommon('error')}</p>}
-        </section>
+        {/*
+          One way in, at the foot of the guidance it refers to. The "I have this" button that used
+          to sit on every warning sign and the separate free-text card at the bottom of the portal
+          have both become this: the signs are one-tap choices inside it, so a patient can send a
+          named symptom, a sentence of their own, or the two together as one message.
+        */}
+        <ConcernReportSection warnings={guide?.warning ?? []} />
       </CardContent>
     </Card>
   );

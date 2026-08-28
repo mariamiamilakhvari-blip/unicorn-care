@@ -1,10 +1,9 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PatientGuideView } from '@/features/recovery-guide/types/recovery-guide.types';
-import { CreateSymptomReportType } from '@/features/recovery-guide/validations/recovery-guide.validation';
 import { http } from '@/shared/lib/http';
 
 /**
@@ -23,11 +22,14 @@ type RecoveryGuideState = {
   /** Set only when `guide` is null, and never both. */
   absence: GuideAbsence | null;
   isLoading: boolean;
-  isReporting: boolean;
-  reportedAt: number | null;
-  error: string | null;
-  report: (input: CreateSymptomReportType) => Promise<void>;
 };
+
+/*
+  Reading only. Filing a report moved to `useConcernReport` when the portal's two escalation
+  widgets became one: this hook's `reportedAt` latched for the session, which is right for "the
+  guide has loaded" and wrong for "the patient has told us something" — a recovery is days long
+  and the second symptom deserves the same box as the first.
+*/
 
 export function useRecoveryGuide(): RecoveryGuideState {
   const [guide, setGuide] = useState<PatientGuideView | null>(null);
@@ -38,9 +40,6 @@ export function useRecoveryGuide(): RecoveryGuideState {
   */
   const locale = useLocale();
   const [isLoading, setIsLoading] = useState(true);
-  const [isReporting, setIsReporting] = useState(false);
-  const [reportedAt, setReportedAt] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,18 +73,5 @@ export function useRecoveryGuide(): RecoveryGuideState {
     };
   }, [locale]);
 
-  const report = useCallback(async (input: CreateSymptomReportType) => {
-    setIsReporting(true);
-    setError(null);
-    try {
-      await http.post('/patient-portal/symptom-reports', input);
-      setReportedAt(Date.now());
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'ERROR');
-    } finally {
-      setIsReporting(false);
-    }
-  }, []);
-
-  return { guide, absence, isLoading, isReporting, reportedAt, error, report };
+  return { guide, absence, isLoading };
 }
