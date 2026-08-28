@@ -32,15 +32,6 @@ export const CreateProcedureSchema = z.object({
   manipulationDetail: z.string().max(300).optional(),
   anesthesia: z.enum(ANESTHESIA_VALUES),
   notes: z.string().max(2000).optional(),
-  /*
-    Same bounds as a dose's lead time: never negative, never more than a day.
-
-    `.optional()` rather than `.default(0)`, matching `notes` and `manipulationDetail` above. A
-    default makes the schema's input and output types diverge, and this schema is the form's
-    resolver — the form would then be typed against the parsed shape while holding the raw one.
-    The service supplies the 0.
-  */
-  remindMinutesBefore: z.number().int().min(0).max(1440).optional(),
 });
 
 /** A procedure never moves between patients, so `patientId` is not patchable. */

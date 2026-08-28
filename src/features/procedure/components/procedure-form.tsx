@@ -15,7 +15,6 @@ import { Combobox, ComboboxOption } from '@/shared/components/ui/combobox';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -77,7 +76,6 @@ export function ProcedureForm({
       manipulationDetail: procedure?.manipulationDetail ?? '',
       anesthesia: (procedure?.anesthesia as CreateProcedureType['anesthesia']) ?? 'local',
       notes: procedure?.notes ?? '',
-      remindMinutesBefore: procedure?.remindMinutesBefore ?? 0,
     },
   });
 
@@ -172,27 +170,6 @@ export function ProcedureForm({
               <FormControl>
                 <Textarea rows={3} {...field} />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="remindMinutesBefore"
-          render={({ field }) => (
-            <FormItem className="sm:max-w-xs">
-              <FormLabel>{t('remindMinutesBefore')}</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min={0}
-                  max={1440}
-                  value={field.value ?? 0}
-                  onChange={event => field.onChange(Number(event.target.value))}
-                />
-              </FormControl>
-              <FormDescription>{t('remindMinutesBeforeHint')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}

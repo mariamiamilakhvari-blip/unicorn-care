@@ -113,45 +113,49 @@ describe('ProcedureForm — searching the procedure catalogue', () => {
   });
 });
 
-
 /**
- * The lead time a clinic wants for this procedure, recorded with the rest of it.
+ * The reminder lead time this form used to collect, and no longer does.
  *
- * Bounded like a dose's: never negative, and never more than a day, because a lead longer than the
- * gap it precedes is a reminder that arrives before the thing it is about.
+ * The control was real and did nothing. A procedure's `remindMinutesBefore` never reached the
+ * scheduler: `buildOccurrences` takes a dose's lead from the medication or rehab task it belongs
+ * to, and a checkup's from its own `remindHoursBefore`. Nothing anywhere read the procedure's. So
+ * a clinic could set "send reminders 45 minutes early" on an operation, watch it save, and get
+ * reminders at exactly the same times as before.
+ *
+ * A setting that appears to work and does not is worse than no setting, which is why this is a
+ * removal rather than a wiring-up: what the lead time on an *operation* should even mean — early
+ * relative to which of the plan's reminders — was never decided, and inventing an answer here
+ * would be inventing clinical behaviour.
  */
-describe('ProcedureForm — reminder lead time', () => {
-  it('offers the field with its explanation', () => {
+describe('ProcedureForm — no reminder lead time', () => {
+  it('does not offer the field', () => {
     locale.current = 'ka';
     render_();
 
-    expect(screen.getByLabelText('remindMinutesBefore')).toBeInTheDocument();
-    expect(screen.getByText('remindMinutesBeforeHint')).toBeInTheDocument();
+    expect(screen.queryByLabelText('remindMinutesBefore')).not.toBeInTheDocument();
+    expect(screen.queryByText('remindMinutesBeforeHint')).not.toBeInTheDocument();
   });
 
-  /* Zero, not blank: the honest default is "exactly on time", and a blank number reads as unset. */
-  it('starts at zero on a new procedure', () => {
+  /*
+    The one number input on this form was the lead time. Anything typed here now is a field a
+    human chose to add, not this one coming back by way of a merge.
+  */
+  it('has no number input left on the form', () => {
     locale.current = 'ka';
     render_();
 
-    expect(screen.getByLabelText('remindMinutesBefore')).toHaveValue(0);
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
-  it('is a bounded number input', () => {
-    locale.current = 'ka';
-    render_();
-
-    const input = screen.getByLabelText('remindMinutesBefore');
-    expect(input).toHaveAttribute('type', 'number');
-    expect(input).toHaveAttribute('min', '0');
-    expect(input).toHaveAttribute('max', '1440');
-  });
-
-  it('prefills what was saved when editing', () => {
+  /*
+    A procedure saved with a lead time still opens for editing. The value is ignored rather than
+    migrated — the stored column keeps whatever it held, and nothing reads it.
+  */
+  it('still edits a procedure that was saved with one', () => {
     locale.current = 'ka';
     render_({
-      _id: '6a8ab18130e9588d68298165',
-      patientId: '6a8ab18130e9588d68298165',
+      _id: '6a8ab18130e9588d68298164',
+      patientId: '6a8ab18130e9588d68298163',
       clinicId: '6a8ab18130e9588d68298165',
       performedAt: '2026-08-22T13:00:00.000Z',
       operatorName: 'sofia',
@@ -161,27 +165,9 @@ describe('ProcedureForm — reminder lead time', () => {
       anesthesia: 'local',
       notes: '',
       remindMinutesBefore: 45,
-    });
+    } as ProcedureView & { remindMinutesBefore: number });
 
-    expect(screen.getByLabelText('remindMinutesBefore')).toHaveValue(45);
-  });
-
-  /* Procedures saved before the field existed come back without it, and must not render blank. */
-  it('falls back to zero for a procedure saved without one', () => {
-    locale.current = 'ka';
-    render_({
-      _id: '6a8ab18130e9588d68298165',
-      patientId: '6a8ab18130e9588d68298165',
-      clinicId: '6a8ab18130e9588d68298165',
-      performedAt: '2026-08-22T13:00:00.000Z',
-      operatorName: 'sofia',
-      operatorUserId: null,
-      manipulationType: 'rhinoplasty',
-      manipulationDetail: '',
-      anesthesia: 'local',
-      notes: '',
-    } as ProcedureView);
-
-    expect(screen.getByLabelText('remindMinutesBefore')).toHaveValue(0);
+    expect(screen.getByDisplayValue('sofia')).toBeInTheDocument();
+    expect(screen.queryByLabelText('remindMinutesBefore')).not.toBeInTheDocument();
   });
 });

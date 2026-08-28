@@ -245,8 +245,6 @@
     "performedAt": "ჩატარების თარიღი",
     "operator": "ოპერატორი ექიმი",
     "manipulationType": "მანიპულაციის ტიპი",
-    "remindMinutesBefore": "შეხსენება რამდენი წუთით ადრე",
-    "remindMinutesBeforeHint": "შეხსენება გაიგზავნება ამდენი წუთით ადრე. 0 = ზუსტად დროზე.",
     "searchProcedure": "მოძებნეთ პროცედურა",
     "selectProcedure": "აირჩიეთ პროცედურა",
     "noProcedureFound": "ასეთი პროცედურა ვერ მოიძებნა",
