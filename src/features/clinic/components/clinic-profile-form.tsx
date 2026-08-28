@@ -3,9 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 
 import { ClinicProfileFields } from '@/features/clinic/components/clinic-profile-fields';
+import { useEnglishPrefill } from '@/features/clinic/hooks/use-english-prefill';
 import { ClinicProfile } from '@/features/clinic/types/clinic.types';
 import {
   ClinicProfileFormType,
@@ -54,6 +55,23 @@ export function ClinicProfileForm({
       // let the clinic confirm a real one.
       timezone: clinic.timezone || DEFAULT_TIMEZONE,
     },
+  });
+
+  /*
+    Offers a Latin spelling of the name and address as the Georgian ones are edited, into the
+    English fields only while they are still empty. The clinic reads it and corrects it — the
+    platform proposes a spelling, it does not decide what a clinic is called in English.
+  */
+  const [name, addressLine] = useWatch({
+    control: form.control,
+    name: ['name', 'addressLine'],
+  });
+
+  useEnglishPrefill({
+    name: name ?? '',
+    addressLine: addressLine ?? '',
+    getValues: form.getValues,
+    setValue: form.setValue,
   });
 
   return (
