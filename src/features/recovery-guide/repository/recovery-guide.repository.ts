@@ -92,6 +92,45 @@ export const recoveryGuideRepository = {
     return result.upsertedCount > 0;
   },
 
+  /** Every platform default, for the admin review queue. Null `clinicId` keeps clinics out. */
+  async findAllDefaults(): Promise<RecoveryGuideDocument[]> {
+    await mongo.connect();
+    return RecoveryGuideModel.find({ clinicId: null }, null, {
+      sort: { manipulationType: 1, locale: 1 },
+    })
+      .lean<RecoveryGuideDocument[]>()
+      .exec();
+  },
+
+  /**
+   * One platform default by id.
+   *
+   * `clinicId: null` is part of the match rather than a check on the result, so an admin handing
+   * this the id of a clinic's own guide gets nothing back instead of that clinic's content.
+   */
+  async findDefaultById(id: string): Promise<RecoveryGuideDocument | null> {
+    await mongo.connect();
+    return RecoveryGuideModel.findOne({ _id: id, clinicId: null })
+      .lean<RecoveryGuideDocument>()
+      .exec();
+  },
+
+  /**
+   * Sets the publication state of a platform default, and nothing else about it.
+   *
+   * Scoped to `clinicId: null` for the reason above: a clinic's guide is published by the clinic
+   * that wrote it, through its own editor, and an admin route that could flip that flag would let
+   * the platform put its name on — or take down — clinical text it did not author.
+   */
+  async setDefaultPublished(id: string, isPublished: boolean): Promise<boolean> {
+    await mongo.connect();
+    const result = await RecoveryGuideModel.updateOne(
+      { _id: id, clinicId: null },
+      { $set: { isPublished } }
+    );
+    return result.matchedCount > 0;
+  },
+
   /**
    * Rewrites the content of a platform default that already exists, leaving its publication state
    * alone. Matches on a null `clinicId`, so it can only ever touch platform rows.

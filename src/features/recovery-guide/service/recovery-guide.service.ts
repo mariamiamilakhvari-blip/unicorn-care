@@ -4,7 +4,10 @@ import { recoveryGuideRepository } from '@/features/recovery-guide/repository/re
 import { RecoveryGuideDocument } from '@/features/recovery-guide/schema/recovery-guide.schema';
 import { resolveGuideBody } from '@/features/recovery-guide/service/guide-resolution.service';
 import { RecoveryGuideView } from '@/features/recovery-guide/types/recovery-guide.types';
-import { UpsertRecoveryGuideType } from '@/features/recovery-guide/validations/recovery-guide.validation';
+import {
+  PublishDefaultGuideType,
+  UpsertRecoveryGuideType,
+} from '@/features/recovery-guide/validations/recovery-guide.validation';
 import { ServiceResult } from '@/shared/types/common';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -180,6 +183,45 @@ export async function resolveGuideService(
   if (defaultOther?.isPublished) return { data: { error: 'NOT_TRANSLATED' }, status: 404 };
 
   return { data: { error: 'NOT_FOUND' }, status: 404 };
+}
+
+/**
+ * Every platform default, for a reviewer to read before deciding what to publish.
+ *
+ * Full bodies rather than a summary: the decision this list exists to support is whether the text
+ * is fit for a post-operative patient to act on, and that cannot be made from a row count.
+ */
+export async function listDefaultGuidesService(): Promise<ServiceResult<{ items: RecoveryGuideView[] }>> {
+  const guides = await recoveryGuideRepository.findAllDefaults();
+  return { data: { items: guides.map(guide => toView(guide, true)) }, status: 200 };
+}
+
+/**
+ * Publishes a platform default, or withdraws one.
+ *
+ * The seed writes every default unpublished and nothing in the product could raise that flag, so
+ * the fallback rung existed in the database and reached no patient. This is the review step that
+ * was missing — a named admin reading generic drafting and saying it is fit to act on.
+ *
+ * Withdrawal is the same call with `false`, and matters as much as publishing: text that turns out
+ * to be wrong has to be removable in one request, without waiting for whoever wrote it. A
+ * withdrawn default falls straight back to the honest empty state.
+ *
+ * Platform rows only, enforced in the query rather than here — see `setDefaultPublished`. An admin
+ * who passes a clinic's guide id gets 404, which is the truthful answer: there is no platform
+ * default with that id.
+ */
+export async function setDefaultGuidePublishedService(
+  id: string,
+  input: PublishDefaultGuideType
+): Promise<ServiceResult<RecoveryGuideView>> {
+  const updated = await recoveryGuideRepository.setDefaultPublished(id, input.isPublished);
+  if (!updated) return { data: { error: 'NOT_FOUND' }, status: 404 };
+
+  const guide = await recoveryGuideRepository.findDefaultById(id);
+  if (!guide) return { data: { error: 'NOT_FOUND' }, status: 404 };
+
+  return { data: toView(guide, true), status: 200 };
 }
 
 export async function deleteGuideService(

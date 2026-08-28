@@ -7,12 +7,17 @@ vi.mock('@/features/recovery-guide/repository/recovery-guide.repository', () => 
     findById: vi.fn(),
     create: vi.fn(),
     updateById: vi.fn(),
+    findAllDefaults: vi.fn(),
+    findDefaultById: vi.fn(),
+    setDefaultPublished: vi.fn(),
   },
 }));
 
 import { recoveryGuideRepository } from '@/features/recovery-guide/repository/recovery-guide.repository';
 import {
+  listDefaultGuidesService,
   resolveGuideService,
+  setDefaultGuidePublishedService,
   upsertGuideService,
 } from '@/features/recovery-guide/service/recovery-guide.service';
 import { RecoveryGuideView } from '@/features/recovery-guide/types/recovery-guide.types';
@@ -395,5 +400,97 @@ describe('resolveGuideService — custom content is never padded with the defaul
 
     expect(result.expected.map(item => item.title)).toEqual(['platform norm']);
     expect(result.warning.map(item => item.title)).toEqual(['platform red flag']);
+  });
+});
+
+/**
+ * The admin review queue for platform defaults.
+ *
+ * These rows are seeded unpublished and, until this pair of services existed, nothing in the
+ * product could raise the flag — so the fallback rung sat in the database and reached no patient.
+ * What is pinned here is the boundary: the platform publishes the platform's text, never a
+ * clinic's, and a clinic's guide id is not a way in.
+ */
+describe('platform default publication', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  const defaultRow = (title: string, isPublished: boolean) => ({
+    _id: { toString: () => 'default-1' },
+    manipulationType: TYPE,
+    locale: 'en' as AppLocale,
+    expected: [{ title, description: '', fromDay: 0, toDay: 5 }],
+    warning: [],
+    isPublished,
+  });
+
+  it('lists the defaults with their bodies, so a reviewer can read what they are publishing', async () => {
+    repo.findAllDefaults.mockResolvedValueOnce([
+      defaultRow('Swelling', false),
+      defaultRow('Bruising', true),
+    ] as never);
+
+    const result = await listDefaultGuidesService();
+
+    expect(result.status).toBe(200);
+    const { items } = result.data as { items: RecoveryGuideView[] };
+    expect(items).toHaveLength(2);
+    expect(items[0].expected[0].title).toBe('Swelling');
+    expect(items.map(item => item.isPublished)).toEqual([false, true]);
+    // Platform content, whoever is reading it.
+    expect(items.every(item => item.isDefault)).toBe(true);
+  });
+
+  it('publishes a default and returns it in its new state', async () => {
+    repo.setDefaultPublished.mockResolvedValueOnce(true as never);
+    repo.findDefaultById.mockResolvedValueOnce(defaultRow('Swelling', true) as never);
+
+    const result = await setDefaultGuidePublishedService('default-1', { isPublished: true });
+
+    expect(repo.setDefaultPublished).toHaveBeenCalledWith('default-1', true);
+    expect(result.status).toBe(200);
+    expect((result.data as RecoveryGuideView).isPublished).toBe(true);
+  });
+
+  /*
+    Withdrawal matters as much as publication. Text that turns out to be wrong has to come down in
+    one request, without waiting on whoever wrote it — the guide falls back to the empty state,
+    which is the honest answer while nobody has reviewed a replacement.
+  */
+  it('withdraws a published default', async () => {
+    repo.setDefaultPublished.mockResolvedValueOnce(true as never);
+    repo.findDefaultById.mockResolvedValueOnce(defaultRow('Swelling', false) as never);
+
+    const result = await setDefaultGuidePublishedService('default-1', { isPublished: false });
+
+    expect(repo.setDefaultPublished).toHaveBeenCalledWith('default-1', false);
+    expect((result.data as RecoveryGuideView).isPublished).toBe(false);
+  });
+
+  /*
+    The row this route cannot reach. A clinic's guide is published by the clinic that wrote it,
+    and the scoping lives in the query — so an admin passing a clinic guide id matches nothing and
+    is told so, rather than flipping a flag on clinical text the platform did not author.
+  */
+  it("will not publish a clinic's own guide", async () => {
+    repo.setDefaultPublished.mockResolvedValueOnce(false as never);
+
+    const result = await setDefaultGuidePublishedService(CLINIC_ID, { isPublished: true });
+
+    expect(result.status).toBe(404);
+    expect(result.data).toEqual({ error: 'NOT_FOUND' });
+    // Nothing was read back, because nothing was written.
+    expect(repo.findDefaultById).not.toHaveBeenCalled();
+  });
+
+  it('reports a default that has since been deleted as missing', async () => {
+    repo.setDefaultPublished.mockResolvedValueOnce(true as never);
+    repo.findDefaultById.mockResolvedValueOnce(null as never);
+
+    const result = await setDefaultGuidePublishedService('default-1', { isPublished: true });
+
+    expect(result.status).toBe(404);
+    expect(result.data).toEqual({ error: 'NOT_FOUND' });
   });
 });

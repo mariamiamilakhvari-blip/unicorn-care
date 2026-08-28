@@ -49,6 +49,21 @@ export type UpsertRecoveryGuideType = z.infer<typeof UpsertRecoveryGuideSchema>;
 export type RecoveryGuideFormType = z.input<typeof UpsertRecoveryGuideSchema>;
 
 /**
+ * An admin putting a platform default in front of patients, or taking it back out.
+ *
+ * No `.default()` on the flag, unlike every other `isPublished` in this file. The others describe
+ * a clinic saving its own text, where "publish it" is the obvious intent of pressing save. This
+ * one is a platform admin deciding that generic drafting is now fit for a post-operative patient
+ * to act on, and a request that forgot to say which way it meant should be rejected rather than
+ * resolved by a default.
+ */
+export const PublishDefaultGuideSchema = z.object({
+  isPublished: z.boolean(),
+});
+
+export type PublishDefaultGuideType = z.infer<typeof PublishDefaultGuideSchema>;
+
+/**
  * What the patient submits. Either they tapped a warning item from the guide, or they typed a
  * note — one of the two must be present, otherwise the clinic gets an empty row to chase.
  */
