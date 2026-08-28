@@ -28,7 +28,7 @@ export default async function PortalPrivacyPage() {
   const t = await getTranslations('privacy');
 
   return (
-    <PortalShell title={t('title')}>
+    <PortalShell title={t('title')} patientName={session.patientName}>
       <PrivacyPanel />
     </PortalShell>
   );

@@ -48,6 +48,7 @@ describe('PortalLoginPage', () => {
       patientId: 'p',
       clinicId: 'c',
       locale: 'ka',
+      patientName: 'Nini Nutsibidze',
     });
 
     await expect(render()).rejects.toThrow('NEXT_REDIRECT:/p');
@@ -62,6 +63,7 @@ describe('PortalLoginPage', () => {
       patientId: 'p',
       clinicId: 'c',
       locale: 'ka',
+      patientName: 'Nini Nutsibidze',
     });
 
     await expect(render()).rejects.toThrow(RedirectError);

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 
 import { patientAccessTokenRepository } from '@/features/patient/repository/patient-access-token.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { ERASED_PLACEHOLDER } from '@/shared/const/retention.const';
 import { PATIENT_COOKIE_NAME } from '@/shared/const/routes.const';
 import { AppLocale } from '@/shared/types/roles';
 import { hashPassword } from '@/shared/utils/password';
@@ -10,6 +11,16 @@ export type PatientSession = {
   patientId: string;
   clinicId: string;
   locale: AppLocale;
+  /**
+   * Whose plan this session opens, for the portal to say so on screen.
+   *
+   * Free here: the guard already loads the patient record to check portal consent, so the name
+   * comes off a document it is holding rather than out of a second query on every request.
+   *
+   * Empty when the record has been erased, never the literal `[ERASED]` placeholder — the portal
+   * then says the account is closed rather than printing a marker at somebody.
+   */
+  patientName: string;
 };
 
 /**
@@ -47,7 +58,10 @@ class PatientGuard {
     */
     if (patient.portalAccessRevokedAt) return null;
 
-    return { patientId, clinicId, locale: patient.locale };
+    const isErased = patient.firstName === ERASED_PLACEHOLDER;
+    const patientName = isErased ? '' : `${patient.firstName} ${patient.lastName}`.trim();
+
+    return { patientId, clinicId, locale: patient.locale, patientName };
   }
 }
 

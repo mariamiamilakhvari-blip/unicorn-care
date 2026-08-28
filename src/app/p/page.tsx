@@ -13,7 +13,7 @@ export default async function PatientPortalPage() {
   const t = await getTranslations('portal');
 
   return (
-    <PortalShell title={t('yourPlan')}>
+    <PortalShell title={t('yourPlan')} patientName={session.patientName}>
       <PortalPlan />
     </PortalShell>
   );

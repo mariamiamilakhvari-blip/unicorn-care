@@ -15,6 +15,7 @@ import { cookies } from 'next/headers';
 
 import { patientAccessTokenRepository } from '@/features/patient/repository/patient-access-token.repository';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { ERASED_PLACEHOLDER } from '@/shared/const/retention.const';
 import { PATIENT_COOKIE_NAME } from '@/shared/const/routes.const';
 import { patientGuard, PatientGuard } from '@/shared/lib/patient-guard';
 import { hashPassword } from '@/shared/utils/password';
@@ -51,12 +52,17 @@ describe('patientGuard.requirePatient', () => {
   it('resolves the patient session from a valid cookie', async () => {
     setCookie(RAW_TOKEN);
     mockTokenRepo.findByTokenHash.mockResolvedValueOnce(tokenRow() as never);
-    mockPatientRepo.findById.mockResolvedValueOnce({ locale: 'ka' } as never);
+    mockPatientRepo.findById.mockResolvedValueOnce({
+      locale: 'ka',
+      firstName: 'Nini',
+      lastName: 'Nutsibidze',
+    } as never);
 
     expect(await patientGuard.requirePatient()).toEqual({
       patientId: PATIENT_ID,
       clinicId: CLINIC_ID,
       locale: 'ka',
+      patientName: 'Nini Nutsibidze',
     });
   });
 
@@ -118,12 +124,17 @@ describe('patientGuard.requirePatient', () => {
     mockTokenRepo.findByTokenHash.mockResolvedValueOnce(
       tokenRow({ expiresAt: new Date('2020-01-01T00:00:00Z') }) as never
     );
-    mockPatientRepo.findById.mockResolvedValueOnce({ locale: 'ka' } as never);
+    mockPatientRepo.findById.mockResolvedValueOnce({
+      locale: 'ka',
+      firstName: 'Nini',
+      lastName: 'Nutsibidze',
+    } as never);
 
     expect(await patientGuard.requirePatient()).toEqual({
       patientId: PATIENT_ID,
       clinicId: CLINIC_ID,
       locale: 'ka',
+      patientName: 'Nini Nutsibidze',
     });
   });
 
@@ -141,5 +152,78 @@ describe('PatientGuard class', () => {
   it('is instantiable independently of the singleton', async () => {
     setCookie(undefined);
     expect(await new PatientGuard().requirePatient()).toBeNull();
+  });
+});
+
+/**
+ * The name the portal prints to say whose plan is on screen.
+ *
+ * Resolved here rather than in a second query, because the guard already loads the patient record
+ * to check portal consent and is holding the document the name is on.
+ */
+describe('patientGuard.requirePatient — whose session this is', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('carries the patient name, joined from the record', async () => {
+    setCookie(RAW_TOKEN);
+    mockTokenRepo.findByTokenHash.mockResolvedValueOnce(tokenRow() as never);
+    mockPatientRepo.findById.mockResolvedValueOnce({
+      locale: 'ka',
+      firstName: 'Nini',
+      lastName: 'Nutsibidze',
+    } as never);
+
+    const session = await patientGuard.requirePatient();
+
+    expect(session?.patientName).toBe('Nini Nutsibidze');
+  });
+
+  /* No second lookup: the record was already fetched to check consent. */
+  it('costs no extra query', async () => {
+    setCookie(RAW_TOKEN);
+    mockTokenRepo.findByTokenHash.mockResolvedValueOnce(tokenRow() as never);
+    mockPatientRepo.findById.mockResolvedValueOnce({
+      locale: 'ka',
+      firstName: 'Nini',
+      lastName: 'Nutsibidze',
+    } as never);
+
+    await patientGuard.requirePatient();
+
+    expect(mockPatientRepo.findById).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+    An erased record resolves to no name, never to the placeholder. `[ERASED] [ERASED]` printed
+    under "viewing the plan of" reads as a broken page rather than as a closed account, and the
+    portal has its own words for the second.
+  */
+  it('gives an erased record no name rather than the placeholder', async () => {
+    setCookie(RAW_TOKEN);
+    mockTokenRepo.findByTokenHash.mockResolvedValueOnce(tokenRow() as never);
+    mockPatientRepo.findById.mockResolvedValueOnce({
+      locale: 'ka',
+      firstName: ERASED_PLACEHOLDER,
+      lastName: ERASED_PLACEHOLDER,
+    } as never);
+
+    const session = await patientGuard.requirePatient();
+
+    expect(session?.patientName).toBe('');
+    // Still a session: an erased patient keeps their plan and their way off this device.
+    expect(session?.patientId).toBe(PATIENT_ID);
+  });
+
+  /* A record holding only one of the two names must not come back with a dangling space. */
+  it('trims a record that carries only one name', async () => {
+    setCookie(RAW_TOKEN);
+    mockTokenRepo.findByTokenHash.mockResolvedValueOnce(tokenRow() as never);
+    mockPatientRepo.findById.mockResolvedValueOnce({
+      locale: 'ka',
+      firstName: 'Nini',
+      lastName: '',
+    } as never);
+
+    expect((await patientGuard.requirePatient())?.patientName).toBe('Nini');
   });
 });
