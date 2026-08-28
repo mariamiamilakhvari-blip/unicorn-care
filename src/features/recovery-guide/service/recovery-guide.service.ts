@@ -105,8 +105,8 @@ export async function upsertGuideService(
 
 /**
  * Resolves the guide a patient should read: the clinic's own if it exists and is published,
- * otherwise the platform default. Returns 404 when neither exists — the portal then shows nothing
- * rather than inventing reassurance.
+ * otherwise the platform default if that has been published too. Returns 404 when neither
+ * qualifies — the portal then shows nothing rather than inventing reassurance.
  */
 /**
  * The guide for one procedure type in one language.
@@ -140,13 +140,24 @@ export async function resolveGuideService(
   const fallback = await recoveryGuideRepository.findDefault(manipulationType, locale);
 
   /*
+    A draft is not reference material, and that has to hold for the platform's rows as firmly as
+    it does for a clinic's own. The defaults are seeded unpublished on purpose — generic text
+    nobody clinically qualified has read yet — and this was the one reader that served them
+    anyway, so a patient whose clinic had written no guide for their procedure was handed five
+    expected signs and seven warning signs that had never been reviewed. The reminder scheduler
+    and the daily email had both been filtering them out for as long as they have existed; the
+    portal, the surface a worried patient actually reads, was the one that did not.
+  */
+  const publishedFallback = fallback?.isPublished ? fallback : null;
+
+  /*
     The clinic's row wins for every list it actually filled in, and the default supplies only the
     lists it left empty. Never both within one list: a patient reading "when to call your clinic"
     must be reading their clinic, not their clinic followed by the platform's generic seven.
   */
-  if (own && own.isPublished) return { data: toView(own, false, fallback), status: 200 };
+  if (own && own.isPublished) return { data: toView(own, false, publishedFallback), status: 200 };
 
-  if (fallback) return { data: toView(fallback, true), status: 200 };
+  if (publishedFallback) return { data: toView(publishedFallback, true), status: 200 };
 
   /*
     Nothing to serve — but "nobody has written this" and "it exists, just not in your language"
@@ -166,7 +177,7 @@ export async function resolveGuideService(
   if (ownOther?.isPublished) return { data: { error: 'NOT_TRANSLATED' }, status: 404 };
 
   const defaultOther = await recoveryGuideRepository.findDefault(manipulationType, otherLocale);
-  if (defaultOther) return { data: { error: 'NOT_TRANSLATED' }, status: 404 };
+  if (defaultOther?.isPublished) return { data: { error: 'NOT_TRANSLATED' }, status: 404 };
 
   return { data: { error: 'NOT_FOUND' }, status: 404 };
 }

@@ -136,6 +136,76 @@ describe('resolveGuideService', () => {
     expect((result.data as RecoveryGuideView).expected[0].title).toBe('Published');
   });
 
+  /*
+    The rule that a draft never reaches a patient is about the text, not about who owns the row.
+    Every platform default is seeded unpublished, and this reader was the one serving them anyway
+    — so a clinic that had written no guide for a procedure had five expected signs and seven
+    warning signs of unreviewed generic text standing on its portal under its own name.
+  */
+  it('never serves an unpublished platform default either', async () => {
+    repo.findDefault.mockResolvedValueOnce(guide('en', 'Unreviewed draft', false) as never);
+
+    const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
+
+    expect(result.status).toBe(404);
+    expect(result.data).toEqual({ error: 'NOT_FOUND' });
+  });
+
+  /*
+    The production shape of this bug. A clinic writes its guide in English and never translates
+    it; the Georgian reader has no clinic row, falls to the Georgian platform default, and used to
+    be shown the platform's full list as though the clinic had written it. The honest answer is
+    that their clinic wrote this in a language they did not pick.
+  */
+  it('tells a Georgian reader their clinic wrote English, rather than serving the draft default', async () => {
+    repo.findForClinic.mockImplementation(async (_clinic, _type, wanted) =>
+      wanted === 'en' ? (guide('en', 'Redness') as never) : null
+    );
+    repo.findDefault.mockImplementation(
+      async (_type, wanted) => guide(wanted, 'Platform draft', false) as never
+    );
+
+    const result = await resolveGuideService(CLINIC_ID, TYPE, 'ka');
+
+    expect(result.status).toBe(404);
+    expect(result.data).toEqual({ error: 'NOT_TRANSLATED' });
+  });
+
+  /*
+    A draft in the other language is not a translation anybody can hand over, so promising one
+    would send the patient to the clinic asking for a document that does not exist. The same rule
+    the clinic's own rows have always followed.
+  */
+  it('reports an unpublished default in the other language as missing, not untranslated', async () => {
+    repo.findDefault.mockImplementation(async (_type, wanted) =>
+      wanted === 'ka' ? (guide('ka', 'Platform draft', false) as never) : null
+    );
+
+    const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
+
+    expect(result.data).toEqual({ error: 'NOT_FOUND' });
+  });
+
+  /*
+    The clinic's own row still fills its empty lists from the default — but only from one a
+    clinician has published, so an unreviewed half cannot arrive attached to a reviewed one.
+  */
+  it('does not fill a clinic gap from an unpublished default', async () => {
+    repo.findForClinic.mockResolvedValueOnce({
+      ...guide('en', 'Swelling'),
+      warning: [],
+    } as never);
+    repo.findDefault.mockResolvedValueOnce({
+      ...guide('en', 'Platform draft', false),
+      warning: [{ title: 'Unreviewed red flag', description: '', severity: 'call', fromDay: 0, toDay: 30 }],
+    } as never);
+
+    const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
+
+    expect(result.status).toBe(200);
+    expect((result.data as RecoveryGuideView).warning).toEqual([]);
+  });
+
   it('reports NOT_FOUND when no guide exists in any language', async () => {
     const result = await resolveGuideService(CLINIC_ID, TYPE, 'en');
 
