@@ -528,3 +528,140 @@ describe('the same prescription, generated in two zones', () => {
     ).toBe('09:30');
   });
 });
+
+/**
+ * The last day of a window, which is the day most easily lost.
+ *
+ * `endsOn` is a *date* the clinic picked, stored as UTC midnight. `eachDayInZone` reads it back as
+ * whatever calendar day that instant falls on in the plan's zone — and those are not the same day
+ * everywhere. East of UTC the instant lands in the morning of the intended day and all is well;
+ * west of it, `2026-08-29T00:00:00.000Z` is the evening of the 28th, and the final day of the
+ * window disappears with no error anywhere.
+ *
+ * The same shift adds a day at the front, which is the half nobody reports: a patient west of UTC
+ * gets an extra session the day before their plan begins.
+ */
+describe('buildOccurrences — the window includes its last day', () => {
+  const TBILISI = 'Asia/Tbilisi';
+  const NEW_YORK = 'America/New_York';
+
+  const twoDayTask = () =>
+    rehabTask({
+      timesOfDay: ['09:00'],
+      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+      startsOn: new Date('2026-08-28T00:00:00.000Z'),
+      endsOn: new Date('2026-08-29T00:00:00.000Z'),
+    });
+
+  const localDays = (zone: string) =>
+    buildOccurrences(
+      makePlan({ startsAt: new Date('2026-08-28T00:00:00.000Z'), rehabTasks: [twoDayTask()] }),
+      zone,
+      undefined,
+      defaultOccurrenceTranslator,
+      GENERATED_AT
+    )
+      .filter(draft => draft.kind === 'rehab')
+      .map(draft =>
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: zone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(draft.scheduledAt ?? draft.dueAt)
+      );
+
+  it('covers both days of an Aug 28–29 window, east of UTC', () => {
+    expect(localDays(TBILISI)).toEqual(['2026-08-28', '2026-08-29']);
+  });
+
+  /*
+    The reported bug, reproduced where it actually bites. Nothing about the generator is
+    zone-specific — it is the stored `endsOn` being an instant rather than a date that decides
+    which calendar day the walk stops on.
+  */
+  it('covers both days of the same window west of UTC', () => {
+    expect(localDays(NEW_YORK)).toEqual(['2026-08-28', '2026-08-29']);
+  });
+
+  /*
+    Every kind of row reads the plan's dates the same way. Fixing only the task window would have
+    left a plan west of UTC internally inconsistent — sessions on the prescribed days, and the
+    guide notice for "day 0" sitting on the evening before the plan began.
+  */
+  it('starts the guide notices on the plan’s own first day, west of UTC', () => {
+    const drafts = buildOccurrences(
+      makePlan({ startsAt: new Date('2026-08-28T00:00:00.000Z') }),
+      NEW_YORK,
+      undefined,
+      defaultOccurrenceTranslator,
+      GENERATED_AT,
+      {
+        expected: [
+          {
+            _id: new Types.ObjectId(),
+            title: 'Swelling',
+            description: '',
+            fromDay: 0,
+            toDay: 5,
+          },
+        ],
+      } as never
+    ).filter(draft => draft.kind === 'guide');
+
+    expect(drafts).toHaveLength(1);
+    expect(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: NEW_YORK,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(drafts[0].scheduledAt ?? drafts[0].dueAt)
+    ).toBe('2026-08-28');
+  });
+
+  it('emits a row for every day of a week-long window, end included', () => {
+    const drafts = buildOccurrences(
+      makePlan({
+        startsAt: new Date('2026-08-24T00:00:00.000Z'),
+        rehabTasks: [
+          rehabTask({
+            timesOfDay: ['09:00'],
+            daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+            startsOn: new Date('2026-08-24T00:00:00.000Z'),
+            endsOn: new Date('2026-08-30T00:00:00.000Z'),
+          }),
+        ],
+      }),
+      TBILISI,
+      undefined,
+      defaultOccurrenceTranslator,
+      GENERATED_AT
+    ).filter(draft => draft.kind === 'rehab');
+
+    expect(drafts).toHaveLength(7);
+  });
+
+  /* A window of one day is one day — not zero, and not two. */
+  it('emits exactly one row when the window opens and closes on the same date', () => {
+    const drafts = buildOccurrences(
+      makePlan({
+        startsAt: new Date('2026-08-29T00:00:00.000Z'),
+        rehabTasks: [
+          rehabTask({
+            timesOfDay: ['09:00'],
+            daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+            startsOn: new Date('2026-08-29T00:00:00.000Z'),
+            endsOn: new Date('2026-08-29T00:00:00.000Z'),
+          }),
+        ],
+      }),
+      TBILISI,
+      undefined,
+      defaultOccurrenceTranslator,
+      GENERATED_AT
+    ).filter(draft => draft.kind === 'rehab');
+
+    expect(drafts).toHaveLength(1);
+  });
+});

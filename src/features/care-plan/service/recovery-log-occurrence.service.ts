@@ -59,7 +59,9 @@ export function buildRecoveryLogOccurrences(context: LogDraftContext): Occurrenc
   if (lastDay < 1) return [];
 
   return recoveryLogDays(lastDay).flatMap(dayIndex => {
-    const day = clock.addDays(plan.startsAt, dayIndex);
+    // Same rule as the guide notices: add days in UTC where the arithmetic is exact, then anchor
+    // that calendar date to local midnight. See `civilDateInZone`.
+    const day = clock.civilDateInZone(clock.addDays(plan.startsAt, dayIndex), timezone);
     const dueAt = clock.zonedTimeToUtc(day, RECOVERY_LOG_PROMPT_TIME, timezone);
     if (dueAt.getTime() > horizonEnd.getTime()) return [];
 

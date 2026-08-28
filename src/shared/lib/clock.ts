@@ -114,6 +114,34 @@ class Clock {
    * Each entry is the UTC instant of local midnight for that zone-local day, so feeding an entry
    * back into `zonedTimeToUtc` always resolves against the intended calendar date.
    */
+  /**
+   * Reinterpret a date the user picked, stored at UTC midnight, as that same calendar date in
+   * `timeZone`.
+   *
+   * `startsOn` and `endsOn` are civil dates, not instants: a clinic picked "29 August" in a date
+   * input and the value went to the database as `2026-08-29T00:00:00.000Z`. Reading that instant
+   * back in the plan's zone only returns the 29th for zones east of UTC. West of it the same
+   * instant is the evening of the 28th, so a window walked from it starts a day early and — the
+   * half that gets reported — stops a day short, losing the final day of the plan with no error
+   * anywhere.
+   *
+   * The civil parts are therefore read in UTC, which is the calendar the value was written in, and
+   * resolved to local midnight on that date.
+   *
+   * Only for stored dates. A real instant — `dueAt`, `scheduledAt`, `now` — must keep going
+   * through `eachDayInZone`, which asks what local day an instant actually fell on.
+   */
+  civilDateInZone(date: Date, timeZone: string): Date {
+    return this.resolve(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + 1,
+      date.getUTCDate(),
+      0,
+      0,
+      timeZone
+    );
+  }
+
   eachDayInZone(from: Date, to: Date, timeZone: string): Date[] {
     const start = this.partsInZone(from, timeZone);
     const end = this.partsInZone(to, timeZone);

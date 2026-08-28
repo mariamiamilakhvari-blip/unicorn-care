@@ -177,11 +177,21 @@ function checkupDrafts(context: GeneratorContext, item: CheckupItem): Occurrence
 
 /** Walks the zone-local calendar so a DST shift keeps the wall-clock time the clinic prescribed. */
 function dailyDrafts(context: GeneratorContext, spec: DailySpec): OccurrenceDraft[] {
-  const lastDay = new Date(Math.min(spec.endsOn.getTime(), context.horizonEnd.getTime()));
-  if (lastDay.getTime() < spec.startsOn.getTime()) return [];
+  /*
+    `startsOn` and `endsOn` are dates a clinic picked, stored at UTC midnight — not instants. Read
+    as instants they name the intended day only east of UTC; west of it they land the evening
+    before, which walked the window a day early at the front and a day short at the end, silently
+    dropping the last day of every plan. `civilDateInZone` reads the calendar date they were
+    written in and anchors it to local midnight. The horizon is a real instant and stays one.
+  */
+  const firstDay = clock.civilDateInZone(spec.startsOn, context.timezone);
+  const endDay = clock.civilDateInZone(spec.endsOn, context.timezone);
+
+  const lastDay = new Date(Math.min(endDay.getTime(), context.horizonEnd.getTime()));
+  if (lastDay.getTime() < firstDay.getTime()) return [];
 
   const days = clock
-    .eachDayInZone(spec.startsOn, lastDay, context.timezone)
+    .eachDayInZone(firstDay, lastDay, context.timezone)
     .filter(day => spec.daysOfWeek.includes(clock.weekdayInZone(day, context.timezone)));
 
   const leadMs = (spec.remindMinutesBefore ?? 0) * MS_PER_MINUTE;

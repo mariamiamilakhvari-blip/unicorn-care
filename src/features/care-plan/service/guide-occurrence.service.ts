@@ -39,7 +39,17 @@ export function buildGuideOccurrences(
   if (!guide) return [];
 
   return guide.expected.flatMap(sign => {
-    const day = clock.addDays(context.plan.startsAt, sign.fromDay);
+    /*
+      Day arithmetic in UTC first, then reinterpreted in the plan's zone. `startsAt` is a stored
+      civil date at UTC midnight, so adding days there is exact — UTC has no DST — and
+      `civilDateInZone` then anchors the result to local midnight on that same calendar date.
+      Reading the raw instant in the zone instead put day 0 on the evening before west of UTC, and
+      every notice with it.
+    */
+    const day = clock.civilDateInZone(
+      clock.addDays(context.plan.startsAt, sign.fromDay),
+      context.timezone
+    );
     const dueAt = clock.zonedTimeToUtc(day, GUIDE_REMINDER_TIME, context.timezone);
     if (dueAt.getTime() > context.horizonEnd.getTime()) return [];
 
