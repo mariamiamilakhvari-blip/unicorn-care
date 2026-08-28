@@ -49,6 +49,7 @@ const alert = vi.mocked(sendSymptomAlertService);
 const CLINIC_ID = '507f1f77bcf86cd799439011';
 const PATIENT_A = '507f1f77bcf86cd799439022';
 const PATIENT_B = '507f1f77bcf86cd799439033';
+const PATIENT_C = '507f1f77bcf86cd799439044';
 
 const report = (id: string, patientId: string) => ({
   _id: { toString: () => id },
@@ -168,6 +169,148 @@ describe('listSymptomReportsService', () => {
     expect(items[0].patient.phone).toBe('');
     // The record is still there to open, so the link to it survives the erasure.
     expect(items[0].patient).toHaveProperty('id', PATIENT_A);
+  });
+
+  /*
+    The pairing is by id, never by position. `findManyByIds` is a `$in` query, and Mongo returns
+    `$in` matches in index order rather than in the order the ids were asked for — so any code that
+    zipped the two arrays together would hand one patient's name to another patient's symptom the
+    moment those orders diverged. Here they are deliberately reversed.
+  */
+  it('pairs by id even when the database returns patients in another order', async () => {
+    reports.findAllByClinic.mockResolvedValueOnce([
+      report('r1', PATIENT_A),
+      report('r2', PATIENT_B),
+    ] as never);
+    patients.findManyByIds.mockResolvedValueOnce([
+      patient(PATIENT_B, { firstName: 'Nino', lastName: 'Beridze', phone: '+995 111' }),
+      patient(PATIENT_A, { firstName: 'Mariam', lastName: 'Amilakhvari', phone: '+995 222' }),
+    ] as never);
+
+    const result = await listSymptomReportsService(CLINIC_ID);
+    const { items } = result.data as {
+      items: Array<{ patientId: string; patient: { id: string; name: string; phone: string } }>;
+    };
+
+    expect(items[0].patient).toEqual({
+      id: PATIENT_A,
+      name: 'Mariam Amilakhvari',
+      phone: '+995 222',
+    });
+    expect(items[1].patient).toEqual({ id: PATIENT_B, name: 'Nino Beridze', phone: '+995 111' });
+  });
+
+  /*
+    Name and phone travel together or the clinic rings the wrong person about the right symptom.
+    Asserted as whole tuples per row, so a fix that got the name right and the number off by one
+    still fails.
+  */
+  it('never swaps a name onto another patient’s number', async () => {
+    const ids = [PATIENT_A, PATIENT_B, PATIENT_C];
+    reports.findAllByClinic.mockResolvedValueOnce([
+      report('r1', PATIENT_C),
+      report('r2', PATIENT_A),
+      report('r3', PATIENT_B),
+      report('r4', PATIENT_C),
+    ] as never);
+    patients.findManyByIds.mockResolvedValueOnce(
+      ids.map((id, index) =>
+        patient(id, {
+          firstName: `First${index}`,
+          lastName: `Last${index}`,
+          phone: `+99500000000${index}`,
+        })
+      ) as never
+    );
+
+    const result = await listSymptomReportsService(CLINIC_ID);
+    const { items } = result.data as {
+      items: Array<{ patientId: string; patient: { id: string; name: string; phone: string } }>;
+    };
+
+    for (const item of items) {
+      const index = ids.indexOf(item.patientId);
+      expect(item.patient).toEqual({
+        id: item.patientId,
+        name: `First${index} Last${index}`,
+        phone: `+99500000000${index}`,
+      });
+    }
+  });
+
+  /*
+    Real ObjectIds from one clinic differ only in their last characters, and three patients sharing
+    one email address is a shape this product explicitly allows. A prefix comparison, or any
+    `startsWith`/`includes` creeping into the lookup, would collapse them onto one person.
+  */
+  it('tells apart ids that differ only in the final character', async () => {
+    const near = ['6a8b104157d6b2d42b877431', '6a8b104157d6b2d42b877432'];
+    reports.findAllByClinic.mockResolvedValueOnce([
+      report('r1', near[0]),
+      report('r2', near[1]),
+    ] as never);
+    patients.findManyByIds.mockResolvedValueOnce([
+      patient(near[0], { firstName: 'Nini', lastName: 'Nutsibidze' }),
+      patient(near[1], { firstName: 'Tamar', lastName: 'Beridze' }),
+    ] as never);
+
+    const result = await listSymptomReportsService(CLINIC_ID);
+    const { items } = result.data as { items: Array<{ patient: { name: string } }> };
+
+    expect(items.map(item => item.patient.name)).toEqual(['Nini Nutsibidze', 'Tamar Beridze']);
+  });
+
+  /*
+    A gap must stay a gap. If one report's patient cannot be resolved — erased, or belonging to
+    another clinic and so filtered out by the scoped query — the rows around it must keep their own
+    people rather than shifting up to fill the hole.
+  */
+  it('does not shift the neighbours when one patient is missing', async () => {
+    reports.findAllByClinic.mockResolvedValueOnce([
+      report('r1', PATIENT_A),
+      report('r2', PATIENT_B),
+      report('r3', PATIENT_C),
+    ] as never);
+    // B resolves to nothing; A and C must be unaffected.
+    patients.findManyByIds.mockResolvedValueOnce([
+      patient(PATIENT_A, { firstName: 'Mariam', lastName: 'Amilakhvari' }),
+      patient(PATIENT_C, { firstName: 'Nino', lastName: 'Beridze' }),
+    ] as never);
+
+    const result = await listSymptomReportsService(CLINIC_ID);
+    const { items } = result.data as {
+      items: Array<{ patientId: string; patient: { name: string } | null }>;
+    };
+
+    expect(items.map(item => item.patient?.name ?? null)).toEqual([
+      'Mariam Amilakhvari',
+      null,
+      'Nino Beridze',
+    ]);
+    expect(items.map(item => item.patientId)).toEqual([PATIENT_A, PATIENT_B, PATIENT_C]);
+  });
+
+  /*
+    Two reports from the same person resolve to the same person. The id is deduplicated before the
+    lookup, and a `Map` built from the result must still answer for every row that asked.
+  */
+  it('gives both of one patient’s reports that same patient', async () => {
+    reports.findAllByClinic.mockResolvedValueOnce([
+      report('r1', PATIENT_A),
+      report('r2', PATIENT_B),
+      report('r3', PATIENT_A),
+    ] as never);
+    patients.findManyByIds.mockResolvedValueOnce([
+      patient(PATIENT_A, { firstName: 'Nini', lastName: 'Nutsibidze', phone: '+995 937985983' }),
+      patient(PATIENT_B, { firstName: 'Nino', lastName: 'Beridze', phone: '+995 111' }),
+    ] as never);
+
+    const result = await listSymptomReportsService(CLINIC_ID);
+    const { items } = result.data as { items: Array<{ patient: { name: string; phone: string } }> };
+
+    expect(items[0].patient).toEqual(items[2].patient);
+    expect(items[0].patient.phone).toBe('+995 937985983');
+    expect(items[1].patient.phone).toBe('+995 111');
   });
 
   it('does not query for patients when the queue is empty', async () => {
