@@ -1,21 +1,50 @@
 import { Types } from 'mongoose';
 
 import { sendSymptomAlertService } from '@/features/notifications/service/symptom-alert.service';
+import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { PatientDocument } from '@/features/patient/schema/patient.schema';
 import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { symptomReportRepository } from '@/features/recovery-guide/repository/symptom-report.repository';
 import { SymptomReportDocument } from '@/features/recovery-guide/schema/symptom-report.schema';
-import { SymptomReportView } from '@/features/recovery-guide/types/recovery-guide.types';
+import {
+  SymptomReportPatientView,
+  SymptomReportView,
+} from '@/features/recovery-guide/types/recovery-guide.types';
 import {
   CreateSymptomReportType,
   ReviewSymptomReportType,
 } from '@/features/recovery-guide/validations/recovery-guide.validation';
+import { ERASED_PLACEHOLDER } from '@/shared/const/retention.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
 
-function toView(report: SymptomReportDocument): SymptomReportView {
+/**
+ * The patient as the clinic's queue needs them: a name to recognise and a number to ring.
+ *
+ * An erased record reads as no name rather than as the literal placeholder. `[ERASED] [ERASED]`
+ * on a symptom card is worse than an empty one — it looks like a rendering fault, and the reader
+ * has to work out that it means the patient exercised a right rather than that the page broke.
+ * The report itself stays: statutory retention keeps the clinical log after the identity around
+ * it goes.
+ */
+function toPatientView(patient: PatientDocument): SymptomReportPatientView {
+  const isErased = patient.firstName === ERASED_PLACEHOLDER;
+
+  return {
+    id: patient._id.toString(),
+    name: isErased ? '' : `${patient.firstName} ${patient.lastName}`.trim(),
+    phone: patient.phone ?? '',
+  };
+}
+
+function toView(
+  report: SymptomReportDocument,
+  patient: PatientDocument | null
+): SymptomReportView {
   return {
     id: report._id.toString(),
     patientId: report.patientId.toString(),
+    patient: patient ? toPatientView(patient) : null,
     procedureId: report.procedureId ? report.procedureId.toString() : null,
     warningTitle: report.warningTitle ?? '',
     severity: report.severity ?? '',
@@ -69,9 +98,23 @@ export async function createSymptomReportService(
   */
   await sendSymptomAlertService(patientId, clinicId, input.warningTitle, input.severity);
 
-  return { data: toView(created), status: 201 };
+  const patient = await patientRepository.findById(patientId, clinicId);
+
+  return { data: toView(created, patient), status: 201 };
 }
 
+/**
+ * The clinic's queue, with the person behind each report attached.
+ *
+ * The patients are fetched in one query keyed by the ids the reports carry, not one lookup per
+ * row: this runs on every dashboard load and the queue has no upper bound, so a per-row join
+ * would put an unbounded number of round trips behind the clinic's first screen.
+ *
+ * A report whose patient is missing still comes back, carrying `patient: null`. Dropping it would
+ * be the wrong trade in both directions — the record is retained deliberately after an erasure,
+ * and a symptom silently vanishing from a review queue is exactly the failure this queue exists
+ * to prevent.
+ */
 export async function listSymptomReportsService(
   clinicId: string,
   status?: SymptomReportView['status']
@@ -79,7 +122,13 @@ export async function listSymptomReportsService(
   const reports = await symptomReportRepository.findAllByClinic(clinicId, status);
   const openCount = await symptomReportRepository.countOpenForClinic(clinicId);
 
-  return { data: { items: reports.map(toView), openCount }, status: 200 };
+  const patientIds = [...new Set(reports.map(report => report.patientId.toString()))];
+  const patients = await patientRepository.findManyByIds(patientIds, clinicId);
+  const byId = new Map(patients.map(patient => [patient._id.toString(), patient]));
+
+  const items = reports.map(report => toView(report, byId.get(report.patientId.toString()) ?? null));
+
+  return { data: { items, openCount }, status: 200 };
 }
 
 export async function reviewSymptomReportService(

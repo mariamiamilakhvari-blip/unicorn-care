@@ -59,9 +59,30 @@ export type PatientGuideView = RecoveryGuideView & {
   clinic: ClinicContactView;
 };
 
+/**
+ * Who filed a report, carried with it so the clinic's queue can act on one.
+ *
+ * The queue used to print the symptom and the time and nothing else, which left a card reading
+ * "temperature 39" with no way to tell whose temperature it was — the one fact the person reading
+ * it needs before they can do anything. The name is resolved at read time from the patient record
+ * rather than copied onto the report when it is filed, so a corrected name corrects the queue too.
+ *
+ * `name` is empty when the record has been erased under a data-subject request and `phone` is
+ * empty whenever the clinic never held one. Both are ordinary states, not faults: the report is
+ * retained as clinical record while the identity around it is not, and the UI says so rather than
+ * rendering a blank or a dead `tel:` link.
+ */
+export type SymptomReportPatientView = {
+  id: string;
+  name: string;
+  phone: string;
+};
+
 export type SymptomReportView = {
   id: string;
   patientId: string;
+  /** Null when the patient record no longer exists — erased, or deleted outright. */
+  patient: SymptomReportPatientView | null;
   procedureId: string | null;
   warningTitle: string;
   severity: string;

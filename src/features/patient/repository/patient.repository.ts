@@ -17,6 +17,24 @@ export const patientRepository = {
     return PatientModel.findOne({ _id: id, clinicId }).lean<PatientDocument>().exec();
   },
 
+  /**
+   * Several patients at once, for a list that has ids in hand and needs the people behind them.
+   *
+   * One query rather than one per row: the symptom queue resolves every report's patient this
+   * way, and a lookup per report would put an unbounded number of round trips behind one
+   * dashboard load. Clinic-scoped like everything else here, so an id belonging to another clinic
+   * matches nothing instead of leaking a name.
+   *
+   * Returns whatever exists — fewer rows than ids asked for is normal, not an error. A report
+   * outlives the patient record when that record is erased, and the caller decides how to say so.
+   */
+  async findManyByIds(ids: string[], clinicId: string): Promise<PatientDocument[]> {
+    await mongo.connect();
+    return PatientModel.find({ _id: { $in: ids }, clinicId })
+      .lean<PatientDocument[]>()
+      .exec();
+  },
+
   async findAllByClinic(
     clinicId: string,
     page = 1,

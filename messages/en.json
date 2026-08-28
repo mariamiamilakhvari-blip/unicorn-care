@@ -452,6 +452,11 @@
     "reportQueue": "Symptom reports",
     "noReports": "No reports.",
     "freeTextReport": "Patient description",
+    "reportPatient": "Patient: {name}",
+    "reportPatientErased": "Patient record erased",
+    "reportPatientMissing": "Patient record no longer exists",
+    "reportNoPhone": "No phone number on file",
+    "openPatient": "Open patient",
     "clinicNotePlaceholder": "Note (optional)",
     "markReviewed": "Mark reviewed",
     "reportStatus": {

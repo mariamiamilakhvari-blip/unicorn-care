@@ -452,6 +452,11 @@
     "reportQueue": "სიმპტომების შეტყობინებები",
     "noReports": "შეტყობინებები არ არის.",
     "freeTextReport": "პაციენტის აღწერა",
+    "reportPatient": "პაციენტი: {name}",
+    "reportPatientErased": "პაციენტის ჩანაწერი წაშლილია",
+    "reportPatientMissing": "პაციენტის ჩანაწერი აღარ არსებობს",
+    "reportNoPhone": "ტელეფონის ნომერი არ არის მითითებული",
+    "openPatient": "პაციენტის გახსნა",
     "clinicNotePlaceholder": "შენიშვნა (არასავალდებულო)",
     "markReviewed": "განხილულად მონიშვნა",
     "reportStatus": {
