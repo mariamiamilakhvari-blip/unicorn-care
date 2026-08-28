@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, CircleCheck, PhoneCall, Siren } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 import { ConcernReportSection } from '@/features/recovery-guide/components/concern-report-section';
 import { useRecoveryGuide } from '@/features/recovery-guide/hooks/use-recovery-guide';
@@ -24,10 +24,7 @@ const SEVERITY_CLASS: Record<WarningSeverity, string> = {
 
 export function RecoveryGuidePanel() {
   const t = useTranslations('recoveryGuide');
-  const locale = useLocale();
   const { guide, absence, isLoading } = useRecoveryGuide();
-  /** Two languages, so "the one they are not reading" is the other one. */
-  const otherLocale = locale === 'ka' ? 'en' : 'ka';
 
   if (isLoading) return null;
 
@@ -122,18 +119,23 @@ export function RecoveryGuidePanel() {
         )}
 
         {/*
-          Two different facts, said differently. A patient whose clinic wrote this guidance in
-          Georgian last week must not be told nobody has written it — they would stop looking, and
-          the useful next step (ask the clinic, or read it in the other language) never occurs to
-          them. `otherLocale` is derivable because the product has exactly two languages; a third
-          would make this a value the API has to send.
-        */}
-        {!guide && absence === 'untranslated' && (
-          <p className="text-sm text-muted-foreground">
-            {t('notTranslated', { language: t(`language.${otherLocale}`) })}
-          </p>
-        )}
+          Two different absences, and only one of them is worth a sentence.
 
+          `missing` means nobody has written a guide for this procedure, which is true and worth
+          saying. `untranslated` means one exists in the language the patient did not pick — and
+          that used to be spelled out here, which put a paragraph about publication states on a
+          screen a post-operative patient opened to find out whether their swelling is normal. It
+          named a document they cannot read and asked them to chase it.
+
+          So it says nothing now. Silence is not the same as claiming nobody wrote one: the
+          concern form below is still there, which is the actually useful next step, and it reaches
+          the same clinic.
+
+          What must never happen instead is serving the other language. `resolveGuideService`
+          refuses to, deliberately — clinic-authored clinical text in a language the reader did not
+          choose is not guidance they can act on, and under a "when to contact the clinic" heading
+          it is worse than showing nothing at all.
+        */}
         {!guide && absence !== 'untranslated' && (
           <p className="text-sm text-muted-foreground">{t('noGuide')}</p>
         )}
