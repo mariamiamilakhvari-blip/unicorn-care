@@ -23,6 +23,7 @@ const report = (over: Partial<SymptomReportView> = {}): SymptomReportView => ({
   id: 'r1',
   patientId: PATIENT_ID,
   patient: { id: PATIENT_ID, name: 'Mariam Amilakhvari', phone: '+995 555 12 34 56' },
+  planId: null,
   procedureId: null,
   warningTitle: 'temperature 39',
   severity: '',

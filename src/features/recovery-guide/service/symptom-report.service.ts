@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 
+import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
 import { sendSymptomAlertService } from '@/features/notifications/service/symptom-alert.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PatientDocument } from '@/features/patient/schema/patient.schema';
@@ -46,6 +47,7 @@ function toView(
     patientId: report.patientId.toString(),
     patient: patient ? toPatientView(patient) : null,
     procedureId: report.procedureId ? report.procedureId.toString() : null,
+    planId: report.planId ? report.planId.toString() : null,
     warningTitle: report.warningTitle ?? '',
     severity: report.severity ?? '',
     note: report.note ?? '',
@@ -70,10 +72,21 @@ export async function createSymptomReportService(
   const procedures = await procedureRepository.findAllByPatient(patientId, clinicId);
   const latest = procedures[0] ?? null;
 
+  /*
+    Which plan they were part-way through, recorded so the clinician reading this knows where in a
+    recovery it happened. Null when there is none — a patient can write in before activation,
+    after a plan finishes, or with no plan at all, and none of those is a reason to refuse a
+    report. First of the active plans: a patient with two running is rare and the queue shows the
+    text either way, so picking one is better than storing nothing.
+  */
+  const activePlans = await carePlanRepository.findActiveByPatient(patientId, clinicId);
+  const activePlan = activePlans[0] ?? null;
+
   const id = await symptomReportRepository.create({
     patientId: new Types.ObjectId(patientId),
     clinicId: new Types.ObjectId(clinicId),
     procedureId: latest ? latest._id : null,
+    planId: activePlan ? activePlan._id : null,
     warningTitle: input.warningTitle,
     severity: input.severity,
     note: input.note,

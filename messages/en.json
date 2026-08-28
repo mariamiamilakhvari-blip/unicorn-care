@@ -433,6 +433,13 @@
     "describePlaceholder": "Describe what you are noticing",
     "sendToClinic": "Send to clinic",
     "reportSent": "Sent. Your clinic will review it.",
+    "inquiryTitle": "Additional complaint or question",
+    "inquiryHelp": "Describe anything that is not on the list above — a symptom, a concern, or a question about your recovery. Your clinic reads these alongside symptom reports.",
+    "inquiryPlaceholder": "Write what you would like your clinic to know",
+    "inquirySubmit": "Send",
+    "inquirySent": "Sent. Your clinic will read it.",
+    "inquiryWriteAnother": "Write something else",
+    "inquiryFailed": "This did not send. Please try again, or call your clinic if it is urgent.",
     "noGuide": "Your clinic has not added guidance for this procedure yet.",
     "notTranslated": "Your clinic has written guidance for this procedure, but has not published it in English yet. It is available in {language} — ask your clinic if you need it.",
     "language": {

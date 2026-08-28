@@ -17,13 +17,34 @@ vi.mock('@/features/patient/repository/patient.repository', () => ({
   },
 }));
 
+vi.mock('@/features/procedure/repository/procedure.repository', () => ({
+  procedureRepository: { findAllByPatient: vi.fn() },
+}));
+
+vi.mock('@/features/care-plan/repository/care-plan.repository', () => ({
+  carePlanRepository: { findActiveByPatient: vi.fn() },
+}));
+
+vi.mock('@/features/notifications/service/symptom-alert.service', () => ({
+  sendSymptomAlertService: vi.fn(),
+}));
+
+import { carePlanRepository } from '@/features/care-plan/repository/care-plan.repository';
+import { sendSymptomAlertService } from '@/features/notifications/service/symptom-alert.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
+import { procedureRepository } from '@/features/procedure/repository/procedure.repository';
 import { symptomReportRepository } from '@/features/recovery-guide/repository/symptom-report.repository';
-import { listSymptomReportsService } from '@/features/recovery-guide/service/symptom-report.service';
+import {
+  createSymptomReportService,
+  listSymptomReportsService,
+} from '@/features/recovery-guide/service/symptom-report.service';
 import { ERASED_PLACEHOLDER } from '@/shared/const/retention.const';
 
 const reports = vi.mocked(symptomReportRepository);
 const patients = vi.mocked(patientRepository);
+const plans = vi.mocked(carePlanRepository);
+const procedures = vi.mocked(procedureRepository);
+const alert = vi.mocked(sendSymptomAlertService);
 
 const CLINIC_ID = '507f1f77bcf86cd799439011';
 const PATIENT_A = '507f1f77bcf86cd799439022';
@@ -156,5 +177,84 @@ describe('listSymptomReportsService', () => {
 
     expect(result.status).toBe(200);
     expect(patients.findManyByIds).toHaveBeenCalledWith([], CLINIC_ID);
+  });
+});
+
+/**
+ * Filing what a patient wrote.
+ *
+ * The portal has two ways in — the guide's red-flag button and the "additional complaint or
+ * question" card — and both arrive here. What is pinned is that a free-text message is stored as
+ * a report like any other, and that it carries the plan the patient was part-way through, because
+ * "on day 4 of a 21-day plan" is most of what makes a complaint legible to whoever reads it.
+ */
+describe('createSymptomReportService', () => {
+  const PLAN_ID = '507f1f77bcf86cd799439044';
+  const PROCEDURE_ID = '507f1f77bcf86cd799439055';
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    alert.mockResolvedValue(undefined as never);
+    procedures.findAllByPatient.mockResolvedValue([{ _id: PROCEDURE_ID }] as never);
+    plans.findActiveByPatient.mockResolvedValue([{ _id: PLAN_ID }] as never);
+    reports.create.mockResolvedValue('r1' as never);
+    reports.findByPatient.mockResolvedValue([
+      { ...report('r1', PATIENT_A), warningTitle: '', note: 'Is this swelling normal?' },
+    ] as never);
+    patients.findById.mockResolvedValue(patient(PATIENT_A) as never);
+  });
+
+  it('stores a free-text message against the plan the patient is part-way through', async () => {
+    const result = await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+      warningTitle: '',
+      severity: '',
+      note: 'Is this swelling normal?',
+    });
+
+    expect(result.status).toBe(201);
+    expect(reports.create).toHaveBeenCalledWith(
+      expect.objectContaining({ planId: PLAN_ID, procedureId: PROCEDURE_ID })
+    );
+  });
+
+  /*
+    A patient can write in before a plan is activated, after one finishes, or with none at all.
+    None of those is a reason to refuse the message — the text is the point, the plan is context.
+  */
+  it('files the message with no plan when the patient has none running', async () => {
+    plans.findActiveByPatient.mockResolvedValueOnce([] as never);
+
+    const result = await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+      warningTitle: '',
+      severity: '',
+      note: 'A question',
+    });
+
+    expect(result.status).toBe(201);
+    expect(reports.create).toHaveBeenCalledWith(expect.objectContaining({ planId: null }));
+  });
+
+  /*
+    Told, not triaged. The row is filed either way; the alert only stops it waiting in the queue
+    until somebody happens to look.
+  */
+  it('tells the clinic a message has arrived', async () => {
+    await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+      warningTitle: '',
+      severity: '',
+      note: 'A question',
+    });
+
+    expect(alert).toHaveBeenCalledWith(PATIENT_A, CLINIC_ID, '', '');
+  });
+
+  it('returns the exact text the patient wrote', async () => {
+    const result = await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+      warningTitle: '',
+      severity: '',
+      note: 'Is this swelling normal?',
+    });
+
+    expect((result.data as { note: string }).note).toBe('Is this swelling normal?');
   });
 });

@@ -83,6 +83,8 @@ export type SymptomReportView = {
   patientId: string;
   /** Null when the patient record no longer exists — erased, or deleted outright. */
   patient: SymptomReportPatientView | null;
+  /** The plan the patient was part-way through, when there was one. */
+  planId: string | null;
   procedureId: string | null;
   warningTitle: string;
   severity: string;

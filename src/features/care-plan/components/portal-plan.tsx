@@ -11,6 +11,7 @@ import { PortalDay } from '@/features/care-plan/types/portal.types';
 import { PushOptIn } from '@/features/notifications/components/push-opt-in';
 import { useTimezoneSync } from '@/features/patient/hooks/use-timezone-sync';
 import { PortalRatingCard } from '@/features/rating/components/portal-rating-card';
+import { PatientInquiryCard } from '@/features/recovery-guide/components/patient-inquiry-card';
 import { RecoveryGuidePanel } from '@/features/recovery-guide/components/recovery-guide-panel';
 import { RecoveryLogForm } from '@/features/recovery-log/components/recovery-log-form';
 import { Button } from '@/shared/components/ui/button';
@@ -110,6 +111,10 @@ export function PortalPlan() {
       {/* A patient worried about a symptom reaches clinic-authored guidance and the
           "contact your clinic" path — the only route the portal offers for a medical question. */}
       <RecoveryGuidePanel />
+
+      {/* Directly under the guide, because it is the answer to "my thing is not on that list" —
+          the question the panel above prompts and, until this card, did not take. */}
+      <PatientInquiryCard />
 
       {/* Renders nothing until a plan has actually finished, so it never competes with today's
           doses. Last on the page for the same reason. */}
