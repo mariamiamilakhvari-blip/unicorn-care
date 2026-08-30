@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { PROCEDURE_TYPES } from '@/shared/const/procedure.const';
+import { CONTACT_METHODS, DEFAULT_CONTACT_METHOD } from '@/shared/const/recovery.const';
 import { WARNING_SEVERITIES } from '@/shared/const/recovery.const';
 import { SYMPTOM_REPORT_STATUSES } from '@/shared/const/recovery.const';
 
@@ -72,6 +73,17 @@ export const CreateSymptomReportSchema = z
     warningTitle: z.string().max(160).default(''),
     severity: z.string().max(40).default(''),
     note: z.string().max(1000).default(''),
+    /*
+      How to come back to them, and where. Both default rather than being required: the concern
+      form is the one thing a worried patient must always be able to send, and a report refused
+      because a selector was untouched is a symptom the clinic never hears about.
+
+      `contactPhone` is not format-checked beyond a length cap. A patient abroad may write a number
+      in any of a dozen shapes, and the honest thing to do with an odd one is show it to a human —
+      see `toWhatsAppNumber`, which declines to build a link rather than build a wrong one.
+    */
+    contactMethod: z.enum(CONTACT_METHODS).default(DEFAULT_CONTACT_METHOD),
+    contactPhone: z.string().trim().max(40).default(''),
   })
   .refine(input => input.warningTitle.trim().length > 0 || input.note.trim().length > 0, {
     message: 'EMPTY_REPORT',

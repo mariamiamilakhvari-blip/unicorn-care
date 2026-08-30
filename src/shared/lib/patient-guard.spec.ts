@@ -56,6 +56,7 @@ describe('patientGuard.requirePatient', () => {
       locale: 'ka',
       firstName: 'Nini',
       lastName: 'Nutsibidze',
+      phone: '+995 555 12 34 56',
     } as never);
 
     expect(await patientGuard.requirePatient()).toEqual({
@@ -63,6 +64,7 @@ describe('patientGuard.requirePatient', () => {
       clinicId: CLINIC_ID,
       locale: 'ka',
       patientName: 'Nini Nutsibidze',
+      patientPhone: '+995 555 12 34 56',
     });
   });
 
@@ -128,6 +130,7 @@ describe('patientGuard.requirePatient', () => {
       locale: 'ka',
       firstName: 'Nini',
       lastName: 'Nutsibidze',
+      phone: '+995 555 12 34 56',
     } as never);
 
     expect(await patientGuard.requirePatient()).toEqual({
@@ -135,6 +138,7 @@ describe('patientGuard.requirePatient', () => {
       clinicId: CLINIC_ID,
       locale: 'ka',
       patientName: 'Nini Nutsibidze',
+      patientPhone: '+995 555 12 34 56',
     });
   });
 
@@ -171,6 +175,7 @@ describe('patientGuard.requirePatient — whose session this is', () => {
       locale: 'ka',
       firstName: 'Nini',
       lastName: 'Nutsibidze',
+      phone: '+995 555 12 34 56',
     } as never);
 
     const session = await patientGuard.requirePatient();
@@ -186,6 +191,7 @@ describe('patientGuard.requirePatient — whose session this is', () => {
       locale: 'ka',
       firstName: 'Nini',
       lastName: 'Nutsibidze',
+      phone: '+995 555 12 34 56',
     } as never);
 
     await patientGuard.requirePatient();

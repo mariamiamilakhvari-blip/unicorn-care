@@ -19,7 +19,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const REDNESS = { warningTitle: 'redness', severity: 'call_clinic', note: '' };
+const REDNESS = {
+  warningTitle: 'redness',
+  severity: 'call_clinic',
+  note: '',
+  contactMethod: 'phone',
+  contactPhone: '',
+} as const;
 
 /**
  * Filing a concern, as many times as a recovery needs.
@@ -40,6 +46,8 @@ describe('useConcernReport', () => {
       warningTitle: 'redness',
       severity: 'call_clinic',
       note: 'since last night',
+      contactMethod: 'phone',
+      contactPhone: '',
     });
   });
 
@@ -63,7 +71,7 @@ describe('useConcernReport', () => {
 
     const { result } = renderHook(() => useConcernReport());
     await act(() => result.current.send(REDNESS));
-    await act(() => result.current.send({ warningTitle: '', severity: '', note: 'and now this' }));
+    await act(() => result.current.send({ ...REDNESS, warningTitle: '', severity: '', note: 'and now this' }));
 
     expect(post).toHaveBeenCalledTimes(2);
     expect(result.current.justSent).toBe(true);
@@ -91,7 +99,7 @@ describe('useConcernReport', () => {
 
     let ok: boolean | undefined;
     await act(async () => {
-      ok = await result.current.send({ warningTitle: '   ', severity: '', note: '  ' });
+      ok = await result.current.send({ ...REDNESS, warningTitle: '   ', severity: '', note: '  ' });
     });
 
     expect(ok).toBe(false);

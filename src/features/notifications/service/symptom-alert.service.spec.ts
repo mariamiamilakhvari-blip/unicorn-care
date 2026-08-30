@@ -17,7 +17,10 @@ vi.mock('@/shared/lib/resend-client', () => ({
 import { userRepository } from '@/features/auth/repository/user.repository';
 import { clinicRepository } from '@/features/clinic/repository/clinic.repository';
 import { ClinicDocument } from '@/features/clinic/schema/clinic.schema';
-import { sendSymptomAlertService } from '@/features/notifications/service/symptom-alert.service';
+import {
+  SymptomAlertDetails,
+  sendSymptomAlertService,
+} from '@/features/notifications/service/symptom-alert.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { PatientDocument } from '@/features/patient/schema/patient.schema';
 import { resendClient } from '@/shared/lib/resend-client';
@@ -53,8 +56,14 @@ const patient = () =>
 
 const sentEmail = () => resend.send.mock.calls[0][0];
 
-const run = (title = 'Temperature over 38', severity = 'Call your clinic') =>
-  sendSymptomAlertService(PATIENT_ID, CLINIC_ID, title, severity);
+const run = (over: Partial<SymptomAlertDetails> = {}) =>
+  sendSymptomAlertService(PATIENT_ID, CLINIC_ID, {
+    warningTitle: 'Temperature over 38',
+    severityLabel: 'Call your clinic',
+    contactMethod: 'phone',
+    contactPhone: '+995 555 12 34 56',
+    ...over,
+  });
 
 describe('sendSymptomAlertService', () => {
   beforeEach(() => {
@@ -87,7 +96,7 @@ describe('sendSymptomAlertService', () => {
   });
 
   it('carries the guide label the patient tapped', async () => {
-    await run('Temperature over 38');
+    await run({ warningTitle: 'Temperature over 38' });
 
     expect(sentEmail().html).toContain('Temperature over 38');
   });
@@ -98,15 +107,25 @@ describe('sendSymptomAlertService', () => {
    * does not travel through a mail provider to a shared clinic inbox. It stays behind the login.
    */
   it('never carries the free text the patient wrote', async () => {
-    await sendSymptomAlertService(
-      PATIENT_ID,
-      CLINIC_ID,
-      'Temperature over 38',
-      'Call your clinic'
-    );
+    await run();
 
-    // The service is not even given the note — this pins that the signature stays that way.
-    expect(sendSymptomAlertService.length).toBe(4);
+    /*
+      The service is not even given the note. `SymptomAlertDetails` is the whole of what it
+      receives beyond the two ids, so this pins that no field carrying the patient's own words is
+      ever added to it — a compile error here is the point, not a test failure.
+    */
+    const details: Record<keyof SymptomAlertDetails, true> = {
+      warningTitle: true,
+      severityLabel: true,
+      contactMethod: true,
+      contactPhone: true,
+    };
+    expect(Object.keys(details).sort()).toEqual([
+      'contactMethod',
+      'contactPhone',
+      'severityLabel',
+      'warningTitle',
+    ]);
     expect(sentEmail().html).toContain('not included in this email');
   });
 

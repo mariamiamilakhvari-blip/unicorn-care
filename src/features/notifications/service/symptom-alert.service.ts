@@ -12,6 +12,7 @@ import {
 } from '@/features/notifications/service/email-layout.service';
 import { patientRepository } from '@/features/patient/repository/patient.repository';
 import { emailCopy } from '@/shared/const/email-copy.const';
+import { ContactMethod, contactMethodLabel } from '@/shared/const/recovery.const';
 import { DASHBOARD_ROUTE } from '@/shared/const/routes.const';
 import { SITE_URL } from '@/shared/const/seo.const';
 import { resendClient } from '@/shared/lib/resend-client';
@@ -38,11 +39,25 @@ import { resolveClinicLocale } from '@/shared/utils/patient-locale';
  * stored but unannounced is recoverable by opening the dashboard, whereas a report rejected
  * because a mail provider was down is a patient told their message did not go through.
  */
+/**
+ * What the alert carries beyond the patient's name.
+ *
+ * A parameter object rather than a fourth and fifth positional string: the call already read as
+ * two anonymous strings at the call site, and a contact method silently swapped with a severity
+ * label is a mistake the compiler could not have caught.
+ */
+export type SymptomAlertDetails = {
+  warningTitle: string;
+  severityLabel: string;
+  contactMethod: ContactMethod;
+  /** Already resolved against the patient record by the caller. Empty means none is held. */
+  contactPhone: string;
+};
+
 export async function sendSymptomAlertService(
   patientId: string,
   clinicId: string,
-  warningTitle: string,
-  severityLabel: string
+  details: SymptomAlertDetails
 ): Promise<boolean> {
   try {
     if (!resendClient.isConfigured()) return false;
@@ -62,8 +77,15 @@ export async function sendSymptomAlertService(
     const patient = await patientRepository.findById(patientId, clinicId);
     if (!patient) return false;
 
+    const { warningTitle, severityLabel, contactMethod, contactPhone } = details;
     const locale = resolveClinicLocale(clinic);
     const copy = emailCopy(locale);
+    /*
+      In the clinic's language, not the patient's. Whoever opens this inbox is staff, and the
+      constant is used rather than `useTranslations` because a background send has no UI locale.
+    */
+    const methodLabel = contactMethodLabel(locale, contactMethod);
+    const numberLabel = contactPhone || copy.symptomContactNumberNone;
     const patientName = `${patient.firstName} ${patient.lastName}`.trim();
     const queueUrl = `${SITE_URL}${DASHBOARD_ROUTE}`;
     const emailClinic = toEmailClinic(clinic, locale, clinic.timezone);
@@ -79,6 +101,13 @@ export async function sendSymptomAlertService(
             ? paragraph(`${escapeHtml(copy.symptomFlagged)}: ${escapeHtml(warningTitle)}`)
             : '',
           severityLabel ? paragraph(escapeHtml(severityLabel)) : '',
+          /*
+            Contact details, not clinical detail. The free text the patient wrote about their own
+            body still stays behind the login — what travels is how to reach them, which is the
+            one thing a clinician reading this on a phone cannot get anywhere else.
+          */
+          paragraph(`${escapeHtml(copy.symptomContactMethod)}: ${escapeHtml(methodLabel)}`),
+          paragraph(`${escapeHtml(copy.symptomContactNumber)}: ${escapeHtml(numberLabel)}`),
           muted(copy.symptomDetailWithheld),
         ].join('')
       ),
@@ -91,6 +120,8 @@ export async function sendSymptomAlertService(
       copy.symptomIntro,
       `${copy.symptomPatient}: ${patientName}`,
       warningTitle ? `${copy.symptomFlagged}: ${warningTitle}` : '',
+      `${copy.symptomContactMethod}: ${methodLabel}`,
+      `${copy.symptomContactNumber}: ${numberLabel}`,
       copy.symptomDetailWithheld,
       queueUrl,
       copy.symptomNotMonitored,

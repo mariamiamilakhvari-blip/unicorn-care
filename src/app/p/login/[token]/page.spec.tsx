@@ -49,6 +49,7 @@ describe('PortalLoginPage', () => {
       clinicId: 'c',
       locale: 'ka',
       patientName: 'Nini Nutsibidze',
+      patientPhone: '+995 555 12 34 56',
     });
 
     await expect(render()).rejects.toThrow('NEXT_REDIRECT:/p');
@@ -64,6 +65,7 @@ describe('PortalLoginPage', () => {
       clinicId: 'c',
       locale: 'ka',
       patientName: 'Nini Nutsibidze',
+      patientPhone: '+995 555 12 34 56',
     });
 
     await expect(render()).rejects.toThrow(RedirectError);

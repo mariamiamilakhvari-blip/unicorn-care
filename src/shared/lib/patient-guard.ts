@@ -21,6 +21,15 @@ export type PatientSession = {
    * then says the account is closed rather than printing a marker at somebody.
    */
   patientName: string;
+  /**
+   * The number the clinic holds for them, so the concern form can offer it back rather than ask
+   * a post-operative patient to type it from memory.
+   *
+   * Free for the same reason `patientName` is — the guard is already holding the document. Empty
+   * when the clinic never collected one, which the form treats as a blank field rather than as an
+   * error: a patient with no number can still send a concern and can still type one in.
+   */
+  patientPhone: string;
 };
 
 /**
@@ -61,7 +70,13 @@ class PatientGuard {
     const isErased = patient.firstName === ERASED_PLACEHOLDER;
     const patientName = isErased ? '' : `${patient.firstName} ${patient.lastName}`.trim();
 
-    return { patientId, clinicId, locale: patient.locale, patientName };
+    return {
+      patientId,
+      clinicId,
+      locale: patient.locale,
+      patientName,
+      patientPhone: patient.phone ?? '',
+    };
   }
 }
 

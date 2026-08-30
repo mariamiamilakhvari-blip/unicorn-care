@@ -28,6 +28,8 @@ const report = (over: Partial<SymptomReportView> = {}): SymptomReportView => ({
   warningTitle: 'temperature 39',
   severity: '',
   note: '',
+  contactMethod: 'phone',
+  contactPhone: '+995 555 12 34 56',
   status: 'reviewed',
   clinicNote: '',
   createdAt: '2026-08-26T07:17:00.000Z',
@@ -105,7 +107,13 @@ describe('SymptomReportQueue', () => {
   */
   it('states that no number is held rather than rendering a dead tel link', () => {
     reportsHook.mockReturnValue(
-      state([report({ patient: { id: PATIENT_ID, name: 'Mariam Amilakhvari', phone: '' } })])
+      state([
+        report({
+          patient: { id: PATIENT_ID, name: 'Mariam Amilakhvari', phone: '' },
+          // Resolved empty by the service: neither the report nor the record holds a number.
+          contactPhone: '',
+        }),
+      ])
     );
 
     render(<SymptomReportQueue />);
@@ -114,6 +122,80 @@ describe('SymptomReportQueue', () => {
     expect(screen.queryByRole('link', { name: /tel:/ })).not.toBeInTheDocument();
     // The record is still reachable without a phone number.
     expect(screen.getByRole('link', { name: /openPatient/ })).toBeInTheDocument();
+  });
+
+  /*
+    How the patient asked to be reached, which is the difference between a returned call and a
+    missed one. Someone recovering abroad may be asleep, roaming, or unable to take a voice call
+    at all — the clinician has to see the preference before they see the number.
+  */
+  describe('how the patient asked to be reached', () => {
+    it('names the preferred method on every card', () => {
+      reportsHook.mockReturnValue(state([report({ contactMethod: 'whatsapp' })]));
+
+      render(<SymptomReportQueue />);
+
+      expect(screen.getByText('contactMethod.whatsapp')).toBeInTheDocument();
+    });
+
+    it('offers a one-click chat when the patient asked for WhatsApp', () => {
+      reportsHook.mockReturnValue(
+        state([report({ contactMethod: 'whatsapp', contactPhone: '+995 322 122 122' })])
+      );
+
+      render(<SymptomReportQueue />);
+
+      expect(screen.getByRole('link', { name: /openWhatsApp/ })).toHaveAttribute(
+        'href',
+        'https://wa.me/995322122122'
+      );
+    });
+
+    /* The link is for WhatsApp. A phone-call preference is a `tel:` and nothing else. */
+    it('offers no chat link when the patient asked to be phoned', () => {
+      reportsHook.mockReturnValue(
+        state([report({ contactMethod: 'phone', contactPhone: '+995 322 122 122' })])
+      );
+
+      render(<SymptomReportQueue />);
+
+      expect(screen.queryByRole('link', { name: /openWhatsApp/ })).not.toBeInTheDocument();
+    });
+
+    /*
+      A link that opens WhatsApp on the wrong person is worse than no link, and this queue is
+      where that mistake costs the most. The digits stay on screen for the clinician to read.
+    */
+    it('prints the number and no link when WhatsApp could not open it', () => {
+      reportsHook.mockReturnValue(
+        state([report({ contactMethod: 'whatsapp', contactPhone: '122' })])
+      );
+
+      render(<SymptomReportQueue />);
+
+      expect(screen.queryByRole('link', { name: /openWhatsApp/ })).not.toBeInTheDocument();
+      expect(screen.getByText('122')).toBeInTheDocument();
+    });
+
+    /*
+      The number the patient gave with the report, not the one on their record. That is the whole
+      point of the field: they are on a different SIM this week.
+    */
+    it('shows the number the report carries, over the one on the record', () => {
+      reportsHook.mockReturnValue(
+        state([
+          report({
+            patient: { id: PATIENT_ID, name: 'Mariam Amilakhvari', phone: '+995 555 12 34 56' },
+            contactPhone: '+31 6 1234 5678',
+          }),
+        ])
+      );
+
+      render(<SymptomReportQueue />);
+
+      expect(screen.getByText('+31 6 1234 5678')).toBeInTheDocument();
+      expect(screen.queryByText('+995 555 12 34 56')).not.toBeInTheDocument();
+    });
   });
 
   /*

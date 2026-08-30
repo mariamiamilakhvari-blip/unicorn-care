@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ArrowRight, PhoneCall } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Mail, MessageCircle, PhoneCall } from 'lucide-react';
 import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -11,6 +11,8 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
+import { ContactMethod } from '@/shared/const/recovery.const';
+import { toDialNumber, whatsAppLink } from '@/shared/utils/phone';
 
 /**
  * The clinic's review queue. Reports are listed newest first with no scoring or ranking — a
@@ -42,7 +44,11 @@ export function SymptomReportQueue() {
           <ul className="flex flex-col gap-3">
             {reports.map(report => (
               <li key={report.id} className="rounded-md border border-border p-3">
-                <ReportPatient patient={report.patient} />
+                <ReportPatient
+                  patient={report.patient}
+                  contactMethod={report.contactMethod}
+                  contactPhone={report.contactPhone}
+                />
 
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium">
@@ -120,8 +126,17 @@ export function SymptomReportQueue() {
  * it by design, so a blank line here would read as a bug in the page rather than as the record
  * having been erased under a data-subject request.
  */
-function ReportPatient({ patient }: { patient: SymptomReportPatientView | null }) {
+type ReportPatientProps = {
+  patient: SymptomReportPatientView | null;
+  /** What the patient asked for on this report, not a standing preference on their record. */
+  contactMethod: ContactMethod;
+  /** Already resolved by the service: what they typed, else the number on their record. */
+  contactPhone: string;
+};
+
+function ReportPatient({ patient, contactMethod, contactPhone }: ReportPatientProps) {
   const t = useTranslations('recoveryGuide');
+  const chatUrl = contactMethod === 'whatsapp' ? whatsAppLink(contactPhone) : '';
 
   if (!patient) {
     return <p className="text-sm text-muted-foreground">{t('reportPatientMissing')}</p>;
@@ -133,16 +148,50 @@ function ReportPatient({ patient }: { patient: SymptomReportPatientView | null }
         {patient.name ? t('reportPatient', { name: patient.name }) : t('reportPatientErased')}
       </p>
 
-      {patient.phone ? (
+      {/*
+        What the patient asked for, stated before the number rather than inferred from it. A
+        clinician who rings a patient that asked to be messaged has not made a small mistake —
+        someone recovering abroad may be asleep, roaming, or unable to take the call at all.
+      */}
+      <Badge variant="outline" className="gap-1.5">
+        {contactMethod === 'whatsapp' ? (
+          <MessageCircle className="size-3.5 shrink-0" aria-hidden />
+        ) : contactMethod === 'email' ? (
+          <Mail className="size-3.5 shrink-0" aria-hidden />
+        ) : (
+          <PhoneCall className="size-3.5 shrink-0" aria-hidden />
+        )}
+        {t(`contactMethod.${contactMethod}`)}
+      </Badge>
+
+      {contactPhone ? (
         <a
-          href={`tel:${patient.phone.replace(/\s+/g, '')}`}
+          href={`tel:${toDialNumber(contactPhone)}`}
           className="inline-flex items-center gap-1.5 text-xs underline underline-offset-4"
         >
           <PhoneCall className="size-3.5 shrink-0" aria-hidden />
-          {patient.phone}
+          {contactPhone}
         </a>
       ) : (
         <span className="text-xs text-muted-foreground">{t('reportNoPhone')}</span>
+      )}
+
+      {/*
+        Beside the number, never instead of it. `whatsAppLink` returns nothing for a number it
+        cannot turn into a real international one, and in that case the clinician still has the
+        digits on screen to work from — a link that opens WhatsApp on the wrong person is worse
+        than no link, and this queue is the one place that mistake costs the most.
+      */}
+      {chatUrl && (
+        <a
+          href={chatUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-4"
+        >
+          <MessageCircle className="size-3.5 shrink-0" aria-hidden />
+          {t('openWhatsApp')}
+        </a>
       )}
 
       <Link

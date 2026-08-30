@@ -22,7 +22,12 @@ const SEVERITY_CLASS: Record<WarningSeverity, string> = {
   emergency: 'border-destructive',
 };
 
-export function RecoveryGuidePanel() {
+type RecoveryGuidePanelProps = {
+  /** Passed straight through to the concern form, which is the only thing here that needs it. */
+  patientPhone: string;
+};
+
+export function RecoveryGuidePanel({ patientPhone }: RecoveryGuidePanelProps) {
   const t = useTranslations('recoveryGuide');
   const { guide, absence, isLoading } = useRecoveryGuide();
 
@@ -146,7 +151,7 @@ export function RecoveryGuidePanel() {
           have both become this: the signs are one-tap choices inside it, so a patient can send a
           named symptom, a sentence of their own, or the two together as one message.
         */}
-        <ConcernReportSection warnings={guide?.warning ?? []} />
+        <ConcernReportSection warnings={guide?.warning ?? []} patientPhone={patientPhone} />
       </CardContent>
     </Card>
   );

@@ -461,7 +461,17 @@
     "concernPlaceholder": "Describe what you are noticing, or ask your clinic a question",
     "concernSubmit": "Send to clinic",
     "concernSent": "Report sent to your clinic",
-    "concernFailed": "This did not send. Please try again, or call your clinic if it is urgent."
+    "concernFailed": "This did not send. Please try again, or call your clinic if it is urgent.",
+    "contactMethodLabel": "Preferred contact method",
+    "contactPhoneLabel": "Contact number",
+    "contactPhonePlaceholder": "+995 …",
+    "contactPhoneHelp": "Include the country code if you are abroad, so the clinic reaches the right number.",
+    "openWhatsApp": "Open WhatsApp",
+    "contactMethod": {
+      "phone": "Phone call",
+      "whatsapp": "WhatsApp / Viber",
+      "email": "Email"
+    }
   },
   "pricing": {
     "title": "Pricing",

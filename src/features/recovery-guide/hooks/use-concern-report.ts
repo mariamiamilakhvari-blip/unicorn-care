@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { ContactMethod } from '@/shared/const/recovery.const';
 import { http } from '@/shared/lib/http';
 
 /** How long the "sent" line stays up before the form quietly returns to ready. */
@@ -11,6 +12,9 @@ export type ConcernReportInput = {
   warningTitle: string;
   severity: string;
   note: string;
+  /** How the patient wants the clinic to come back to them, and on what number. */
+  contactMethod: ContactMethod;
+  contactPhone: string;
 };
 
 type ConcernReportState = {

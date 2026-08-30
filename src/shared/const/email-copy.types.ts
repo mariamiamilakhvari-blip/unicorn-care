@@ -66,6 +66,10 @@ export type EmailCopy = {
   symptomIntro: string;
   symptomPatient: string;
   symptomFlagged: string;
+  /* How the patient asked to be reached about it, and on what number. */
+  symptomContactMethod: string;
+  symptomContactNumber: string;
+  symptomContactNumberNone: string;
   symptomOpenQueue: string;
   symptomDetailWithheld: string;
   symptomNotMonitored: string;

@@ -17,7 +17,12 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { PORTAL_PRIVACY_ROUTE } from '@/shared/const/routes.const';
 
-export function PortalPlan() {
+type PortalPlanProps = {
+  /** The number on the patient's record, offered as the default on the concern form. */
+  patientPhone: string;
+};
+
+export function PortalPlan({ patientPhone }: PortalPlanProps) {
   const t = useTranslations('portal');
   const tCommon = useTranslations('common');
   const format = useFormatter();
@@ -109,7 +114,7 @@ export function PortalPlan() {
 
       {/* A patient worried about a symptom reaches clinic-authored guidance and the
           "contact your clinic" path — the only route the portal offers for a medical question. */}
-      <RecoveryGuidePanel />
+      <RecoveryGuidePanel patientPhone={patientPhone} />
 
       {/* Renders nothing until a plan has actually finished, so it never competes with today's
           doses. Last on the page for the same reason. */}

@@ -61,6 +61,9 @@ export const EMAIL_COPY_EN: EmailCopy = {
   symptomIntro: 'One of your patients has reported a symptom through their recovery portal.',
   symptomPatient: 'Patient',
   symptomFlagged: 'They selected',
+  symptomContactMethod: 'Preferred contact method',
+  symptomContactNumber: 'Contact number',
+  symptomContactNumberNone: 'No number on file',
   symptomOpenQueue: 'Open the review queue',
   symptomDetailWithheld:
     'What they wrote is not included in this email. Open the dashboard to read it.',

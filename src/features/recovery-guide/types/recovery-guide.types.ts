@@ -1,4 +1,4 @@
-import { WarningSeverity } from '@/shared/const/recovery.const';
+import { ContactMethod, WarningSeverity } from '@/shared/const/recovery.const';
 import { SymptomReportStatus } from '@/shared/const/recovery.const';
 import { AppLocale } from '@/shared/types/roles';
 
@@ -89,6 +89,13 @@ export type SymptomReportView = {
   warningTitle: string;
   severity: string;
   note: string;
+  /** How the patient asked to be reached about this report. */
+  contactMethod: ContactMethod;
+  /**
+   * The number to use, already resolved: what the patient typed on the form, or the one on their
+   * record when they left it blank. Empty means the clinic holds no number at all.
+   */
+  contactPhone: string;
   status: SymptomReportStatus;
   clinicNote: string;
   createdAt: string;

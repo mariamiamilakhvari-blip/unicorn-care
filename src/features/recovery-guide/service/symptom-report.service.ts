@@ -15,6 +15,11 @@ import {
   CreateSymptomReportType,
   ReviewSymptomReportType,
 } from '@/features/recovery-guide/validations/recovery-guide.validation';
+import {
+  ContactMethod,
+  DEFAULT_CONTACT_METHOD,
+  isContactMethod,
+} from '@/shared/const/recovery.const';
 import { ERASED_PLACEHOLDER } from '@/shared/const/retention.const';
 import { clock } from '@/shared/lib/clock';
 import { ServiceResult } from '@/shared/types/common';
@@ -38,6 +43,23 @@ function toPatientView(patient: PatientDocument): SymptomReportPatientView {
   };
 }
 
+/**
+ * The number to ring for this report: the one the patient gave with it, or the one on their
+ * record.
+ *
+ * Resolved on read rather than copied at write time, so a clinic correcting a typo in the patient
+ * record fixes every past report that fell back to it. A report carrying its own number keeps it —
+ * that number was an answer about where the patient was that week, and a later edit to the record
+ * says nothing about it.
+ */
+function resolveContactPhone(
+  report: SymptomReportDocument,
+  patient: PatientDocument | null
+): string {
+  const given = (report.contactPhone ?? '').trim();
+  return given || patient?.phone?.trim() || '';
+}
+
 function toView(
   report: SymptomReportDocument,
   patient: PatientDocument | null
@@ -51,6 +73,15 @@ function toView(
     warningTitle: report.warningTitle ?? '',
     severity: report.severity ?? '',
     note: report.note ?? '',
+    /*
+      Narrowed rather than cast. Mongoose types the enum as a plain string, and reports written
+      before this field existed read back as `undefined` — those are the clinic's existing queue,
+      and they have to render as the phone-call default rather than as a blank badge.
+    */
+    contactMethod: isContactMethod(report.contactMethod ?? '')
+      ? (report.contactMethod as ContactMethod)
+      : DEFAULT_CONTACT_METHOD,
+    contactPhone: resolveContactPhone(report, patient),
     status: report.status,
     clinicNote: report.clinicNote ?? '',
     createdAt: report.createdAt.toISOString(),
@@ -90,6 +121,8 @@ export async function createSymptomReportService(
     warningTitle: input.warningTitle,
     severity: input.severity,
     note: input.note,
+    contactMethod: input.contactMethod,
+    contactPhone: input.contactPhone,
     status: 'needs_review',
     reviewedByUserId: null,
     reviewedAt: null,
@@ -109,9 +142,20 @@ export async function createSymptomReportService(
     must not fail: a report stored and unannounced is recoverable by opening the dashboard, while
     one rejected because a mail provider was down is a patient told their message did not send.
   */
-  await sendSymptomAlertService(patientId, clinicId, input.warningTitle, input.severity);
-
   const patient = await patientRepository.findById(patientId, clinicId);
+
+  /*
+    Loaded before the alert rather than after it, because the mail has to carry the same resolved
+    number the dashboard will show. A patient who left the field blank is reachable on the number
+    the clinic already holds, and an email that omitted it would send a clinician back to the
+    dashboard for a detail the message was supposed to save them looking up.
+  */
+  await sendSymptomAlertService(patientId, clinicId, {
+    warningTitle: input.warningTitle,
+    severityLabel: input.severity,
+    contactMethod: input.contactMethod,
+    contactPhone: resolveContactPhone(created, patient),
+  });
 
   return { data: toView(created, patient), status: 201 };
 }

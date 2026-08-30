@@ -60,6 +60,9 @@ export const EMAIL_COPY_KA: EmailCopy = {
   symptomIntro: 'თქვენმა ერთ-ერთმა პაციენტმა პორტალიდან დააფიქსირა სიმპტომი.',
   symptomPatient: 'პაციენტი',
   symptomFlagged: 'მან აირჩია',
+  symptomContactMethod: 'სასურველი კავშირის საშუალება',
+  symptomContactNumber: 'საკონტაქტო ნომერი',
+  symptomContactNumberNone: 'ნომერი მითითებული არ არის',
   symptomOpenQueue: 'გახსენით განსახილველი სია',
   symptomDetailWithheld:
     'რაც მან დაწერა, ამ წერილში არ არის. დეტალების სანახავად გახსენით დაფა.',

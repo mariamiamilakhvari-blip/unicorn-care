@@ -1,6 +1,6 @@
 import mongoose, { InferSchemaType, Schema } from 'mongoose';
 
-import { SYMPTOM_REPORT_STATUSES } from '@/shared/const/recovery.const';
+import { CONTACT_METHODS, DEFAULT_CONTACT_METHOD, SYMPTOM_REPORT_STATUSES } from '@/shared/const/recovery.const';
 
 /**
  * A patient saying "something doesn't feel right" (PRD 06 §2).
@@ -29,6 +29,26 @@ const SymptomReportSchema = new Schema(
     warningTitle: { type: String, required: false, default: '' },
     severity: { type: String, required: false, default: '' },
     note: { type: String, required: false, default: '' },
+
+    /*
+      How the patient asked to be reached about *this* report, and on what number.
+
+      Both are recorded on the report rather than on the patient, because both are answers about
+      one moment: someone recovering abroad on a foreign SIM wants a WhatsApp message back on that
+      number this week, and a call on their home number the month after. Writing either onto the
+      patient record would overwrite a detail the clinic entered, from a form the clinic never saw.
+
+      `contactPhone` empty means "use the number you already have". It is not defaulted to a copy
+      of the patient's phone at write time on purpose — a stored copy silently goes stale the first
+      time the clinic corrects a typo, and the fallback keeps the two in step.
+    */
+    contactMethod: {
+      type: String,
+      enum: CONTACT_METHODS,
+      required: true,
+      default: DEFAULT_CONTACT_METHOD,
+    },
+    contactPhone: { type: String, required: false, default: '' },
 
     status: {
       type: String,

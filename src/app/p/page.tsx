@@ -14,7 +14,7 @@ export default async function PatientPortalPage() {
 
   return (
     <PortalShell title={t('yourPlan')} patientName={session.patientName}>
-      <PortalPlan />
+      <PortalPlan patientPhone={session.patientPhone} />
     </PortalShell>
   );
 }

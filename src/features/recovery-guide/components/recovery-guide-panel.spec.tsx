@@ -56,7 +56,7 @@ describe('RecoveryGuidePanel — guidance the patient cannot be shown', () => {
   it('says nothing at all when the guide exists only in the other language', () => {
     guideHook.mockReturnValue(state({ absence: 'untranslated' }));
 
-    render(<RecoveryGuidePanel />);
+    render(<RecoveryGuidePanel patientPhone="" />);
 
     expect(screen.queryByText('notTranslated')).not.toBeInTheDocument();
     // Nor the other absence: telling this patient nobody wrote one would simply be false.
@@ -70,10 +70,10 @@ describe('RecoveryGuidePanel — guidance the patient cannot be shown', () => {
   it('still offers the way to reach the clinic', () => {
     guideHook.mockReturnValue(state({ absence: 'untranslated' }));
 
-    render(<RecoveryGuidePanel />);
+    render(<RecoveryGuidePanel patientPhone="" />);
 
     expect(screen.getByText('concernHeading')).toBeInTheDocument();
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'concernHeading' })).toBeInTheDocument();
     // The standing safety notice is not an absence and never goes away.
     expect(screen.getByText('emergencyBanner')).toBeInTheDocument();
   });
@@ -88,7 +88,7 @@ describe('RecoveryGuidePanel — guidance the patient cannot be shown', () => {
   it('does not fall back to the other language’s content', () => {
     guideHook.mockReturnValue(state({ absence: 'untranslated' }));
 
-    render(<RecoveryGuidePanel />);
+    render(<RecoveryGuidePanel patientPhone="" />);
 
     expect(screen.queryByText('expectedHeading')).not.toBeInTheDocument();
     expect(screen.queryByText('warningHeading')).not.toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('RecoveryGuidePanel — guidance the patient cannot be shown', () => {
   it('says so when no guide has been written in any language', () => {
     guideHook.mockReturnValue(state({ absence: 'missing' }));
 
-    render(<RecoveryGuidePanel />);
+    render(<RecoveryGuidePanel patientPhone="" />);
 
     expect(screen.getByText('noGuide')).toBeInTheDocument();
   });
@@ -106,7 +106,7 @@ describe('RecoveryGuidePanel — guidance the patient cannot be shown', () => {
   it('renders the guidance when there is some', () => {
     guideHook.mockReturnValue(state({ guide: GUIDE }));
 
-    render(<RecoveryGuidePanel />);
+    render(<RecoveryGuidePanel patientPhone="" />);
 
     expect(screen.getByText('sweling')).toBeInTheDocument();
     expect(screen.getByText('expectedHeading')).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe('RecoveryGuidePanel — guidance the patient cannot be shown', () => {
   it('renders nothing while the guide is still loading', () => {
     guideHook.mockReturnValue(state({ isLoading: true }));
 
-    const { container } = render(<RecoveryGuidePanel />);
+    const { container } = render(<RecoveryGuidePanel patientPhone="" />);
 
     expect(container).toBeEmptyDOMElement();
   });

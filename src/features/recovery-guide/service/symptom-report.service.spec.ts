@@ -63,11 +63,14 @@ const report = (id: string, patientId: string) => ({
   createdAt: new Date('2026-08-26T07:17:00.000Z'),
 });
 
+/** The number on the record, which a report that names none of its own falls back to. */
+const PATIENT_PHONE = '+995 555 12 34 56';
+
 const patient = (id: string, over: Record<string, unknown> = {}) => ({
   _id: { toString: () => id },
   firstName: 'Mariam',
   lastName: 'Amilakhvari',
-  phone: '+995 555 12 34 56',
+  phone: PATIENT_PHONE,
   ...over,
 });
 
@@ -97,7 +100,7 @@ describe('listSymptomReportsService', () => {
     expect(items[0].patient).toEqual({
       id: PATIENT_A,
       name: 'Mariam Amilakhvari',
-      phone: '+995 555 12 34 56',
+      phone: PATIENT_PHONE,
     });
   });
 
@@ -352,6 +355,8 @@ describe('createSymptomReportService', () => {
       warningTitle: '',
       severity: '',
       note: 'Is this swelling normal?',
+      contactMethod: 'phone',
+      contactPhone: '',
     });
 
     expect(result.status).toBe(201);
@@ -371,6 +376,8 @@ describe('createSymptomReportService', () => {
       warningTitle: '',
       severity: '',
       note: 'A question',
+      contactMethod: 'phone',
+      contactPhone: '',
     });
 
     expect(result.status).toBe(201);
@@ -386,9 +393,73 @@ describe('createSymptomReportService', () => {
       warningTitle: '',
       severity: '',
       note: 'A question',
+      contactMethod: 'phone',
+      contactPhone: '',
     });
 
-    expect(alert).toHaveBeenCalledWith(PATIENT_A, CLINIC_ID, '', '');
+    expect(alert).toHaveBeenCalledWith(PATIENT_A, CLINIC_ID, {
+      warningTitle: '',
+      severityLabel: '',
+      contactMethod: 'phone',
+      // Blank on the form, so the alert carries the number the clinic already holds.
+      contactPhone: PATIENT_PHONE,
+    });
+  });
+
+  /*
+    Which number the clinic ends up ringing, which is the one thing the contact field exists to
+    change. Resolved on read rather than copied at write time: a clinic correcting a typo in the
+    record fixes every past report that fell back to it, while a report that named its own number
+    keeps it — that number was an answer about where the patient was that week.
+  */
+  describe('the number the clinic is given', () => {
+    it('falls back to the record when the patient left the field blank', async () => {
+      const result = await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+        warningTitle: '',
+        severity: '',
+        note: 'A question',
+        contactMethod: 'whatsapp',
+        contactPhone: '',
+      });
+
+      expect(result.data).toMatchObject({ contactPhone: PATIENT_PHONE });
+    });
+
+    it('keeps the number the patient gave with the report', async () => {
+      reports.findByPatient.mockResolvedValue([
+        { ...report('r1', PATIENT_A), contactPhone: '+31 6 1234 5678' },
+      ] as never);
+
+      const result = await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+        warningTitle: '',
+        severity: '',
+        note: 'A question',
+        contactMethod: 'whatsapp',
+        contactPhone: '+31 6 1234 5678',
+      });
+
+      expect(result.data).toMatchObject({ contactPhone: '+31 6 1234 5678' });
+    });
+
+    /*
+      Reports written before this field existed read back with no method at all. They are the
+      clinic's existing queue, and they have to render as the phone-call default rather than as a
+      blank badge on a card somebody has to act on.
+    */
+    it('reads a report filed before the field existed as a phone call', async () => {
+      // No `contactMethod` key at all, which is how a row written before the field reads back.
+      reports.findByPatient.mockResolvedValue([report('r1', PATIENT_A)] as never);
+
+      const result = await createSymptomReportService(PATIENT_A, CLINIC_ID, {
+        warningTitle: '',
+        severity: '',
+        note: 'A question',
+        contactMethod: 'phone',
+        contactPhone: '',
+      });
+
+      expect(result.data).toMatchObject({ contactMethod: 'phone' });
+    });
   });
 
   it('returns the exact text the patient wrote', async () => {
@@ -396,6 +467,8 @@ describe('createSymptomReportService', () => {
       warningTitle: '',
       severity: '',
       note: 'Is this swelling normal?',
+      contactMethod: 'phone',
+      contactPhone: '',
     });
 
     expect((result.data as { note: string }).note).toBe('Is this swelling normal?');
