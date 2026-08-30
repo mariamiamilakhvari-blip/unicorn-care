@@ -51,7 +51,7 @@ describe('erasable patient fields', () => {
     );
   });
 
-  it.each(['allergies', 'dateOfBirth', 'sex'])(
+  it.each(['allergies', 'age', 'sex'])(
     'never erases %s — the retained clinical record is unreadable or unsafe without it',
     field => {
       expect([...ERASABLE_PATIENT_FIELDS]).not.toContain(field);

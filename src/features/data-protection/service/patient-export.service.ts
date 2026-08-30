@@ -78,7 +78,7 @@ export async function buildPatientExportService(
         lastName: patient.lastName,
         email: patient.email ?? '',
         phone: patient.phone ?? '',
-        dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.toISOString() : null,
+        age: patient.age ?? null,
         sex: patient.sex,
         locale: patient.locale,
         timezone: patient.timezone ?? '',

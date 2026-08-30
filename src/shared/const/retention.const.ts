@@ -49,7 +49,7 @@ export const DELIVERY_LOG_RETENTION_YEARS = 2;
  *
  * Everything here identifies or contacts a person and none of it is clinically load-bearing: a
  * medication history is as valid without a phone number attached. What is deliberately *not* here
- * is anything the clinical record needs to stay coherent — `dateOfBirth` and `sex` stay, because a
+ * is anything the clinical record needs to stay coherent — `age` and `sex` stay, because a
  * dose is only interpretable against them, and `allergies` stays because deleting it could get
  * someone hurt.
  *

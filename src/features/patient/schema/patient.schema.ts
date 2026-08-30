@@ -16,7 +16,15 @@ const PatientSchema = new Schema(
       Readers must handle that; see `patientRepository.findAllByEmail`.
     */
     email: { type: String, required: false, default: '' },
-    dateOfBirth: { type: Date, required: false, default: null },
+    /*
+      Age in years as the clinic entered it, not derived from anything. Null means never asked.
+
+      A snapshot, and it does not age with the patient: this holds no birth date to recompute
+      from, so a record entered at 35 still reads 35 a year later. That is the trade the field
+      makes — one number a clinic can type at intake, against a value that drifts if the record
+      outlives the treatment. Bounds live in `MIN_PATIENT_AGE`/`MAX_PATIENT_AGE`.
+    */
+    age: { type: Number, required: false, default: null },
     sex: {
       type: String,
       enum: ['female', 'male', 'other', 'unspecified'],

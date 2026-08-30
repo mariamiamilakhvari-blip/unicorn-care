@@ -145,7 +145,7 @@ export async function resolveDataRequestService(
  * Reminders are stopped at the same time. Continuing to email an address that has just been erased
  * would be incoherent, and the patient plainly did not consent to it.
  *
- * `allergies`, `dateOfBirth` and `sex` deliberately survive. A dose is only interpretable against
+ * `allergies`, `age` and `sex` deliberately survive. A dose is only interpretable against
  * them, and an allergy list is the one field here whose deletion could injure someone.
  */
 async function applyErasure(

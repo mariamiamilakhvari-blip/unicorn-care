@@ -27,7 +27,8 @@ function toPatientSummary(patient: PatientDocument): PatientSummary {
     // Schema defaults these but the inferred types stay nullable — normalise for the wire.
     phone: patient.phone ?? '',
     email: patient.email ?? '',
-    dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.toISOString() : null,
+    // `?? null` rather than a falsy check: an age of 0 is a real answer and must survive.
+    age: patient.age ?? null,
     sex: patient.sex,
     locale: patient.locale,
     allergies: patient.allergies ?? [],

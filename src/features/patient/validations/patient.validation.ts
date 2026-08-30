@@ -1,12 +1,19 @@
 import { z } from 'zod';
 
+import { MAX_PATIENT_AGE, MIN_PATIENT_AGE } from '@/shared/const/patient.const';
 import { requiredConsent } from '@/shared/utils/consent';
 
 /**
- * `dateOfBirth` arrives as an ISO string over JSON, or explicitly as `null`. The `null` branch
- * is listed first so a literal null is never coerced into the epoch by `z.coerce.date()`.
+ * `age` arrives as a number over JSON, or explicitly as `null`.
+ *
+ * The `null` branch is listed first for the same reason the date union it replaced had one: a
+ * literal null coerces to `0` under `z.coerce.number()`, and a newborn and an unanswered field
+ * must not arrive as the same value. `.int()` rejects `35.5` rather than rounding it — an age
+ * with a fraction in it is a mis-typed field, not a measurement.
  */
-const DateOfBirthSchema = z.union([z.null(), z.coerce.date()]).default(null);
+const AgeSchema = z
+  .union([z.null(), z.coerce.number().int().min(MIN_PATIENT_AGE).max(MAX_PATIENT_AGE)])
+  .default(null);
 
 /**
  * Patient fields (PRD 01 §3). `clinicId` is deliberately absent — it is always taken from the
@@ -62,7 +69,7 @@ export const CreatePatientSchema = z.object({
   lastName: z.string().trim().min(1).max(80),
   phone: z.string().max(40).default(''),
   email: z.union([z.literal(''), z.string().email()]).default(''),
-  dateOfBirth: DateOfBirthSchema,
+  age: AgeSchema,
   sex: z.enum(['female', 'male', 'other', 'unspecified']).default('unspecified'),
   locale: z.enum(['ka', 'en']).default('ka'),
   allergies: z.array(z.string().min(1).max(120)).max(50).default([]),

@@ -9,7 +9,8 @@ export type PatientSummary = {
   lastName: string;
   phone: string;
   email: string;
-  dateOfBirth: string | null;
+  /** Years, as entered at intake. Null means never asked. Never recomputed — see the schema. */
+  age: number | null;
   sex: PatientSex;
   locale: AppLocale;
   allergies: string[];

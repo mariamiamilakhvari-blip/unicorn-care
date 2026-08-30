@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { MAX_PATIENT_AGE, MIN_PATIENT_AGE } from '@/shared/const/patient.const';
 import { suggestEmailCorrection } from '@/shared/utils/email-domain';
 
 const SEX_KEYS = ['female', 'male', 'other'] as const;
@@ -121,15 +122,28 @@ export function PatientIdentityFields({ control }: PatientIdentityFieldsProps) {
       />
       <FormField
         control={control}
-        name="dateOfBirth"
+        name="age"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{t('dateOfBirth')}</FormLabel>
+            <FormLabel>{t('age')}</FormLabel>
             <FormControl>
+              {/*
+                Cleared back to null rather than to `0`, because an empty box means the clinic did
+                not ask — and a newborn is a real patient, so the two cannot share a value.
+                `Number` is applied here rather than left to the resolver so the field holds a
+                number the moment it is typed; `min`/`max` are the browser's echo of the Zod
+                bounds, never the check itself.
+              */}
               <Input
-                type="date"
-                value={typeof field.value === 'string' ? field.value : ''}
-                onChange={event => field.onChange(event.target.value || null)}
+                type="number"
+                inputMode="numeric"
+                min={MIN_PATIENT_AGE}
+                max={MAX_PATIENT_AGE}
+                step={1}
+                value={typeof field.value === 'number' ? field.value : ''}
+                onChange={event =>
+                  field.onChange(event.target.value === '' ? null : Number(event.target.value))
+                }
               />
             </FormControl>
             <FormMessage />

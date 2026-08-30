@@ -38,7 +38,7 @@ export function PatientForm({ onSubmit, isPending }: PatientFormProps) {
       lastName: '',
       phone: '',
       email: '',
-      dateOfBirth: null,
+      age: null,
       sex: 'unspecified',
       locale: 'ka',
       allergies: [],

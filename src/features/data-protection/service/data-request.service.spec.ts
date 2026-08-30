@@ -126,11 +126,11 @@ describe('resolveDataRequestService — erasure', () => {
       resolution: 'Done.',
     });
 
-    // A dose is only interpretable against date of birth and sex, and deleting an allergy list
+    // A dose is only interpretable against age and sex, and deleting an allergy list
     // could injure someone. None of the three may appear in the erasure patch.
     const patch = patientRepo.updateById.mock.calls[0][2];
     expect(patch).not.toHaveProperty('allergies');
-    expect(patch).not.toHaveProperty('dateOfBirth');
+    expect(patch).not.toHaveProperty('age');
     expect(patch).not.toHaveProperty('sex');
   });
 

@@ -33,6 +33,15 @@ export function PatientList({ patients, onDelete }: PatientListProps) {
             <p className="truncate font-medium">
               {patient.firstName} {patient.lastName}
             </p>
+            {/*
+              `!== null` rather than a truthy test: an age of 0 is a real patient, and a falsy
+              check would hide the row's age for the group it matters most for.
+            */}
+            {patient.age !== null && (
+              <p className="text-sm text-muted-foreground">
+                {t('ageValue', { age: patient.age })}
+              </p>
+            )}
             {patient.phone && (
               <p className="truncate text-sm text-muted-foreground">{patient.phone}</p>
             )}

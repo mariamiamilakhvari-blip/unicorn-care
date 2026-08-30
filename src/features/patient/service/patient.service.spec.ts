@@ -59,7 +59,7 @@ const intake = (): CreatePatientType =>
     lastName: 'Beridze',
     phone: '',
     email: '',
-    dateOfBirth: null,
+    age: null,
     sex: 'female',
     locale: 'ka',
     allergies: [],

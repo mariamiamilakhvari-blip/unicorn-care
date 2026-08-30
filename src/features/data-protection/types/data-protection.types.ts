@@ -53,7 +53,7 @@ export type PatientExport = {
     lastName: string;
     email: string;
     phone: string;
-    dateOfBirth: string | null;
+    age: number | null;
     sex: string;
     locale: string;
     timezone: string;
