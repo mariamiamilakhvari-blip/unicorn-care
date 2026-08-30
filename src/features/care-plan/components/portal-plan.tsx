@@ -63,6 +63,29 @@ export function PortalPlan({ patientPhone }: PortalPlanProps) {
   const today = plan.days.find(day => day.date === plan.todayKey);
   const upcoming = plan.days.filter(day => day.date > plan.todayKey);
 
+  /*
+    What an empty day actually means, which is three different things.
+
+    This used to say "your plan continues tomorrow" in every one of them. For a patient whose plan
+    had finished that is simply false — it tells someone with nothing left to do to come back
+    tomorrow for tasks that will never arrive, and it is the state a completed plan sits in for
+    good. It was also wrong whenever the next task was three days out rather than one.
+
+    `rehabEndsAt` is the plan the portal is holding: `null` is the service finding no *active*
+    plan, which covers both a finished one and a patient who has none yet. Neither of those
+    continues, so neither may claim to.
+  */
+  const nextDay = upcoming[0] ?? null;
+  const nothingTodayBody = !plan.rehabEndsAt
+    ? t('nothingTodayNoPlan')
+    : nextDay
+      ? t('nothingTodayNext', {
+        // Same reading `UpcomingDays` uses: the key is already the clinic's calendar day and
+        // `new Date('YYYY-MM-DD')` is UTC midnight, so it is formatted in UTC or it shifts.
+        date: format.dateTime(new Date(nextDay.date), { dateStyle: 'medium', timeZone: 'UTC' }),
+      })
+      : t('nothingTodayHelp');
+
   return (
     <div className="flex flex-col gap-6">
       {plan.nextCheckup && (
@@ -101,7 +124,7 @@ export function PortalPlan({ patientPhone }: PortalPlanProps) {
             ))}
           </ul>
         ) : (
-          <NothingToday title={t('nothingToday')} body={t('nothingTodayHelp')} />
+          <NothingToday title={t('nothingToday')} body={nothingTodayBody} />
         )}
       </section>
 

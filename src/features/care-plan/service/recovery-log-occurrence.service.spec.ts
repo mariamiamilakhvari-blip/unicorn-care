@@ -129,4 +129,73 @@ describe('buildRecoveryLogOccurrences', () => {
   it('generates nothing for a plan that ends the day it starts', () => {
     expect(buildRecoveryLogOccurrences(context({ rehabEndsAt: START }))).toEqual([]);
   });
+
+  /*
+    The recurrence itself, day by day, rather than only the first row and a count.
+
+    Reported as "the check-in only appears on day 1, and every day after says nothing is due". It
+    is not what the generator does — but the reason nothing here caught the claim either way is
+    that no test walked consecutive days and asserted a prompt on each one. These do, so a change
+    that silently dropped everything past the first day would fail rather than pass a count.
+  */
+  describe('a prompt on every day of the first week', () => {
+    const weekOne = () =>
+      buildRecoveryLogOccurrences(
+        context({ rehabEndsAt: new Date('2026-08-08T00:00:00.000Z') })
+      );
+
+    it('files one for each of days 1 to 7, and no more', () => {
+      expect(weekOne()).toHaveLength(7);
+    });
+
+    it('lands them on seven consecutive calendar days', () => {
+      const dates = weekOne().map(draft => clock.dateKeyInZone(draft.dueAt, 'Asia/Tbilisi'));
+
+      expect(dates).toEqual([
+        '2026-08-02',
+        '2026-08-03',
+        '2026-08-04',
+        '2026-08-05',
+        '2026-08-06',
+        '2026-08-07',
+        '2026-08-08',
+      ]);
+    });
+
+    /*
+      Day 2 onwards specifically. The first row being right proves nothing about the rest, which
+      is exactly the shape of the report this covers.
+    */
+    it('puts every one of them in the clinic evening, not just the first', () => {
+      const hours = weekOne().map(draft => clock.hourInZone(draft.dueAt, 'Asia/Tbilisi'));
+
+      expect(hours).toEqual([19, 19, 19, 19, 19, 19, 19]);
+    });
+
+    it('gives each day its own row rather than repeating one', () => {
+      const dueTimes = weekOne().map(draft => draft.dueAt.getTime());
+
+      expect(new Set(dueTimes).size).toBe(7);
+    });
+
+    /*
+      A plan running across a DST change keeps the prescribed wall clock. Tbilisi does not shift,
+      so the zone that would break is one that does — Amsterdam is where a patient recovering
+      abroad actually is, and 19:00 has to stay 19:00 on both sides of the change.
+    */
+    it('holds the wall clock across a daylight-saving change', () => {
+      const drafts = buildRecoveryLogOccurrences({
+        ...context({
+          startsAt: new Date('2026-10-22T00:00:00.000Z'),
+          rehabEndsAt: new Date('2026-10-29T00:00:00.000Z'),
+        }),
+        timezone: 'Europe/Amsterdam',
+      });
+
+      const hours = drafts.map(draft => clock.hourInZone(draft.dueAt, 'Europe/Amsterdam'));
+
+      expect(drafts).toHaveLength(7);
+      expect(hours).toEqual([19, 19, 19, 19, 19, 19, 19]);
+    });
+  });
 });

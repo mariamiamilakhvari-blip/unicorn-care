@@ -340,7 +340,7 @@
     "linkExpiredHelp": "Contact your clinic to get a new link",
     "offline": "You are offline",
     "kind_guide": "What is expected",
-    "nothingTodayHelp": "Nothing is due today. Your plan continues tomorrow.",
+    "nothingTodayHelp": "Nothing is due today. Your plan continues.",
     "linkRequestEmail": "Your email address",
     "linkRequestSubmit": "Email me a link",
     "linkRequestSending": "Sending…",
@@ -352,7 +352,9 @@
     "portalLoginSubmit": "Open my plan",
     "portalLoginOpening": "Opening…",
     "portalLoginFailed": "This link has expired, or the plan has changed. Please check your email for a new link.",
-    "privacyLink": "Privacy and your data"
+    "privacyLink": "Privacy and your data",
+    "nothingTodayNext": "Nothing is due today. Your plan continues on {date}.",
+    "nothingTodayNoPlan": "Nothing is due today. You have no recovery plan running."
   },
   "push": {
     "enableNotifications": "Enable notifications",
